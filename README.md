@@ -172,4 +172,7 @@ We're excited to bring ChatMATE to HackIndia 2025 and revolutionize how people m
 
 ## 📄 License
 
-MIT License - Feel free to use, modify, and distribute as per the license terms.
+Fork it, clone it, ship it.
+
+Just don’t say you wrote it while blasting lofi and drinking chai under a red LED light at 3:00 AM.
+We earned that vibe.😄
