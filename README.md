@@ -10,7 +10,7 @@ In today's fast-paced world, people often struggle to manage multiple tasks simu
 
 ## 💡 What is ChatMATE?
 
-ChatMATE is a comprehensive AI-powered assistant built using Retrieval-Augmented Generation (RAG) that:
+ChatMATE is a comprehensive AI-powered assistant that:
 
 - **Acts as your digital twin** - Answers questions based on data you've fed into it
 - **Manages your schedule** - Sets up meetings and sends reminders
@@ -77,13 +77,12 @@ ChatMATE: "From yesterday's Machine Learning lecture, the important topics were:
 
 ## 🛠️ Technical Stack
 
-- **Frontend**: React + TailwindCSS + Shadcn/UI
-- **Backend**: Flask/FastAPI with LangChain
-- **AI Models**: Whisper (for transcription), GPT/Claude (for conversation)
-- **Vector Database**: Pinecone/Chroma for RAG implementation
-- **Meeting Integration**: Zoom/Google Meet APIs
-- **Calendar Integration**: Google Calendar/Outlook APIs
-- **Persistent Storage**: MongoDB/PostgreSQL
+- **Frontend**: React + TailwindCSS + Framer Motion
+- **Backend**: Flask for python + NodeJS
+- **AI Models**: Whisper/deepGram (for transcription from audio) + Gemini (for conversation and generation) + LangChain (for AI integration)
+- **Meeting Integration**: Google Meet APIs
+- **Calendar Integration**: Google Calendar APIs
+- **Persistent Storage**: MongoDB
 
 ## 📋 Flow Architecture
 
@@ -119,10 +118,12 @@ ChatMATE: "From yesterday's Machine Learning lecture, the important topics were:
 ### Prerequisites
 - Python 3.8+
 - Node.js 16+
-- MongoDB/PostgreSQL
+- MongoDB
 - API keys for LLM services
 
 ### Installation
+
+The bot here uses a gmail account so you need to enter you gmail email and password and pass it on as ENV. 
 
 ```bash
 # Clone the repository
@@ -131,13 +132,25 @@ cd chatmate
 
 # Backend setup
 cd backend
-pip install -r requirements.txt
-python app.py
+npm start 
 
 # Frontend setup
 cd ../frontend
 npm install
 npm start
+
+#Services 
+cd Services 
+./build.sh
+ docker run -it -p 5000:5000\
+   -e GMAIL_USER_EMAIL=yourbot@email.com \
+   -e GMAIL_USER_PASSWORD=YOUR_PASSWORD \
+   -e GOOGLE_API_KEY="<----YOUR API KEY---->" \
+   -e SERVER_API=BACKEND_URL \
+   -e MAX_WAIT_TIME_IN_MINUTES=1 \
+   -v $PWD/storage:/app/storage \
+   gmeet
+
 ```
 
 ## 🔒 Privacy & Security
