@@ -181,3 +181,8 @@ Fork it, clone it, ship it.
 
 Just don’t say you wrote it while blasting lofi and drinking chai under a red LED light at 3:00 AM.
 We earned that vibe.😄
+
+### 📺 HackIndia 2025 Playlist
+
+[![HackIndia 2025](https://img.youtube.com/vi/qT3nN6Z7E6g/0.jpg)](https://www.youtube.com/playlist?list=PLk6JpwF5Q-tCm4R03DcabNGV08RXTPUnu)
+
