@@ -413,7 +413,7 @@ const HomePage = ({ userData, onLogout }) => {
         <p className="text-gray-300 text-center mb-6">
           The username "{presentUserName}" is not registered on ChatMate. Please register at{" "}
           <a 
-            href="https://chat-matee.vercel.app/" 
+            href={`${import.meta.env.VITE_FRONTEND_TWO}`} 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-blue-400 hover:underline"

@@ -152,18 +152,17 @@ const AdminPanel = ({ userData, onClose }) => {
 
   const handleScheduleMeeting = (task) => {
     if (task.isMeeting && task.isMeeting.title) {
-      // Prepare the initial data for the form
       const meetingData = {
-        taskId: task.uniqueTaskId, // Add this line to store the taskId
+        taskId: task.uniqueTaskId, 
         title: task.isMeeting.title,
         description: task.isMeeting.description || task.taskDescription || "",
         date: task.isMeeting.date,
         time: task.isMeeting.time,
         duration: parseInt(task.isMeeting.duration, 10) || 30,
         userEmails: [
-          userData.user.email, // Admin's email
-          task.presentUserData?.email || "" // User's email
-        ].filter(email => email) // Filter out empty emails
+          userData.user.email, 
+          task.presentUserData?.email || "" 
+        ].filter(email => email) 
       };
       
       setMeetingDetails(meetingData);
@@ -183,11 +182,10 @@ const AdminPanel = ({ userData, onClose }) => {
   const handleFormSubmit = (formattedData) => {
     console.log("Scheduling meeting with data:", formattedData);
     
-    // Here you would typically send this data to your backend
-    // For now, just pass it to the CalendarScheduler component
+   
     setCalendarData({
       ...formattedData,
-      taskId: meetingDetails.taskId // Make sure taskId is passed along
+      taskId: meetingDetails.taskId 
     });
     setShowScheduler(false);
     setShowCalendarScheduler(true);
@@ -587,7 +585,6 @@ const AdminPanel = ({ userData, onClose }) => {
 
                         <p className="text-gray-400 text-sm mb-4"><span className='text-gray-300 font-bold '>User Message :- </span>{task.taskQuestion}</p>
                         
-                        {/* Meeting details if present */}
                         {task.isMeeting && task.isMeeting.title && (
                           <div className={`rounded-lg p-3 mb-4 border ${getMeetingCardStyle(task.isMeeting.status)}`}>
                             <div className="flex justify-between items-start">
@@ -711,8 +708,7 @@ const AdminPanel = ({ userData, onClose }) => {
                                   <h4 className="text-gray-400 text-xs mb-1">User's Chat Assistant</h4>
                                   {task.presentUserData?.username ? (
                                     <a 
-                                      href={`https://localhost:5173/home/${task.presentUserData.username}`}
-                                      target="_blank"
+                                      href={`${import.meta.env.VITE_FRONTEND}/home/${task.presentUserData.username}`}                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-blue-500 hover:underline flex items-center"
                                     >

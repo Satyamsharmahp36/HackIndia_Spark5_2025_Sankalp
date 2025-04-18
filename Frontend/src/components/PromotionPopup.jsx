@@ -12,7 +12,7 @@ const PromotionPopup = ({
 }) => {
   const [remaining, setRemaining] = useState(maxUsers - totalUsers);
   const [copied, setCopied] = useState(false);
-  const shareLink = "https://chat-matee.vercel.app/";
+  const shareLink = "https://chatmatefrontend.vercel.app/";
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shareLink)

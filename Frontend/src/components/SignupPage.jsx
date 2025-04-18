@@ -114,11 +114,8 @@ const SignupPage = () => {
     }
   };
 
-  // Listen for messages from email verification popup
   useEffect(() => {
     const handleEmailVerification = (event) => {
-      // Ensure the message is from your backend for security
-      if (event.origin !== 'http://localhost:5000') return;
 
       const { success, userData, message } = event.data;
       
@@ -128,13 +125,11 @@ const SignupPage = () => {
       }));
 
       if (success && userData) {
-        // Set the form email to the verified email from Google
         setFormData(prev => ({
           ...prev,
           email: userData.email
         }));
 
-        // Store Google auth credentials
         setGoogleAuth({
           accessToken: userData.accessToken,
           refreshToken: userData.refreshToken,
@@ -142,21 +137,18 @@ const SignupPage = () => {
           tokenExpiryDate: userData.tokenExpiryDate
         });
 
-        // Mark email as verified
         setUiState(prev => ({
           ...prev,
           emailVerified: true,
           globalError: null
         }));
 
-        // Clear any existing email error
         setErrors(prev => {
           const newErrors = {...prev};
           delete newErrors.email;
           return newErrors;
         });
       } else {
-        // Show error message
         setUiState(prev => ({
           ...prev,
           globalError: message || "Email verification failed"
@@ -215,7 +207,6 @@ const SignupPage = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // If changing email, mark it as unverified
     if (name === 'email' && uiState.emailVerified) {
       setUiState(prev => ({...prev, emailVerified: false}));
     }
@@ -238,13 +229,11 @@ const SignupPage = () => {
     setUiState(prev => ({...prev, verificationInProgress: true, globalError: null}));
     
     const popup = window.open(
-      'http://localhost:5000/user/verify-email',
+      `${import.meta.env.VITE_BACKEND}/user/verify-email`,
       'GoogleEmailVerification',
       'width=500,height=600'
     );
-    
-    // The verification response is handled by the useEffect message listener
-  };
+      };
 
   const toggleUsePublicKey = () => {
     setUiState(prev => ({
@@ -267,7 +256,6 @@ const SignupPage = () => {
     
     setUiState(prev => ({...prev, globalError: null, loading: true}));
 
-    // Ensure email is verified
     if (!uiState.emailVerified) {
       setUiState(prev => ({
         ...prev, 
@@ -280,7 +268,7 @@ const SignupPage = () => {
     if (validateForm()) {
       try {
         const apiKeyToUse = uiState.usePublicKey 
-          ? import.meta.env.VITE_GEMINI_KEY 
+          ? import.meta.env.VITE_GEMINI_KEY   
           : formData.geminiApiKey;
 
         const response = await axios.post(`${import.meta.env.VITE_BACKEND}/register`, {
@@ -322,7 +310,7 @@ const SignupPage = () => {
   };
   
   const handleRedirectToContent = () => {
-    window.open(`http://localhost:5173/home/${formData.username}`, '_blank');
+    window.open(`${import.meta.env.VITE_FRONTEND}/home/${formData.username}`, '_blank');
   };
 
   const renderInputField = (field, index) => {

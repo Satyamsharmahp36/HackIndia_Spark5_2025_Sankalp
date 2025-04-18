@@ -15,7 +15,7 @@ function ChatMateDocumentation() {
   const [activeSection, setActiveSection] = useState(null);
 
   const handleClick = () => {
-    window.open('http://localhost:5173/', '_blank');
+    window.open(`${import.meta.env.VITE_FRONTEND}`, '_blank');
   };
 
   const documentationSections = [

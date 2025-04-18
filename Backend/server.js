@@ -17,7 +17,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const CLIENT_URL=process.env.CLIENT_URL;
 
 const oAuth2Client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -269,7 +268,7 @@ app.post('/register', async (req, res) => {
       email, 
       mobileNo, 
       username, 
-      password: hashedPassword, 
+      password, 
       geminiApiKey,
       google: {
         id: google.googleId,

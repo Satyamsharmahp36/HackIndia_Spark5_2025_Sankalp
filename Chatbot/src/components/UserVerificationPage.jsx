@@ -195,7 +195,7 @@ const UserVerificationPage = ({ onUserVerified }) => {
             <p className="text-purple-300">
               Don't have an account?{" "}
               <a 
-                href="https://chat-matee.vercel.app/" 
+                href={`${import.meta.env.VITE_FRONTEND_TWO}`} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-pink-400 hover:underline transition-colors"
