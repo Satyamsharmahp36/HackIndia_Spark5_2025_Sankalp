@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Users, AlertCircle, CheckCircle, X, Loader } from 'lucide-react';
+import { Calendar, Clock, Users, AlertCircle, CheckCircle, X, Loader, Link } from 'lucide-react';
 
 function CalendarScheduler({ taskId, username, title, description, startTime, endTime, userEmails, onSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -67,56 +67,57 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
 
   if (success && meetingDetails) {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6 max-w-md border border-gray-200 mx-auto">
-        <div className="flex items-center mb-4">
-          <div className="bg-green-100 p-2 rounded-full">
-            <CheckCircle className="text-green-600 w-6 h-6" />
+      <div className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md border border-gray-800 mx-auto transition-all duration-300 animate-fadeIn">
+        <div className="flex items-center mb-6">
+          <div className="bg-green-900 p-3 rounded-full">
+            <CheckCircle className="text-green-400 w-7 h-7" />
           </div>
-          <h3 className="text-xl font-semibold ml-3 text-gray-800">Added to Google Calendar</h3>
+          <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-green-400 to-teal-300 bg-clip-text text-transparent">Added to Calendar</h3>
         </div>
         
-        <div className="bg-blue-50 p-4 rounded-lg mb-5 border-l-4 border-blue-500">
-          <p className="font-medium text-gray-900 text-lg mb-3">{title}</p>
+        <div className="bg-gradient-to-br from-gray-800 to-gray-700 p-5 rounded-xl mb-6 border border-gray-700 shadow-md">
+          <p className="font-semibold text-gray-100 text-xl mb-4">{title}</p>
           
-          <div className="flex items-start mb-3">
-            <Clock className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-            <div className="text-gray-700">
-              <p className="font-medium">Time</p>
+          <div className="flex items-start mb-4 group">
+            <div className="bg-gray-900 p-2 rounded-lg shadow-md mr-4 group-hover:shadow-lg transition-shadow duration-300 border border-gray-700">
+              <Clock className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="text-gray-300">
+              <p className="font-medium text-blue-300">Time</p>
               <p>{formatDateTime(startTime)}</p>
               <p>to {formatDateTime(endTime)}</p>
             </div>
           </div>
           
-          <div className="flex items-start">
-            <Users className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-            <div className="text-gray-700">
-              <p className="font-medium">Participants</p>
+          <div className="flex items-start group">
+            <div className="bg-gray-900 p-2 rounded-lg shadow-md mr-4 group-hover:shadow-lg transition-shadow duration-300 border border-gray-700">
+              <Users className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="text-gray-300">
+              <p className="font-medium text-blue-300">Participants</p>
               <p>{userEmails.length} attendee{userEmails.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>
         
-        <div className="space-y-3">
+        <div className="space-y-4">
           <a 
             href={meetingDetails.meetLink} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition-colors font-medium text-base"
+            className="flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 px-4 rounded-xl transition-all duration-300 font-medium text-base shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
-            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19.309 4.95C18.764 4.337 18 4 17.191 4H6.809C6 4 5.236 4.337 4.691 4.95C4.156 5.55 3.912 6.347 4.004 7.147L5.233 18.448C5.326 19.248 5.75 19.962 6.391 20.45C7.032 20.937 7.846 21.125 8.632 20.987L11.542 20.502C11.844 20.456 12 20.192 12 19.886V4.25C12 4.112 11.888 4 11.75 4H6.809C6 4 5.236 4.337 4.691 4.95Z" />
-              <path d="M16.084 20.987C16.87 21.125 17.684 20.937 18.325 20.45C18.966 19.962 19.39 19.248 19.483 18.448L20.712 7.147C20.804 6.347 20.56 5.55 20.025 4.95C19.48 4.337 18.716 4 17.907 4H12.265C12.119 4 12 4.119 12 4.265V19.889C12 20.196 12.163 20.454 12.467 20.5L16.084 20.987Z" />
-            </svg>
-            Join with Google Meet
+            <Link className="w-5 h-5 mr-3" />
+            Join Meeting Now
           </a>
           
           <a 
             href={meetingDetails.eventLink} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center justify-center w-full border border-gray-300 hover:bg-gray-50 text-gray-800 py-3 px-4 rounded-lg transition-colors font-medium text-base"
+            className="flex items-center justify-center w-full bg-gray-800 hover:bg-gray-700 text-gray-200 py-4 px-4 rounded-xl transition-colors font-medium text-base shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 border border-gray-700"
           >
-            <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+            <Calendar className="w-5 h-5 mr-3 text-blue-400" />
             Open in Google Calendar
           </a>
         </div>
@@ -127,15 +128,17 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
   return (
     <div className="w-full max-w-md mx-auto">
       {showError && (
-        <div className="bg-white rounded-lg shadow-md p-4 mb-4 border-l-4 border-red-500 flex items-start">
-          <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" />
-          <div className="ml-3 flex-grow">
-            <p className="text-base font-medium text-gray-800">Unable to add event</p>
-            <p className="text-sm text-gray-600 mt-1">{error}</p>
+        <div className="bg-gray-900 rounded-xl shadow-lg p-4 mb-6 border-l-4 border-red-500 flex items-start animate-slideIn">
+          <div className="bg-red-900 p-2 rounded-full mr-3">
+            <AlertCircle className="h-5 w-5 text-red-400" />
+          </div>
+          <div className="flex-grow">
+            <p className="text-base font-medium text-gray-200">Unable to add event</p>
+            <p className="text-sm text-gray-400 mt-1">{error}</p>
           </div>
           <button 
             onClick={dismissError}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+            className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors duration-200 p-1 hover:bg-gray-800 rounded-full"
             aria-label="Dismiss error"
           >
             <X className="h-5 w-5" />
@@ -143,32 +146,38 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
         </div>
       )}
       
-      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-        <div className="flex items-center mb-4">
-          <Calendar className="w-6 h-6 text-blue-600 mr-3" />
-          <h3 className="text-xl font-semibold text-gray-800">Schedule Meeting</h3>
+      <div className="bg-gray-900 rounded-xl shadow-lg p-8 border border-gray-800 transform transition-all duration-300 hover:shadow-xl">
+        <div className="flex items-center mb-6">
+          <div className="bg-blue-900 p-3 rounded-full">
+            <Calendar className="w-7 h-7 text-blue-400" />
+          </div>
+          <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Schedule Meeting</h3>
         </div>
         
-        <div className="bg-gray-50 p-4 rounded-lg mb-5">
-          <h4 className="font-medium text-lg text-gray-900 mb-3">{title}</h4>
+        <div className="bg-gradient-to-br from-gray-800 to-gray-700 p-6 rounded-xl mb-6 border border-gray-700 shadow-md">
+          <h4 className="font-semibold text-lg text-gray-100 mb-3 pb-2 border-b border-gray-700">{title}</h4>
           
           {description && (
-            <p className="text-gray-700 mb-4 text-sm">{description}</p>
+            <p className="text-gray-300 mb-5 italic text-sm bg-gray-800 bg-opacity-50 p-3 rounded-lg">{description}</p>
           )}
           
-          <div className="flex items-start mb-3">
-            <Clock className="w-5 h-5 text-gray-500 mr-3 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start mb-4 group">
+            <div className="bg-gray-900 p-2 rounded-lg shadow-md mr-4 group-hover:shadow-lg transition-shadow duration-300 border border-gray-700">
+              <Clock className="w-5 h-5 text-blue-400" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-700">Time</p>
-              <p className="text-sm text-gray-600">{formatDateTime(startTime)} - {formatDateTime(endTime)}</p>
+              <p className="text-sm font-medium text-gray-200">Time</p>
+              <p className="text-sm text-gray-400">{formatDateTime(startTime)} - {formatDateTime(endTime)}</p>
             </div>
           </div>
           
-          <div className="flex items-start">
-            <Users className="w-5 h-5 text-gray-500 mr-3 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start group">
+            <div className="bg-gray-900 p-2 rounded-lg shadow-md mr-4 group-hover:shadow-lg transition-shadow duration-300 border border-gray-700">
+              <Users className="w-5 h-5 text-blue-400" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-700">Participants</p>
-              <p className="text-sm text-gray-600">{userEmails.length} attendee{userEmails.length !== 1 ? 's' : ''}</p>
+              <p className="text-sm font-medium text-gray-200">Participants</p>
+              <p className="text-sm text-gray-400">{userEmails.length} attendee{userEmails.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>
@@ -176,16 +185,16 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
         <button
           onClick={scheduleMeeting}
           disabled={isLoading}
-          className="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 focus:outline-none text-white py-3 px-4 rounded-lg transition-colors shadow-md font-medium disabled:opacity-70 disabled:cursor-not-allowed"
+          className="flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-medium disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-md"
         >
           {isLoading ? (
             <>
-              <Loader className="w-5 h-5 mr-2 animate-spin" />
+              <Loader className="w-5 h-5 mr-3 animate-spin" />
               Adding to Calendar...
             </>
           ) : (
             <>
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5v-5z" />
               </svg>
               Add to Google Calendar
@@ -196,5 +205,25 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
     </div>
   );
 }
+
+const globalStyles = `
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out forwards;
+}
+`;
 
 export default CalendarScheduler;

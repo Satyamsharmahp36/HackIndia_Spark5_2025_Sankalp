@@ -150,7 +150,7 @@ const UserVerificationPage = ({ onUserVerified }) => {
               </div>
               <div className="flex items-center text-xs text-purple-300 mb-4">
                 <Info className="w-4 h-4 mr-2 text-pink-400" />
-                <span>Enter your ChatMate username to access your personal assistant</span>
+                <span>Enter the ChatMate username of the assistant you want to talk to</span>
               </div>
             </motion.div>
 

@@ -292,7 +292,7 @@ function FrontPage() {
             variants={itemVariants}
             className="text-2xl text-gray-300 max-w-2xl"
           >
-            Your intelligent AI companion that transforms the way you work, communicate, and manage tasks
+            Your Digital Twin for Smarter Work, Seamless Communication, and Intelligent Task Management
           </motion.p>
           
           <motion.div 
