@@ -131,11 +131,16 @@ git clone https://github.com/yourusername/chatmate.git
 cd chatmate
 
 # Backend setup
-cd backend
+cd Backend
+npm install
 npm start 
 
 # Frontend setup
-cd ../frontend
+cd ./frontend
+npm install
+npm start
+
+cd ./Chatbot
 npm install
 npm start
 
