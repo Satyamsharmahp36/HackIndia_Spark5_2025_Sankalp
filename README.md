@@ -128,14 +128,18 @@ The bot here uses a gmail account so you need to enter you gmail email and passw
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/chatmate.git
-cd chatmate
 
 # Backend setup
-cd backend
-npm start 
+cd Backend
+npm install
+npm run start 
 
 # Frontend setup
-cd ../frontend
+cd ./frontend
+npm install
+npm run start
+
+cd ./Chatbot
 npm install
 npm start
 
@@ -163,7 +167,7 @@ ChatMATE takes your privacy seriously:
 
 ## 👥 About Us
 
-We are a team of three passionate developers from [Your University]:
+We are a team of three passionate developers from Chitkara University, Baddi:
 - Anshul Kashyap
 - Satyam Sharma
 - Swasti Mohanty
@@ -176,3 +180,8 @@ Fork it, clone it, ship it.
 
 Just don’t say you wrote it while blasting lofi and drinking chai under a red LED light at 3:00 AM.
 We earned that vibe.😄
+
+### 📺 HackIndia 2025 Playlist
+
+[![HackIndia 2025](https://img.youtube.com/vi/qT3nN6Z7E6g/0.jpg)](https://www.youtube.com/playlist?list=PLk6JpwF5Q-tCm4R03DcabNGV08RXTPUnu)
+
