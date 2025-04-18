@@ -128,17 +128,16 @@ The bot here uses a gmail account so you need to enter you gmail email and passw
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/chatmate.git
-cd chatmate
 
 # Backend setup
 cd Backend
 npm install
-npm start 
+npm run start 
 
 # Frontend setup
 cd ./frontend
 npm install
-npm start
+npm run start
 
 cd ./Chatbot
 npm install
