@@ -1,0 +1,18 @@
+# In netlify.toml
+[[headers]]
+  for = "/assets/*.js"
+  [headers.values]
+    Content-Type = "application/javascript"
+
+[[headers]]
+  for = "/js/*.js"
+  [headers.values]
+    Content-Type = "application/javascript"
+
+    # In netlify.toml
+[[redirects]]
+  from = "/*.js"
+  to = "/:splat"
+  status = 200
+  force = true
+  headers = {Content-Type = "application/javascript"}
