@@ -167,7 +167,7 @@ ChatMATE takes your privacy seriously:
 
 ## 👥 About Us
 
-We are a team of three passionate developers from [Your University]:
+We are a team of three passionate developers from Chitkara University, Baddi:
 - Anshul Kashyap
 - Satyam Sharma
 - Swasti Mohanty
