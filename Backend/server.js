@@ -798,8 +798,6 @@ app.post('/schedule-meeting', async (req, res) => {
       refresh_token: organizer.google.refreshToken
     });
     
-    const { credentials } = await oAuth2Client.refreshAccessToken();
-    oAuth2Client.setCredentials(credentials);
     
     const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
     
@@ -886,12 +884,12 @@ app.post('/schedule-meeting', async (req, res) => {
       organizer: organizer.email,
       meetLink: response.data.hangoutLink,
       eventLink: response.data.htmlLink,
-      meeting: savedMeeting,
+      meeting: savedMeeting,  
       userTaskUpdated: !!updateResult
     });
     
   } catch (error) {
-    console.error(`Error scheduling meeting:`, error);
+    console.error(`Error scheduling meeting:`, error.message);
     return res.status(500).json({ error: error.message });
   }
 });
@@ -941,6 +939,7 @@ app.post('/update-meeting-info', async (req, res) => {
 
 app.get('/meeting-records', async (req, res) => {
   try {
+    console.log("here");
     const meetingRecords = await MeetingData.find();
     res.json(meetingRecords);
   } catch (err) {

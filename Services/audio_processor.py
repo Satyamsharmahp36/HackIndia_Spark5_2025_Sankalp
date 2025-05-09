@@ -35,7 +35,7 @@ Focus on clarity, professionalism, and readability in both outputs. The cleaned 
     response = llm.invoke(prompt_input)
     return response.content
 
-def process_audio(recording_id, audio_file_path="audio.mp3", api_key=None, deepgram_api_key="3c76c3141e9ad6026a12099c225884655b411af3", save_files=True):
+def process_audio(recording_id, audio_file_path="audio.mp3", api_key=None, deepgram_api_key="b0a780c4baf6565a49a07b8fef1284bd3ad52384", save_files=True):
     
     storage_path = os.path.join("transcripts")
     os.makedirs(storage_path, exist_ok=True)

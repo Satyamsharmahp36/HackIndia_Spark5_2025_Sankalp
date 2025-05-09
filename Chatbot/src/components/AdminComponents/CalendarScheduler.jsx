@@ -72,7 +72,7 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
           <div className="bg-green-900 p-3 rounded-full">
             <CheckCircle className="text-green-400 w-7 h-7" />
           </div>
-          <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-green-400 to-teal-300 bg-clip-text text-transparent">Added to Calendar</h3>
+          <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-green-400 to-teal-300 bg-clip-text ">Added to Calendar</h3>
         </div>
         
         <div className="bg-gradient-to-br from-gray-800 to-gray-700 p-5 rounded-xl mb-6 border border-gray-700 shadow-md">
@@ -115,7 +115,7 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
             href={meetingDetails.eventLink} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center justify-center w-full bg-gray-800 hover:bg-gray-700 text-gray-200 py-4 px-4 rounded-xl transition-colors font-medium text-base shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 border border-gray-700"
+            className="flex items-center justify-center w-full bg-gray-800 hover:bg-gray-700 text-gray-200 py-4 px-4 rounded-xl  font-medium text-base shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 border border-gray-700"
           >
             <Calendar className="w-5 h-5 mr-3 text-blue-400" />
             Open in Google Calendar
@@ -151,7 +151,7 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
           <div className="bg-blue-900 p-3 rounded-full">
             <Calendar className="w-7 h-7 text-blue-400" />
           </div>
-          <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Schedule Meeting</h3>
+          <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text ">Schedule Meeting</h3>
         </div>
         
         <div className="bg-gradient-to-br from-gray-800 to-gray-700 p-6 rounded-xl mb-6 border border-gray-700 shadow-md">
