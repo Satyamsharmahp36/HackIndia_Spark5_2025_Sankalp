@@ -1,43 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LogIn, 
-  X, 
-  Search, 
-  Filter, 
-  Calendar, 
-  Clock, 
-  User as UserIcon, 
-  ChevronDown, 
-  ChevronUp, 
-  CheckCircle, 
-  Clock as ClockIcon, 
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  LogIn,
+  X,
+  Search,
+  Filter,
+  Calendar,
+  Clock,
+  User as UserIcon,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle,
+  Clock as ClockIcon,
   XCircle,
   RefreshCw,
   ExternalLink,
   Video,
   FileText,
-  Link
-} from 'lucide-react';
+  Link,
+  User,
+} from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { toast } from 'react-toastify';
-import DailyWorkflow from './DailyWorkflow';
-import CalendarScheduler from './AdminComponents/CalendarScheduler'; 
-import CalendarMeetingForm from './AdminComponents/CalendarMeetingForm';
-import MeetingDetailsPopup from './AdminComponents/MeetingDetailsPopup';
-import axios from 'axios';
-import apiService from '../services/apiService';
+import { toast } from "react-toastify";
+import DailyWorkflow from "./DailyWorkflow";
+import CalendarScheduler from "./AdminComponents/CalendarScheduler";
+import AccessManagement from "./AdminComponents/AccessManagement";
+import CalendarMeetingForm from "./AdminComponents/CalendarMeetingForm";
+import MeetingDetailsPopup from "./AdminComponents/MeetingDetailsPopup";
+import axios from "axios";
+import apiService from "../services/apiService";
 
 const AdminPanel = ({ userData, onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState("");
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [passwordError, setPasswordError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('newest');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [passwordError, setPasswordError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [expandedTask, setExpandedTask] = useState(null);
   const [expandedUser, setExpandedUser] = useState(null);
   const [userDescriptions, setUserDescriptions] = useState({});
@@ -49,6 +51,8 @@ const AdminPanel = ({ userData, onClose }) => {
   const [calendarData, setCalendarData] = useState(null);
   const [showMeetingDetailsPopup, setShowMeetingDetailsPopup] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
+
+  const [showAccessManagement, setShowAccessManagement] = useState(false);
 
   const scrollbarStyles = `
   ::-webkit-scrollbar {
@@ -78,21 +82,21 @@ const AdminPanel = ({ userData, onClose }) => {
 
   useEffect(() => {
     setIsAuthenticated(false);
-    setPassword('');
+    setPassword("");
     setTasks([]);
     setLoading(false);
     setError(null);
-    setPasswordError('');
+    setPasswordError("");
   }, []);
 
   const handleLogin = () => {
     if (password === userData.user.password) {
       setIsAuthenticated(true);
-      setPasswordError('');
+      setPasswordError("");
       fetchTasks();
     } else {
-      setPasswordError('Incorrect password');
-      toast.error('Incorrect passkey');
+      setPasswordError("Incorrect password");
+      toast.error("Incorrect passkey");
     }
   };
 
@@ -104,9 +108,9 @@ const AdminPanel = ({ userData, onClose }) => {
     try {
       setRefreshing(true);
       toast.info("Refreshing user data...");
-      
+
       const result = await apiService.getUserData(userData.user.username);
-      
+
       if (result.success && result.data) {
         setTasks(result.data.user.tasks || []);
         toast.success("User data refreshed successfully");
@@ -121,25 +125,54 @@ const AdminPanel = ({ userData, onClose }) => {
     }
   };
 
+  const handleAccessManagementUpdate = async (updatedData) => {
+    try {
+      setLoading(true);
+      // Get the latest user data after an update
+      const result = await apiService.getUserData(userData.user.username);
+
+      if (result.success && result.data) {
+        // Update the local userData state
+        userData.user = result.data.user;
+        setTasks(result.data.user.tasks || []);
+        toast.success("User access updated successfully");
+      } else {
+        toast.error("Failed to update user data");
+      }
+    } catch (error) {
+      console.error("Error updating user data:", error);
+      toast.error("Error updating user data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  
   const toggleTaskStatus = async (task) => {
     try {
       setLoading(true);
-      
-      const newStatus = task.status === 'inprogress' ? 'completed' : 'inprogress';
-      
-      const response = await axios.patch(`${import.meta.env.VITE_BACKEND}/tasks`, {
-        status: newStatus,
-        userId: userData.user.username,
-        uniqueTaskId: task.uniqueTaskId 
-      });
-      
+
+      const newStatus =
+        task.status === "inprogress" ? "completed" : "inprogress";
+
+      const response = await axios.patch(
+        `${import.meta.env.VITE_BACKEND}/tasks`,
+        {
+          status: newStatus,
+          userId: userData.user.username,
+          uniqueTaskId: task.uniqueTaskId,
+        }
+      );
+
       if (response.data && response.data.task) {
-        setTasks(prevTasks => 
-          prevTasks.map(t => 
-            t.uniqueTaskId === task.uniqueTaskId ? { ...t, status: newStatus } : t
+        setTasks((prevTasks) =>
+          prevTasks.map((t) =>
+            t.uniqueTaskId === task.uniqueTaskId
+              ? { ...t, status: newStatus }
+              : t
           )
         );
-        
+
         toast.success(`Task marked as ${newStatus}`);
       }
     } catch (error) {
@@ -153,18 +186,18 @@ const AdminPanel = ({ userData, onClose }) => {
   const handleScheduleMeeting = (task) => {
     if (task.isMeeting && task.isMeeting.title) {
       const meetingData = {
-        taskId: task.uniqueTaskId, 
+        taskId: task.uniqueTaskId,
         title: task.isMeeting.title,
         description: task.isMeeting.description || task.taskDescription || "",
         date: task.isMeeting.date,
         time: task.isMeeting.time,
         duration: parseInt(task.isMeeting.duration, 10) || 30,
         userEmails: [
-          userData.user.email, 
-          task.presentUserData?.email || "" 
-        ].filter(email => email) 
+          userData.user.email,
+          task.presentUserData?.email || "",
+        ].filter((email) => email),
       };
-      
+
       setMeetingDetails(meetingData);
       setShowScheduler(true);
     }
@@ -176,16 +209,15 @@ const AdminPanel = ({ userData, onClose }) => {
   };
 
   const handleOpenMeetingLink = (meetingLink) => {
-    window.open(meetingLink, '_blank');
+    window.open(meetingLink, "_blank");
   };
 
   const handleFormSubmit = (formattedData) => {
     console.log("Scheduling meeting with data:", formattedData);
-    
-   
+
     setCalendarData({
       ...formattedData,
-      taskId: meetingDetails.taskId 
+      taskId: meetingDetails.taskId,
     });
     setShowScheduler(false);
     setShowCalendarScheduler(true);
@@ -234,14 +266,20 @@ const AdminPanel = ({ userData, onClose }) => {
       setExpandedUser(null);
       return;
     }
-    
+
     setExpandedUser(task._id);
-    
-    if (!userDescriptions[task._id] && task.presentUserData && task.presentUserData.prompt) {
-      const description = await generateUserDescription(task.presentUserData.prompt);
-      setUserDescriptions(prev => ({
+
+    if (
+      !userDescriptions[task._id] &&
+      task.presentUserData &&
+      task.presentUserData.prompt
+    ) {
+      const description = await generateUserDescription(
+        task.presentUserData.prompt
+      );
+      setUserDescriptions((prev) => ({
         ...prev,
-        [task._id]: description
+        [task._id]: description,
       }));
     }
   };
@@ -250,22 +288,32 @@ const AdminPanel = ({ userData, onClose }) => {
     setExpandedTask(expandedTask === taskId ? null : taskId);
   };
 
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearchTerm = 
+  const handleAccessManagementClose = () => {
+    setShowAccessManagement(false);
+  };
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearchTerm =
       task.taskQuestion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (task.presentUserData && task.presentUserData.name && task.presentUserData.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (task.taskDescription && task.taskDescription.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-    
+      (task.presentUserData &&
+        task.presentUserData.name &&
+        task.presentUserData.name
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())) ||
+      (task.taskDescription &&
+        task.taskDescription.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus =
+      statusFilter === "all" || task.status === statusFilter;
+
     return matchesSearchTerm && matchesStatus;
   });
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     const dateA = new Date(a.createdAt);
     const dateB = new Date(b.createdAt);
-    
-    if (sortOrder === 'newest') {
+
+    if (sortOrder === "newest") {
       return dateB - dateA;
     } else {
       return dateA - dateB;
@@ -277,7 +325,7 @@ const AdminPanel = ({ userData, onClose }) => {
     return text.split(urlRegex).map((part, i) => {
       if (part.match(urlRegex)) {
         return (
-          <a 
+          <a
             key={i}
             href={part}
             target="_blank"
@@ -293,25 +341,25 @@ const AdminPanel = ({ userData, onClose }) => {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
-      case 'completed':
-        return 'bg-green-500';
-      case 'inprogress':
-        return 'bg-yellow-500';
-      case 'pending':
-        return 'bg-red-500';
+    switch (status) {
+      case "completed":
+        return "bg-green-500";
+      case "inprogress":
+        return "bg-yellow-500";
+      case "pending":
+        return "bg-red-500";
       default:
-        return 'bg-gray-500';
+        return "bg-gray-500";
     }
   };
 
   const getStatusIcon = (status) => {
-    switch(status) {
-      case 'completed':
+    switch (status) {
+      case "completed":
         return <CheckCircle className="w-4 h-4" />;
-      case 'inprogress':
+      case "inprogress":
         return <ClockIcon className="w-4 h-4" />;
-      case 'pending':
+      case "pending":
         return <XCircle className="w-4 h-4" />;
       default:
         return null;
@@ -319,24 +367,24 @@ const AdminPanel = ({ userData, onClose }) => {
   };
 
   const getMeetingCardStyle = (meetingStatus) => {
-    switch(meetingStatus) {
-      case 'scheduled':
-        return 'border-blue-600 bg-blue-900/20';
-      case 'completed':
-        return 'border-green-600 bg-green-900/20';
+    switch (meetingStatus) {
+      case "scheduled":
+        return "border-blue-600 bg-blue-900/20";
+      case "completed":
+        return "border-green-600 bg-green-900/20";
       default: // pending
-        return 'border-gray-700 bg-gray-700';
+        return "border-gray-700 bg-gray-700";
     }
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
   };
 
@@ -363,19 +411,24 @@ const AdminPanel = ({ userData, onClose }) => {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
           <div className="bg-gray-900 rounded-xl p-4 w-full max-w-3xl max-h-[90vh] overflow-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-white">Calendar Integration</h3>
-              <button onClick={handleCloseScheduler} className="text-gray-400 hover:text-white">
+              <h3 className="text-xl font-semibold text-white">
+                Calendar Integration
+              </h3>
+              <button
+                onClick={handleCloseScheduler}
+                className="text-gray-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-2">
               <CalendarScheduler
                 taskId={calendarData.taskId}
-                username={userData.user.username} 
-                title={calendarData.title} 
-                description={calendarData.description} 
-                startTime={calendarData.startTime} 
-                endTime={calendarData.endTime} 
+                username={userData.user.username}
+                title={calendarData.title}
+                description={calendarData.description}
+                startTime={calendarData.startTime}
+                endTime={calendarData.endTime}
                 userEmails={calendarData.userEmails}
                 onSuccess={refreshUserData} // Pass the refreshUserData function
               />
@@ -385,10 +438,27 @@ const AdminPanel = ({ userData, onClose }) => {
       )}
 
       {showMeetingDetailsPopup && selectedMeeting && (
-        <MeetingDetailsPopup 
-          meeting={selectedMeeting} 
-          onClose={handleCloseMeetingDetailsPopup} 
+        <MeetingDetailsPopup
+          meeting={selectedMeeting}
+          onClose={handleCloseMeetingDetailsPopup}
         />
+      )}
+
+      {showAccessManagement && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+          <div className="bg-gray-900 rounded-xl p-4 w-full max-w-3xl max-h-[90vh] overflow-auto">
+            <AccessManagement
+              userData={userData}
+              onClose={() => {
+                handleAccessManagementClose();
+                refreshUserData(); // Refresh data when closing
+              }}
+              onUpdate={(updatedData) => {
+                handleAccessManagementUpdate(updatedData);
+              }}
+            />
+          </div>
+        </div>
       )}
 
       <motion.div
@@ -420,7 +490,9 @@ const AdminPanel = ({ userData, onClose }) => {
               className="flex flex-col items-center gap-4"
             >
               <div className="w-full max-w-md">
-                <h3 className="text-xl font-medium text-white mb-6 text-center">Enter Admin Password</h3>
+                <h3 className="text-xl font-medium text-white mb-6 text-center">
+                  Enter Admin Password
+                </h3>
                 <div className="space-y-4">
                   <div className="relative">
                     <input
@@ -428,14 +500,18 @@ const AdminPanel = ({ userData, onClose }) => {
                       value={password}
                       onChange={(e) => {
                         setPassword(e.target.value);
-                        setPasswordError('');
+                        setPasswordError("");
                       }}
-                      className={`w-full bg-gray-800 border ${passwordError ? 'border-red-500' : 'border-gray-600'} rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all`}
+                      className={`w-full bg-gray-800 border ${
+                        passwordError ? "border-red-500" : "border-gray-600"
+                      } rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all`}
                       placeholder="Password"
-                      onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                      onKeyPress={(e) => e.key === "Enter" && handleLogin()}
                     />
                     {passwordError && (
-                      <p className="text-red-500 text-sm mt-1">{passwordError}</p>
+                      <p className="text-red-500 text-sm mt-1">
+                        {passwordError}
+                      </p>
                     )}
                   </div>
                   <motion.button
@@ -455,8 +531,8 @@ const AdminPanel = ({ userData, onClose }) => {
               animate={{ opacity: 1 }}
               className="space-y-6"
             >
-                <DailyWorkflow userData={userData} />
-                <div className='w-full flex justify-start items-center'>
+              <DailyWorkflow userData={userData} />
+              <div className="w-full flex gap-3 justify-start items-center">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -464,11 +540,22 @@ const AdminPanel = ({ userData, onClose }) => {
                   disabled={refreshing}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-all"
                 >
-                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                  {refreshing ? 'Refreshing...' : 'Refresh Tasks'}
+                  <RefreshCw
+                    className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+                  />
+                  {refreshing ? "Refreshing..." : "Refresh Tasks"}
                 </motion.button>
-                </div>
-              
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowAccessManagement(true)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-all"
+                >
+                  <User className="w-4 h-4" />
+                  Access Management
+                </motion.button>
+              </div>
+
               <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div className="relative w-full md:max-w-xs">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -496,7 +583,7 @@ const AdminPanel = ({ userData, onClose }) => {
                       <option value="pending">Pending</option>
                     </select>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <span className="text-gray-400 text-sm flex items-center gap-1">
                       <Clock className="w-4 h-4" /> Sort by:
@@ -520,7 +607,9 @@ const AdminPanel = ({ userData, onClose }) => {
               ) : error ? (
                 <div className="text-red-500 text-center py-4">{error}</div>
               ) : sortedTasks.length === 0 ? (
-                <div className="text-gray-400 text-center py-8">No tasks found</div>
+                <div className="text-gray-400 text-center py-8">
+                  No tasks found
+                </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {sortedTasks.map((task) => (
@@ -559,64 +648,99 @@ const AdminPanel = ({ userData, onClose }) => {
                             >
                               <RefreshCw className="w-4 h-4" />
                             </motion.button>
-                            
+
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
-                              className={`px-2 py-1 rounded-full text-xs text-white flex items-center gap-1 ${getStatusColor(task.status)}`}
+                              className={`px-2 py-1 rounded-full text-xs text-white flex items-center gap-1 ${getStatusColor(
+                                task.status
+                              )}`}
                             >
                               {getStatusIcon(task.status)}
-                              <span>{task.status.charAt(0).toUpperCase() + task.status.slice(1)}</span>
+                              <span>
+                                {task.status.charAt(0).toUpperCase() +
+                                  task.status.slice(1)}
+                              </span>
                             </motion.button>
                           </div>
                         </div>
 
                         {task.topicContext && (
                           <p className="text-gray-400 text-sm mb-2">
-                           <span className='text-gray-300 font-bold '>Context :-</span>   {renderDescription(task.topicContext)}
-                          </p>
-                        )}
-                        
-                        {task.taskDescription && (
-                          <p className="text-gray-400 text-sm mb-2">
-                           <span className='text-gray-300 font-bold  '>Description :-</span> {renderDescription(task.taskDescription)}
+                            <span className="text-gray-300 font-bold ">
+                              Context :-
+                            </span>{" "}
+                            {renderDescription(task.topicContext)}
                           </p>
                         )}
 
-                        <p className="text-gray-400 text-sm mb-4"><span className='text-gray-300 font-bold '>User Message :- </span>{task.taskQuestion}</p>
-                        
+                        {task.taskDescription && (
+                          <p className="text-gray-400 text-sm mb-2">
+                            <span className="text-gray-300 font-bold  ">
+                              Description :-
+                            </span>{" "}
+                            {renderDescription(task.taskDescription)}
+                          </p>
+                        )}
+
+                        <p className="text-gray-400 text-sm mb-4">
+                          <span className="text-gray-300 font-bold ">
+                            User Message :-{" "}
+                          </span>
+                          {task.taskQuestion}
+                        </p>
+
                         {task.isMeeting && task.isMeeting.title && (
-                          <div className={`rounded-lg p-3 mb-4 border ${getMeetingCardStyle(task.isMeeting.status)}`}>
+                          <div
+                            className={`rounded-lg p-3 mb-4 border ${getMeetingCardStyle(
+                              task.isMeeting.status
+                            )}`}
+                          >
                             <div className="flex justify-between items-start">
                               <div>
-                                <h4 className="text-white font-medium mb-1">{task.isMeeting.title}</h4>
+                                <h4 className="text-white font-medium mb-1">
+                                  {task.isMeeting.title}
+                                </h4>
                                 <div className="flex items-center gap-4 text-sm text-gray-300">
                                   <span className="flex items-center gap-1">
-                                    <Calendar className="w-4 h-4" /> {task.isMeeting.date}
+                                    <Calendar className="w-4 h-4" />{" "}
+                                    {task.isMeeting.date}
                                   </span>
                                   <span className="flex items-center gap-1">
-                                    <Clock className="w-4 h-4" /> {task.isMeeting.time}
+                                    <Clock className="w-4 h-4" />{" "}
+                                    {task.isMeeting.time}
                                   </span>
                                   <span className="flex items-center gap-1">
-                                    <ClockIcon className="w-4 h-4" /> {task.isMeeting.duration} min
+                                    <ClockIcon className="w-4 h-4" />{" "}
+                                    {task.isMeeting.duration} min
                                   </span>
                                 </div>
                                 {task.isMeeting.description && (
-                                  <p className="text-gray-400 text-sm mt-2">{task.isMeeting.description}</p>
+                                  <p className="text-gray-400 text-sm mt-2">
+                                    {task.isMeeting.description}
+                                  </p>
                                 )}
                                 {task.isMeeting.status && (
-                                  <span className={`mt-2 inline-block text-xs px-2 py-0.5 rounded-full 
-                                    ${task.isMeeting.status === 'pending' ? 'bg-yellow-900 text-yellow-300' : 
-                                      task.isMeeting.status === 'scheduled' ? 'bg-blue-900 text-blue-300' : 
-                                      'bg-green-900 text-green-300'}`}
+                                  <span
+                                    className={`mt-2 inline-block text-xs px-2 py-0.5 rounded-full 
+                                    ${
+                                      task.isMeeting.status === "pending"
+                                        ? "bg-yellow-900 text-yellow-300"
+                                        : task.isMeeting.status === "scheduled"
+                                        ? "bg-blue-900 text-blue-300"
+                                        : "bg-green-900 text-green-300"
+                                    }`}
                                   >
-                                    {task.isMeeting.status.charAt(0).toUpperCase() + task.isMeeting.status.slice(1)}
+                                    {task.isMeeting.status
+                                      .charAt(0)
+                                      .toUpperCase() +
+                                      task.isMeeting.status.slice(1)}
                                   </span>
                                 )}
                               </div>
-                              
+
                               {/* Different buttons based on meeting status */}
-                              {task.isMeeting.status === 'pending' && (
+                              {task.isMeeting.status === "pending" && (
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
@@ -627,24 +751,31 @@ const AdminPanel = ({ userData, onClose }) => {
                                   Schedule
                                 </motion.button>
                               )}
-                              
-                              {task.isMeeting.status === 'scheduled' && task.isMeeting.meetingLink && (
+
+                              {task.isMeeting.status === "scheduled" &&
+                                task.isMeeting.meetingLink && (
+                                  <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() =>
+                                      handleOpenMeetingLink(
+                                        task.isMeeting.meetingLink
+                                      )
+                                    }
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                  >
+                                    <Link className="w-4 h-4" />
+                                    Meeting Link
+                                  </motion.button>
+                                )}
+
+                              {task.isMeeting.status === "completed" && (
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
-                                  onClick={() => handleOpenMeetingLink(task.isMeeting.meetingLink)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                                >
-                                  <Link className="w-4 h-4" />
-                                  Meeting Link
-                                </motion.button>
-                              )}
-                              
-                              {task.isMeeting.status === 'completed' && (
-                                <motion.button
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => handleViewMeetingDetails(task.isMeeting)}
+                                  onClick={() =>
+                                    handleViewMeetingDetails(task.isMeeting)
+                                  }
                                   className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
                                 >
                                   <FileText className="w-4 h-4" />
@@ -654,13 +785,13 @@ const AdminPanel = ({ userData, onClose }) => {
                             </div>
                           </div>
                         )}
-                        
+
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-1 text-gray-400 text-xs">
                             <Calendar className="w-4 h-4" />
                             <span>{formatDate(task.createdAt)}</span>
                           </div>
-                          
+
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -681,34 +812,51 @@ const AdminPanel = ({ userData, onClose }) => {
                           </motion.button>
                         </div>
                       </div>
-                      
+
                       <AnimatePresence>
                         {expandedUser === task._id && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
+                            animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                           >
                             <div className="p-4 border-t border-gray-700 bg-gray-850">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                  <h4 className="text-gray-400 text-xs mb-1">Name</h4>
-                                  <p className="text-white">{task.presentUserData?.name || "N/A"}</p>
+                                  <h4 className="text-gray-400 text-xs mb-1">
+                                    Name
+                                  </h4>
+                                  <p className="text-white">
+                                    {task.presentUserData?.name || "N/A"}
+                                  </p>
                                 </div>
                                 <div>
-                                  <h4 className="text-gray-400 text-xs mb-1">Email</h4>
-                                  <p className="text-white">{task.presentUserData?.email || "N/A"}</p>
+                                  <h4 className="text-gray-400 text-xs mb-1">
+                                    Email
+                                  </h4>
+                                  <p className="text-white">
+                                    {task.presentUserData?.email || "N/A"}
+                                  </p>
                                 </div>
                                 <div>
-                                  <h4 className="text-gray-400 text-xs mb-1">Mobile</h4>
-                                  <p className="text-white">{task.presentUserData?.mobileNo || "N/A"}</p>
+                                  <h4 className="text-gray-400 text-xs mb-1">
+                                    Mobile
+                                  </h4>
+                                  <p className="text-white">
+                                    {task.presentUserData?.mobileNo || "N/A"}
+                                  </p>
                                 </div>
                                 <div>
-                                  <h4 className="text-gray-400 text-xs mb-1">User's Chat Assistant</h4>
+                                  <h4 className="text-gray-400 text-xs mb-1">
+                                    User's Chat Assistant
+                                  </h4>
                                   {task.presentUserData?.username ? (
-                                    <a 
-                                      href={`${import.meta.env.VITE_FRONTEND}/home/${task.presentUserData.username}`}                                       target="_blank"
+                                    <a
+                                      href={`${
+                                        import.meta.env.VITE_FRONTEND
+                                      }/home/${task.presentUserData.username}`}
+                                      target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-blue-500 hover:underline flex items-center"
                                     >
@@ -720,11 +868,15 @@ const AdminPanel = ({ userData, onClose }) => {
                                   )}
                                 </div>
                               </div>
-                              
+
                               <div className="mt-4">
-                                <h4 className="text-gray-400 text-xs mb-2">About User</h4>
+                                <h4 className="text-gray-400 text-xs mb-2">
+                                  About User
+                                </h4>
                                 {userDescriptions[task._id] ? (
-                                  <p className="text-gray-300 text-sm whitespace-pre-line">{userDescriptions[task._id]}</p>
+                                  <p className="text-gray-300 text-sm whitespace-pre-line">
+                                    {userDescriptions[task._id]}
+                                  </p>
                                 ) : (
                                   <div className="flex items-center gap-2 text-gray-400">
                                     <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
@@ -734,7 +886,9 @@ const AdminPanel = ({ userData, onClose }) => {
                               </div>
                               <div className="mt-3 pt-3 border-t border-gray-700">
                                 <p className="text-gray-400 text-xs italic">
-                                  You can use username of this sender on chatmate and ask question's and schedule tasks through their chat Assistant.
+                                  You can use username of this sender on
+                                  chatmate and ask question's and schedule tasks
+                                  through their chat Assistant.
                                 </p>
                               </div>
                             </div>

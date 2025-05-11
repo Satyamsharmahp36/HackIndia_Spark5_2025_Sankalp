@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import AccessManagement from './AdminComponents/AccessManagement';
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -13,7 +14,8 @@ import {
   Home,
   AlertCircle,
   ArrowLeft,
-  Lock
+  Lock,
+  ShieldAlert
 } from 'lucide-react';
 import ChatBot from './ChatBot';
 import AdminPanel from './AdminPanel';
@@ -21,6 +23,7 @@ import AdminPanel from './AdminPanel';
 const HomePage = ({ userData, onLogout }) => {
   const { username } = useParams(); 
   const navigate = useNavigate();
+  const [showAccessManagement, setShowAccessManagement] = useState(false);
   
   const [profileOwnerData, setProfileOwnerData] = useState(null);
   const [profileOwnerName, setProfileOwnerName] = useState('');
@@ -35,6 +38,7 @@ const HomePage = ({ userData, onLogout }) => {
   const [showChatBot, setShowChatBot] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showUserNotFoundModal, setShowUserNotFoundModal] = useState(false);
+  const [showAccessDeniedModal, setShowAccessDeniedModal] = useState(false);
   
    const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState('');
@@ -164,7 +168,14 @@ const HomePage = ({ userData, onLogout }) => {
       const userExists = await fetchPresentUser(presentUserName.trim());
       
       if (userExists) {
-         setShowPasswordModal(true);
+        
+        // Check if the user has access permission
+        if (checkAccessPermission(presentUserName.trim())) {
+          setShowPasswordModal(true);
+        } else {
+          // User exists but doesn't have access permission
+          setShowAccessDeniedModal(true);
+        }
       } else {
         setShowUserNotFoundModal(true);
       }
@@ -215,6 +226,23 @@ const HomePage = ({ userData, onLogout }) => {
     }
   };
 
+  const checkAccessPermission = (username) => {
+    if (!profileOwnerData || !profileOwnerData.user) {
+      return false;
+    }
+    
+    if (username === profileOwnerData.user.username) {
+      return true;
+    }
+    if (profileOwnerData.user.accessRestricted == false) {
+      return true;
+    }
+    console.log(profileOwnerData.user);
+    const accessList = profileOwnerData.user.accessList || [];
+    console.log(accessList);
+    return accessList.includes(username);
+  };
+
   const handleGetStarted = () => {
     setShowChatBot(true);
   };
@@ -252,7 +280,13 @@ const HomePage = ({ userData, onLogout }) => {
   };
 
   const continueWithoutAccount = () => {
-     setShowUserNotFoundModal(false);
+    console.log(checkAccessPermission(presentUserName.trim()));
+    if (!checkAccessPermission(presentUserName.trim())) {
+      // User exists but doesn't have access permission
+      setShowAccessDeniedModal(true);
+      return;
+    }  
+    setShowUserNotFoundModal(false);
     setShowPasswordModal(false);
     
       const guestData = {
@@ -280,6 +314,7 @@ const HomePage = ({ userData, onLogout }) => {
   const tryDifferentUsername = () => {
     setShowUserNotFoundModal(false);
     setShowPasswordModal(false);
+    setShowAccessDeniedModal(false);
   };
 
   const handleLogout = () => {
@@ -312,6 +347,8 @@ const HomePage = ({ userData, onLogout }) => {
       <Home className="w-5 h-5" />
     </button>
   );
+
+  
 
    const renderPasswordModal = () => (
     <motion.div
@@ -440,6 +477,36 @@ const HomePage = ({ userData, onLogout }) => {
     </motion.div>
   );
 
+  const renderAccessDeniedModal = () => (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 border border-gray-700"
+      >
+        <div className="flex items-center justify-center mb-4 text-yellow-500">
+          <ShieldAlert className="w-12 h-12" />
+        </div>
+        <h3 className="text-xl font-bold text-center mb-3">Access Denied</h3>
+        <p className="text-gray-300 text-center mb-6">
+          You don't have permission to access {profileOwnerName}'s AI Assistant. Please request access from {profileOwnerName} to continue.
+        </p>
+        <div className="flex justify-center">
+          <button
+            onClick={tryDifferentUsername}
+            className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+          >
+            Try Different Username
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+
   const chatBotView = (
     <div className="h-screen flex items-center justify-center bg-gradient-to-r from-slate-500 to-slate-800 relative">
        <div className="absolute top-4 left-4 z-50">
@@ -469,10 +536,11 @@ const HomePage = ({ userData, onLogout }) => {
           <LogOut className="w-5 h-5" />
         </button>
       </div>
+
       
       {showAdminPanel && (
         <AdminPanel 
-          userData={profileOwnerData} 
+          userData={profileOwnerData}
           onClose={() => setShowAdminPanel(false)} 
         />
       )}
@@ -523,7 +591,7 @@ const HomePage = ({ userData, onLogout }) => {
         </motion.button>
       </div>
       
-      <div className="absolute top-4 right-4 z-50">
+      <div className="flex gap-3 absolute top-4 right-4 z-50">
         {renderHomeButton()}
       </div>
 
@@ -688,6 +756,7 @@ const HomePage = ({ userData, onLogout }) => {
 
         {showUserNotFoundModal && renderUserNotFoundModal()}
         {showPasswordModal && renderPasswordModal()}
+        {showAccessDeniedModal && renderAccessDeniedModal()}
       </div>
     </motion.div>
   );
