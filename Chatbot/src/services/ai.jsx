@@ -543,7 +543,32 @@ export async function getAnswer(question, userData, presentData, conversationHis
 
     const meetingState = processMeetingState(question, conversationHistory);
     
+    // NEW SECTION: First check if we can answer from knowledge base
+    const approvedContributions = userData.contributions?.filter(contribution => 
+      contribution.status === "approved") || [];
+    
+    // Check if we have a direct match in the knowledge base
+    const knowledgeBaseMatch = approvedContributions.find(contribution => {
+      // Create a simplified version of both questions (lowercase, no punctuation) for comparison
+      const simplifiedQuestion = question.toLowerCase().replace(/[^\w\s]/g, '').trim();
+      const simplifiedContributionQuestion = contribution.question.toLowerCase().replace(/[^\w\s]/g, '').trim();
+      
+      // Check for exact match or significant keyword overlap
+      return simplifiedQuestion === simplifiedContributionQuestion || 
+             (simplifiedQuestion.includes(simplifiedContributionQuestion) && 
+              simplifiedContributionQuestion.length > 10) ||
+             (simplifiedContributionQuestion.includes(simplifiedQuestion) && 
+              simplifiedQuestion.length > 10);
+    });
+    
+    // If we found a match in knowledge base, return it directly without task detection
+    if (knowledgeBaseMatch) {
+      console.log("Found direct match in knowledge base:", knowledgeBaseMatch.question);
+      return knowledgeBaseMatch.answer;
+    }
+    
     // Only detect task if we need to (skip this if task scheduling is disabled)
+    // ONLY RUN TASK DETECTION IF NO KNOWLEDGE BASE MATCH WAS FOUND
     const taskDetection = isTaskSchedulingDisabled ? 
       { isTask: false, taskSchedulingDisabled: true } : 
       await detectTaskRequest(question, userData, formattedHistory);
@@ -816,8 +841,6 @@ export async function getAnswer(question, userData, presentData, conversationHis
     // If we get here, we're just answering a normal question (not task-related)
     const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
     
-    const approvedContributions = userData.contributions?.filter(contribution => 
-     contribution.status === "approved") || [];
     const contributionsKnowledgeBase = approvedContributions.length > 0 ? 
      `This is my personal knowledge base of verified information. you can use this to answer the questions
 ${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question}\nAnswer: ${c.answer}`).join('\n\n')}` : 
