@@ -895,9 +895,8 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                 <div className="mt-2 flex items-center">
                   <Info className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
                   <p className="text-sm text-gray-400">
-                    Adding a group will grant access to all members in that
-                    group. Any changes to group members will automatically
-                    update the access list.
+                    Adding a group will grant access to all members in that group .
+                    
                   </p>
                 </div>
               </div>
