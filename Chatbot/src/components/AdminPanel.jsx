@@ -19,7 +19,8 @@ import {
   FileText,
   Link,
   User,
-} from "lucide-react";
+  Bot // Added Bot icon for the new button
+} from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from "react-toastify";
 import DailyWorkflow from "./DailyWorkflow";
@@ -51,11 +52,11 @@ const AdminPanel = ({ userData, onClose }) => {
   const [calendarData, setCalendarData] = useState(null);
   const [showMeetingDetailsPopup, setShowMeetingDetailsPopup] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
-  const [taskSchedulingEnabled, setTaskSchedulingEnabled] = useState(false);
-  const [taskSchedulingLoaded, setTaskSchedulingLoaded] = useState(false);
+  const [creatingBot, setCreatingBot] = useState(false);
+  const [showAccessManagement,setShowAccessManagement]= useState(false);
+  const [taskSchedulingEnabled,setTaskSchedulingEnabled]=useState(false);
+  const [taskSchedulingLoaded,setTaskSchedulingLoaded]=useState(false);
   const [toggleSchedulingLoading, setToggleSchedulingLoading] = useState(false);
-
-  const [showAccessManagement, setShowAccessManagement] = useState(false);
 
   const scrollbarStyles = `
   ::-webkit-scrollbar {
@@ -321,7 +322,76 @@ const AdminPanel = ({ userData, onClose }) => {
     setShowMeetingDetailsPopup(false);
     setSelectedMeeting(null);
   };
+// Updated handleCreateBotAssistant function
+const handleCreateBotAssistant = async (task) => {
+  try {
+    if (!task.isMeeting) {
+      toast.error("Meeting data not available");
+      return;
+    }
+    
+    setCreatingBot(true);
+    toast.info("Creating bot assistant for meeting...");
 
+    // Ensure geminiApiKey exists
+    if (!userData.user.geminiApiKey) {
+      toast.error("API key is required but not found");
+      setCreatingBot(false);
+      return;
+    }
+
+    // Prepare the bot data with proper validation
+    const botData = {
+      name: task.topicContext || task.isMeeting.title || "Meeting Assistant", 
+      email: userData.user.email || "", 
+      mobileNo: userData.user.mobileNo || "0000000000",
+      username: task.uniqueTaskId, 
+      password: userData.user.password || "defaultpassword", // Make sure this exists
+      geminiApiKey: userData.user.geminiApiKey,
+      plan: "meeting", 
+      prompt: task.isMeeting.meetingRawData || task.taskDescription || task.taskQuestion || "",
+      google: userData.user.google ? {
+        accessToken: userData.user.google.accessToken || null, 
+        refreshToken: userData.user.google.refreshToken || null,
+        tokenExpiryDate: userData.user.google.tokenExpiryDate || null
+      } : null
+    };
+    
+    console.log("Creating bot with data:", {
+      ...botData,
+      password: "[REDACTED]" // Don't log the actual password
+    });
+    
+    // Make the API call with error handling
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND}/register`, botData);
+      
+      if (response.data && response.data.userId) {
+        toast.success("Bot assistant created successfully!");
+        
+        // Open the new bot in a new tab
+        window.open(`${import.meta.env.VITE_FRONTEND}/home/${task.uniqueTaskId}`, '_blank');
+        
+        // Refresh user data to show updated bot status
+        await refreshUserData();
+      } else {
+        toast.error(response.data?.message || "Failed to create bot assistant");
+      }
+    } catch (error) {
+      console.error("API Error:", error.response?.data || error.message);
+      if (error.response?.data?.message) {
+        toast.error(`Error: ${error.response.data.message}`);
+      } else {
+        toast.error("Server error when creating bot assistant");
+      }
+    }
+  } catch (error) {
+    console.error("Error creating bot assistant:", error);
+    toast.error("An unexpected error occurred");
+  } finally {
+    setCreatingBot(false);
+  }
+};
   const generateUserDescription = async (prompt) => {
     try {
       if (!userData.user.geminiApiKey) {
@@ -517,7 +587,7 @@ const AdminPanel = ({ userData, onClose }) => {
                 startTime={calendarData.startTime}
                 endTime={calendarData.endTime}
                 userEmails={calendarData.userEmails}
-                onSuccess={refreshUserData} // Pass the refreshUserData function
+                onSuccess={refreshUserData} 
               />
             </div>
           </div>
@@ -701,7 +771,7 @@ const AdminPanel = ({ userData, onClose }) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4">
-                  {sortedTasks.map((task) => (
+{sortedTasks.map((task) => (
                     <motion.div
                       key={task.uniqueTaskId || task._id}
                       initial={{ opacity: 0, y: 10 }}
@@ -840,41 +910,60 @@ const AdminPanel = ({ userData, onClose }) => {
                                   Schedule
                                 </motion.button>
                               )}
-
-                              {task.isMeeting.status === "scheduled" &&
-                                task.isMeeting.meetingLink && (
-                                  <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() =>
-                                      handleOpenMeetingLink(
-                                        task.isMeeting.meetingLink
-                                      )
-                                    }
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                                  >
-                                    <Link className="w-4 h-4" />
-                                    Meeting Link
-                                  </motion.button>
-                                )}
-
-                              {task.isMeeting.status === "completed" && (
+                              
+                              {task.isMeeting.status === 'scheduled' && task.isMeeting.meetingLink && (
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
-                                  onClick={() =>
-                                    handleViewMeetingDetails(task.isMeeting)
-                                  }
-                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                  onClick={() => handleOpenMeetingLink(task.isMeeting.meetingLink)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
                                 >
-                                  <FileText className="w-4 h-4" />
-                                  View Details
+                                  <Link className="w-4 h-4" />
+                                  Meeting Link
                                 </motion.button>
                               )}
+                                {task.isMeeting.status === 'completed' && (
+                                  <div className="flex items-center gap-2">
+                                    <motion.button
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => handleViewMeetingDetails(task.isMeeting)}
+                                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                    >
+                                      <FileText className="w-4 h-4" />
+                                      View Details
+                                    </motion.button>
+                                    
+                                    {task.isMeeting.botActivated ? (
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => window.open(`${import.meta.env.VITE_FRONTEND}/home/${task.uniqueTaskId}`, '_blank')}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                      >
+                                        <Bot className="w-4 h-4" />
+                                        Assist Bot
+                                      </motion.button>
+                                    ) : (
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => handleCreateBotAssistant(task)}
+                                        disabled={creatingBot}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                      >
+                                        <Bot className="w-4 h-4" />
+                                        {creatingBot ? 'Creating...' : 'Get Bot'}
+                                      </motion.button>
+                                    )}
+                                  </div>
+                                )}
                             </div>
                           </div>
                         )}
 
+                        
+                        
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-1 text-gray-400 text-xs">
                             <Calendar className="w-4 h-4" />

@@ -34,24 +34,33 @@ mongoose.connect(process.env.MONGO_URI, {
 }).then(async () => {
   console.log('Connected to MongoDB');
   
-  // Attempt to drop the problematic index
+  // Attempt to drop problematic indexes
   try {
-    await mongoose.connection.db.collection('meetingdatas').dropIndex('id_1');
+    await mongoose.connection.db.collection('users').dropIndex('id_1');
     console.log('Successfully dropped the id_1 index');
   } catch (err) {
-    console.log('Note about index:', err.message);
+    console.log('Note about index id_1:', err.message);
   }
+  
+  // Drop the email uniqueness index
+  try {
+    await mongoose.connection.db.collection('users').dropIndex('email_1');
+    console.log('Successfully dropped the email_1 index');
+  } catch (err) {
+    console.log('Note about email index:', err.message);
+  }
+  
 }).catch(err => console.error('MongoDB connection error:', err));
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true },  // Removed unique constraint
   userPrompt: { type: String, default: 'You Have to give precise answers to the questions' },
-  mobileNo: { type: String, required: true },
-  username: { type: String, required: true, unique: true },
+  mobileNo: { type: String, required: true },  // Removed unique constraint
+  username: { type: String, required: true, unique: true },  // Username remains unique
   password: { type: String, required: true },
   geminiApiKey: { type: String, required: true },
-  plan: { type: String, enum: ['free', 'pro'], default: 'free' },
+  plan: { type: String, enum: ['free', 'pro','meeting'], default: 'free' },
   prompt: { type: String, default: '' },
   accessList: { type: [String], default: [] }, 
   groups: [{ 
@@ -92,11 +101,14 @@ const userSchema = new mongoose.Schema({
       time: String,
       duration: String || Number,
       status: { type: String, enum: ['scheduled', 'completed', 'cancelled', 'pending'], default: 'pending' },
-      meetingLink:{type:String },
-      topicContext:{type :String},
+      meetingLink: {type: String},
+      topicContext: {type: String},
       meetingRawData: { type: String, default: '' },
       meetingMinutes: { type: String, default: '' },
-      meetingSummary: { type: String, default: '' }
+      meetingSummary: { type: String, default: '' },
+      botActivated: { type: Boolean, default: false },
+      giveAccess: { type: [String], default: function() { return [this.parent().parent().username]; } },
+      restriction: { type: Boolean, default: false }
     },
     createdAt: { type: Date, default: Date.now }
   }],
@@ -320,7 +332,7 @@ app.post('/update-user-prompt', async (req, res) => {
     res.status(500).json({ message: "Error updating user prompt", error: error.message });
   }
 });
-
+// Updated /register endpoint
 app.post('/register', async (req, res) => {
   try {
     const { 
@@ -328,49 +340,112 @@ app.post('/register', async (req, res) => {
       email, 
       mobileNo, 
       username, 
-      password, 
+      password,
+      prompt, 
       geminiApiKey,
-      google 
+      google,
+      plan
     } = req.body;
     
-    // Check if Google info is provided
-    if (!google || !google.accessToken) {
-      return res.status(400).json({ message: "Email verification required" });
+    // Input validation
+    if (!name || !username || !password || !geminiApiKey) {
+      return res.status(400).json({ 
+        message: "Missing required fields",
+        missing: {
+          name: !name,
+          username: !username, 
+          password: !password,
+          geminiApiKey: !geminiApiKey
+        }
+      });
     }
     
-    // Check if username already exists
+    // Check if username already exists (for all users regardless of plan)
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
       return res.status(400).json({ message: "Username already exists" });
     }
     
-    // Check if email already exists
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) {
-      return res.status(400).json({ message: "Email already registered" });
+    // Email verification and uniqueness check only for non-meeting plans
+    if (plan !== "meeting") {
+      // Email verification required for non-meeting plans
+      if (!google || !google.accessToken) {
+        return res.status(400).json({ message: "Email verification required" });
+      }
+      
+      // Check if email already exists (only for non-meeting plans)
+      const existingEmail = await User.findOne({ 
+        email, 
+        plan: { $ne: "meeting" } 
+      });
+      
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+    }
+    // For meeting plans, we skip both email verification and uniqueness checks
+    
+    // Hash password
+    let hashedPassword;
+    try {
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
+    } catch (hashError) {
+      console.error('Password hashing error:', hashError);
+      return res.status(500).json({ message: "Error processing password" });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Prepare Google data safely
+    const googleData = google ? {
+      accessToken: google.accessToken || null,
+      refreshToken: google.refreshToken || null,
+      tokenExpiryDate: google.tokenExpiryDate ? new Date(google.tokenExpiryDate) : null
+    } : null;
 
-    // Create new user with Google info
+    // Create new user
     const newUser = new User({ 
       name, 
-      email, 
-      mobileNo, 
+      email: email || `meeting-${username}@example.com`, // Fallback for email
+      mobileNo: mobileNo || "0000000000", // Fallback for mobile
       username, 
-      password, 
+      password,
       geminiApiKey,
-      google: {
-        id: google.googleId,
-        accessToken: google.accessToken,
-        refreshToken: google.refreshToken,
-        tokenExpiryDate: google.tokenExpiryDate ? new Date(google.tokenExpiryDate) : null
-      }
+      prompt: prompt || '',
+      plan: plan || 'free',
+      google: googleData
     });
     
-    await newUser.save();
+    try {
+      await newUser.save();
+    } catch (saveError) {
+      console.error('User save error:', saveError);
+      return res.status(500).json({ 
+        message: "Error saving user", 
+        details: saveError.message 
+      });
+    }
+
+    // If this is a meeting bot, update the task's botActivated status
+    if (plan === "meeting") {
+      const taskId = username; // For meeting bots, username is set to the task ID
+      
+      try {
+        // Find any user who has this task ID
+        const taskOwner = await User.findOne({ 
+          "tasks.uniqueTaskId": taskId 
+        });
+        
+        if (taskOwner) {
+          await User.findOneAndUpdate(
+            { "tasks.uniqueTaskId": taskId },
+            { $set: { "tasks.$.isMeeting.botActivated": true } }
+          );
+        }
+      } catch (updateError) {
+        console.error('Task update error:', updateError);
+        // Continue anyway since the user was created
+      }
+    }
 
     res.status(201).json({ 
       message: "User registered successfully", 
@@ -379,7 +454,90 @@ app.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ message: "Error registering user", error: error.message });
+    res.status(500).json({ 
+      message: "Error registering user", 
+      error: error.message 
+    });
+  }
+});
+app.post('/register-bot', async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      mobileNo,
+      username,
+      password,
+      geminiApiKey,
+      plan,
+      prompt,
+      ownerUsername,
+      google
+    } = req.body;
+
+    // Generate a unique bot username
+    const botUsername = `meeting/${username}`;
+
+    // Check if username already exists in the User collection
+    const existingBot = await User.findOne({ username: botUsername });
+    if (existingBot) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bot with this username already exists'
+      });
+    }
+
+    // Validate required fields
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username and password are required'
+      });
+    }
+
+    // Check if owner username exists in the user collection
+    const owner = await User.findOne({ username: ownerUsername });
+    if (!owner) {
+      return res.status(400).json({
+        success: false,
+        message: 'Owner user not found'
+      });
+    }
+
+    // Create a new bot user document
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const newBot = new User({
+      name: name || 'Meeting Assistant',
+      email,
+      mobileNo,
+      username: botUsername, // Using the meeting/username format
+      password: hashedPassword,
+      geminiApiKey,
+      plan: plan || 'meeting',
+      prompt,
+      ownerUsername, // Store the owner's username
+      isBot: true,   // Flag this as a bot account
+      google,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    // Save the bot to the database (same User collection)
+    await newBot.save();
+
+    return res.status(201).json({
+      success: true,
+      message: 'Bot assistant created successfully',
+      botId: newBot._id,
+      botUsername: botUsername
+    });
+  } catch (error) {
+    console.error('Error creating bot assistant:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error when creating bot assistant'
+    });
   }
 });
 
@@ -749,7 +907,8 @@ app.get('/verify-user/:identifier', async (req, res) => {
         tasks: user.tasks,
         password: user.password,
         userPrompt:user.userPrompt,
-        taskSchedulingEnabled:user.taskSchedulingEnabled
+        taskSchedulingEnabled:user.taskSchedulingEnabled,
+        google:user.google
       } 
     });
   } catch (error) {
@@ -763,8 +922,9 @@ app.get('/health', (req, res) => {
 
 app.get('/users/count', async (req, res) => {
   try {
-    const count = await User.countDocuments();
-        res.json({ count });
+    // Count users excluding those with plan type "meeting"
+    const count = await User.countDocuments({ plan: { $ne: "meeting" } });
+    res.json({ count });
   } catch (error) {
     console.error('Error counting users:', error);
     res.status(500).json({ 
@@ -869,12 +1029,82 @@ app.get('/users/count', async (req, res) => {
 //     return res.status(500).json({ error: error.message });
 //   }
 // });
+
+// 4. New endpoint to manage access to meeting bot
+app.post('/update-bot-access', async (req, res) => {
+  try {
+    const { ownerUsername, taskId, targetUsername, action } = req.body;
+    
+    if (!ownerUsername || !taskId || !targetUsername || !action) {
+      return res.status(400).json({ message: "Missing required parameters" });
+    }
+    
+    const user = await User.findOne({ username: ownerUsername });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    
+    const taskIndex = user.tasks.findIndex(task => task.uniqueTaskId === taskId);
+    if (taskIndex === -1) return res.status(404).json({ message: "Task not found" });
+    
+    // Add or remove username from access list
+    if (action === 'add') {
+      if (!user.tasks[taskIndex].isMeeting.giveAccess.includes(targetUsername)) {
+        user.tasks[taskIndex].isMeeting.giveAccess.push(targetUsername);
+      }
+    } else if (action === 'remove') {
+      user.tasks[taskIndex].isMeeting.giveAccess = 
+        user.tasks[taskIndex].isMeeting.giveAccess.filter(username => username !== targetUsername);
+    }
+    
+    await user.save();
+    
+    res.json({ 
+      message: `Access ${action === 'add' ? 'granted to' : 'removed from'} ${targetUsername}`,
+      accessList: user.tasks[taskIndex].isMeeting.giveAccess
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating bot access", error: error.message });
+  }
+});
+
+// 5. New endpoint to toggle restriction status
+app.post('/toggle-bot-restriction', async (req, res) => {
+  try {
+    const { ownerUsername, taskId } = req.body;
+    
+    if (!ownerUsername || !taskId) {
+      return res.status(400).json({ message: "Owner username and task ID are required" });
+    }
+    
+    const user = await User.findOne({ username: ownerUsername });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    
+    const taskIndex = user.tasks.findIndex(task => task.uniqueTaskId === taskId);
+    if (taskIndex === -1) return res.status(404).json({ message: "Task not found" });
+    
+    // Toggle restriction status
+    user.tasks[taskIndex].isMeeting.restriction = !user.tasks[taskIndex].isMeeting.restriction;
+    
+    await user.save();
+    
+    res.json({ 
+      message: `Restriction ${user.tasks[taskIndex].isMeeting.restriction ? 'enabled' : 'disabled'}`,
+      restriction: user.tasks[taskIndex].isMeeting.restriction
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error toggling bot restriction", error: error.message });
+  }
+});
+
+
 app.post('/schedule-meeting', async (req, res) => {
   const { taskId, username, title, description, startTime, endTime, userEmails } = req.body;
   
   try {
-    // Fetch all user details
-    const users = await User.find({ email: { $in: userEmails } });
+    // Fetch all user details excluding meeting bots
+    const users = await User.find({ 
+      email: { $in: userEmails },
+      plan: { $ne: 'meeting' }  // Exclude meeting bots
+    });
     
     // Identify the organizer (first email)
     const organizerEmail = userEmails[0];

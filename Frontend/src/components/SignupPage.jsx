@@ -278,6 +278,7 @@ const SignupPage = () => {
           username: formData.username,
           password: formData.password,
           geminiApiKey: apiKeyToUse,
+          prompt:"",
           usePublicKey: uiState.usePublicKey,
           google: {
             id: googleAuth.googleId,

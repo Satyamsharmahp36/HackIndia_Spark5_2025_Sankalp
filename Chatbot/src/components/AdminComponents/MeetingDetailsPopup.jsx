@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileText, BookOpen, FileAudio, Calendar, Clock } from 'lucide-react';
 
 const MeetingDetailsPopup = ({ meeting, onClose }) => {
-  const [activeTab, setActiveTab] = useState('minutes');
+  const [activeTab, setActiveTab] = useState('summary');
 
   const tabs = [
-    { id: 'minutes', label: 'Meeting Minutes', icon: <FileText className="w-4 h-4" />, content: meeting.meetingMinutes },
+    // { id: 'minutes', label: 'Meeting Minutes', icon: <FileText className="w-4 h-4" />, content: meeting.meetingMinutes },
     { id: 'summary', label: 'Meeting Summary', icon: <BookOpen className="w-4 h-4" />, content: meeting.meetingSummary },
     { id: 'transcript', label: 'Raw Transcript', icon: <FileAudio className="w-4 h-4" />, content: meeting.meetingRawData }
   ];
