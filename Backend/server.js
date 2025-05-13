@@ -74,6 +74,10 @@ const userSchema = new mongoose.Schema({
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     createdAt: { type: Date, default: Date.now }
   }],
+  taskSchedulingEnabled: {
+    type: Boolean,
+    default: true 
+  },
   tasks: [{
     uniqueTaskId: { type: String, required: true }, 
     taskQuestion: { type: String, required: true },
@@ -204,6 +208,83 @@ app.get('/user/google/callback', async (req, res) => {
         window.close();
       </script>
     `);
+  }
+});
+
+app.post('/settaskscheduling', async (req, res) => {
+  try {
+    const { username } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username is required'
+      });
+    }
+    
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    user.taskSchedulingEnabled = !user.taskSchedulingEnabled;
+    
+    await user.save();
+    
+    return res.status(200).json({
+      success: true,
+      message: `Task scheduling ${user.taskSchedulingEnabled ? 'enabled' : 'disabled'} successfully`,
+      taskSchedulingEnabled: user.taskSchedulingEnabled
+    });
+    
+  } catch (error) {
+    console.error('Error toggling task scheduling:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while updating task scheduling'
+    });
+  }
+});
+
+app.get('/gettaskscheduling', async (req, res) => {
+  try {
+    const { username } = req.query;
+    
+    if (!username) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Username is required' 
+      });
+    }
+    
+    // Find the user in your database
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Return the task scheduling status
+    // This assumes the value is stored directly on the user object
+    // Adjust according to your actual data structure
+    return res.status(200).json({
+      success: true,
+      taskSchedulingEnabled: !!user.taskSchedulingEnabled
+    });
+    
+  } catch (error) {
+    console.error('Error getting task scheduling status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get task scheduling status'
+    });
   }
 });
 
@@ -667,7 +748,8 @@ app.get('/verify-user/:identifier', async (req, res) => {
         contributions: user.contributions,
         tasks: user.tasks,
         password: user.password,
-        userPrompt:user.userPrompt
+        userPrompt:user.userPrompt,
+        taskSchedulingEnabled:user.taskSchedulingEnabled
       } 
     });
   } catch (error) {

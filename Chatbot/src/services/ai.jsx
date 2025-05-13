@@ -2,7 +2,13 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from 'react-toastify';
 
 async function detectTaskRequest(question, userData, conversationContext = "") {
+  console.log("user:- ", userData);
   try {
+    if (userData?.taskSchedulingEnabled === false) {
+      console.log("Task scheduling is disabled for this user");
+      return { isTask: false, taskSchedulingDisabled: true };
+    }
+
     if (!userData || !userData.geminiApiKey) {
       return { isTask: false, error: "No Gemini API key available" };
     }
@@ -223,7 +229,6 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
       description: meetingDetails.description || enhancedDescription
     } : null;
 
-    console.log("rfgnkifniuenfiu wefn", topicContext);
 
     const response = await fetch(`${import.meta.env.VITE_BACKEND}/create-task`, {
       method: 'POST',
@@ -509,12 +514,18 @@ function extractDurationFromMessage(message) {
 }
 
 let pendingMeetingDetails = {};
-
 export async function getAnswer(question, userData, presentData, conversationHistory = []) {
   try {
     if (!userData || !userData.geminiApiKey) {
       return "No Gemini API key available for this user.";
     }
+
+    // Create a reusable task scheduling disabled message
+    const taskDisabledMessage = `${userData.name} has disabled task scheduling for now. I'll be happy to help with other questions!`;
+    
+    // Check if task scheduling is disabled for this user
+    const isTaskSchedulingDisabled = userData.taskSchedulingEnabled === false;
+    console.log("Task scheduling disabled:", isTaskSchedulingDisabled);
 
     const urlPattern = /(https?:\/\/[^\s]+)/g;
     const urls = question.match(urlPattern) || [];
@@ -532,11 +543,30 @@ export async function getAnswer(question, userData, presentData, conversationHis
 
     const meetingState = processMeetingState(question, conversationHistory);
     
-    const taskDetection = await detectTaskRequest(question, userData, formattedHistory);
+    // Only detect task if we need to (skip this if task scheduling is disabled)
+    const taskDetection = isTaskSchedulingDisabled ? 
+      { isTask: false, taskSchedulingDisabled: true } : 
+      await detectTaskRequest(question, userData, formattedHistory);
     
+    // Check if we're in any task-related flow and return early with the disabled message
+    if (isTaskSchedulingDisabled && 
+        (taskDetection.isTask || 
+         meetingState.type === "meetingConfirmed" || 
+         meetingState.type === "meetingDetailsProvided" || 
+         meetingState.type === "finalConfirmation")) {
+      return taskDisabledMessage;
+    }
+    
+    // Meeting initiation flow
     if (!pendingMeetingDetails.originalQuestion && 
         (meetingState.type === "meetingConfirmed" || 
          (taskDetection?.isMeetingRequest && taskDetection?.requireConfirmation))) {
+      
+      // Check if task scheduling is disabled before proceeding with meeting setup
+      if (isTaskSchedulingDisabled) {
+        return taskDisabledMessage;
+      }
+      
       for (let i = conversationHistory.length - 1; i >= 0; i--) {
         const msg = conversationHistory[i];
         if (msg.type === 'user' && msg.content !== question) {
@@ -549,7 +579,13 @@ export async function getAnswer(question, userData, presentData, conversationHis
       }
     }
 
+    // Meeting details provided flow
     if (meetingState.type === "meetingDetailsProvided") {
+      // Early return if task scheduling is disabled
+      if (isTaskSchedulingDisabled) {
+        return taskDisabledMessage;
+      }
+      
       const parsedDetails = await parseMeetingDetailsResponse(question, userData);
       console.log("Parsed meeting details:", parsedDetails);
       
@@ -579,25 +615,27 @@ export async function getAnswer(question, userData, presentData, conversationHis
       
       console.log("Missing meeting details:", missingDetails);
 
-      
-      
-if (missingDetails.length === 0) {
-  if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
-    pendingMeetingDetails.date = null;
-    pendingMeetingDetails.time = null;
-    
-    return `I'm not a time traveler who can go to the past for meetings! 🚀⏰ Please provide a future date and time for our meeting.`;
-  } else {
-    const meetingTitle = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
-    return `I will be scheduling a meeting with ${userData.name} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
-  }
-} else {
-  return `Please provide the following details for your meeting: Date , Time and Duration of the meet}.`;
-}
-      
+      if (missingDetails.length === 0) {
+        if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
+          pendingMeetingDetails.date = null;
+          pendingMeetingDetails.time = null;
+          
+          return `I'm not a time traveler who can go to the past for meetings! 🚀⏰ Please provide a future date and time for our meeting.`;
+        } else {
+          const meetingTitle = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
+          return `I will be scheduling a meeting with ${userData.name} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+        }
+      } else {
+        return `Please provide the following details for your meeting: Date, Time and Duration of the meet.`;
+      }
     }
     
+    // Final confirmation flow
     if (meetingState.type === "finalConfirmation") {
+      // Early return if task scheduling is disabled
+      if (isTaskSchedulingDisabled) {
+        return taskDisabledMessage;
+      }
 
       if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
         pendingMeetingDetails.date = null;
@@ -617,8 +655,6 @@ if (missingDetails.length === 0) {
           if (urls.length > 0) {
             taskDescription += `\nRelevant links: ${urls.join(', ')}\n`;
           }
-          
- 
           
           const originalQuestion = pendingMeetingDetails.originalQuestion || question;
           
@@ -650,12 +686,18 @@ if (missingDetails.length === 0) {
     }
     
     if (meetingState.type === "meetingConfirmed") {
+      if (isTaskSchedulingDisabled) {
+        return taskDisabledMessage;
+      }
+      
       const previousUserMsg = conversationHistory.slice(-3)[0]?.content || "";
       const meetingTopic = conversationTopic || "the discussed topic";
       
       pendingMeetingDetails.originalQuestion = previousUserMsg;
       
+      // Only run meeting task detection if task scheduling is enabled
       const meetingTaskDetection = await detectTaskRequest(previousUserMsg, userData);
+        
       let initialDetailsFound = false;
       
       if (meetingTaskDetection.meetingDetails) {
@@ -694,14 +736,18 @@ if (missingDetails.length === 0) {
       if (!pendingMeetingDetails.duration) missingDetails.push("duration");
       
       if (missingDetails.length > 0) {
-        return `Please provide the following details for your meeting: ${missingDetails.join(', ')}.`;
+        return `Please provide the following: Date, Time and duration of the meeting`;
       } else {
-        // All details are available, ask for final confirmation
         return `I will be scheduling a meeting with ${userData.name} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
       }
     }
 
     if (taskDetection.isTask) {
+      // Early return if task scheduling is disabled
+      if (isTaskSchedulingDisabled) {
+        return taskDisabledMessage;
+      }
+      
       if (taskDetection.isMeetingRequest && taskDetection.requireConfirmation) {
         const meetingTopic = conversationTopic || "the discussed topic";
         
@@ -767,6 +813,7 @@ if (missingDetails.length === 0) {
       }
     }
 
+    // If we get here, we're just answering a normal question (not task-related)
     const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
     
     const approvedContributions = userData.contributions?.filter(contribution => 

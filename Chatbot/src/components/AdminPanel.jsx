@@ -51,6 +51,9 @@ const AdminPanel = ({ userData, onClose }) => {
   const [calendarData, setCalendarData] = useState(null);
   const [showMeetingDetailsPopup, setShowMeetingDetailsPopup] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
+  const [taskSchedulingEnabled, setTaskSchedulingEnabled] = useState(false);
+  const [taskSchedulingLoaded, setTaskSchedulingLoaded] = useState(false);
+  const [toggleSchedulingLoading, setToggleSchedulingLoading] = useState(false);
 
   const [showAccessManagement, setShowAccessManagement] = useState(false);
 
@@ -124,6 +127,90 @@ const AdminPanel = ({ userData, onClose }) => {
       setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    const fetchTaskSchedulingStatus = async () => {
+      if (!userData?.user?.username) return;
+      
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND}/gettaskscheduling`,
+          { params: { username: userData.user.username } }
+        );
+        
+        if (response.data && response.data.success) {
+          setTaskSchedulingEnabled(!!response.data.taskSchedulingEnabled);
+        } else {
+          console.error("Failed to fetch task scheduling status");
+        }
+      } catch (error) {
+        console.error("Error fetching task scheduling status:", error);
+      } finally {
+        setTaskSchedulingLoaded(true);
+      }
+    };
+    
+    fetchTaskSchedulingStatus();
+  }, [userData?.user?.username]);
+
+  const toggleTaskScheduling = async () => {
+    try {
+      setToggleSchedulingLoading(true);
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND}/settaskscheduling`,
+        { username: userData.user.username }
+      );
+
+      if (response.data && response.data.success) {
+        // Set our local state based on the response
+        setTaskSchedulingEnabled(!!response.data.taskSchedulingEnabled);
+        toast.success(response.data.message || "Task scheduling setting updated");
+      } else {
+        toast.error("Failed to update task scheduling status");
+      }
+    } catch (error) {
+      console.error("Error toggling task scheduling:", error);
+      toast.error("Error updating task scheduling status");
+    } finally {
+      setToggleSchedulingLoading(false);
+    }
+  };
+
+
+  const renderTaskSchedulingButton = () => {
+    if (!taskSchedulingLoaded) {
+      return (
+        <motion.button
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg flex items-center gap-2 transition-all"
+          disabled={true}
+        >
+          <Calendar className="w-4 h-4 animate-pulse" />
+          Loading...
+        </motion.button>
+      );
+    }
+    
+    return (
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={toggleTaskScheduling}
+        disabled={toggleSchedulingLoading}
+        className={`px-4 py-2 ${
+          taskSchedulingEnabled ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+        } text-white rounded-lg flex items-center gap-2 transition-all`}
+      >
+        <Calendar className={`w-4 h-4 ${toggleSchedulingLoading ? "animate-spin" : ""}`} />
+        {toggleSchedulingLoading 
+          ? "Updating..." 
+          : taskSchedulingEnabled 
+            ? "Task Scheduling: On" 
+            : "Task Scheduling: Off"}
+      </motion.button>
+    );
+  };
+
 
   const handleAccessManagementUpdate = async (updatedData) => {
     try {
@@ -554,6 +641,8 @@ const AdminPanel = ({ userData, onClose }) => {
                   <User className="w-4 h-4" />
                   Access Management
                 </motion.button>
+                {renderTaskSchedulingButton()}
+
               </div>
 
               <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
