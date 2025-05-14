@@ -94,6 +94,7 @@ const userSchema = new mongoose.Schema({
     status: { type: String, enum: ['pending', 'inprogress', 'completed', 'cancelled'], default: 'inprogress' },
     presentUserData: { type: mongoose.Schema.Types.Mixed },
     topicContext:{type :String},
+    isSelfTask: { type: Boolean, default: false },
     isMeeting: {
       title: String,
       description: String,
@@ -1852,7 +1853,147 @@ app.get('/access-management/restriction-status', async (req, res) => {
     return res.status(500).json({ success: false, msg: 'Server error' });
   }
 });
+//schedule self task 
 
+app.post('/create-self-task', async (req, res) => {
+  try {
+    const {
+      username,
+      uniqueTaskId,
+      taskQuestion,
+      taskDescription,
+      topicContext,
+      isSelfTask,
+      status,
+      isMeeting,
+      meetingRecord
+    } = req.body;
+
+    if (!username || !uniqueTaskId || !taskQuestion) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields missing: username, uniqueTaskId, and taskQuestion are required'
+      });
+    }
+
+    // Find the user by username
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Create the task object with self-task flag
+    const newTask = {
+      uniqueTaskId,
+      taskQuestion,
+      taskDescription: taskDescription || 'Self-created task',
+      status: status || 'inprogress',
+      topicContext: topicContext || '',
+      isSelfTask: true  // Mark this as a self-created task
+    };
+
+    // If it's a meeting, add meeting details
+    if (isMeeting) {
+      newTask.isMeeting = {
+        title: isMeeting.title,
+        description: isMeeting.description || '',
+        date: isMeeting.date,
+        time: isMeeting.time,
+        duration: isMeeting.duration,
+        status: isMeeting.status || 'pending',
+        meetingLink: isMeeting.meetingLink || '',
+        topicContext: isMeeting.topicContext || '',
+        meetingRawData: isMeeting.meetingRawData || '',
+        botActivated: isMeeting.botActivated || false,
+        restriction: isMeeting.restriction || false,
+        giveAccess: [username]  // Default access to the creator
+      };
+    }
+
+    // Add the task to user's tasks array
+    user.tasks.push(newTask);
+    await user.save();
+
+    // If it's a meeting with a link, create a MeetingRecord
+    if (meetingRecord && meetingRecord.google_meeting_link) {
+      const newMeetingRecord = new MeetingData({
+        taskId: uniqueTaskId,
+        google_meeting_link: meetingRecord.google_meeting_link,
+        start_time: meetingRecord.start_time,
+        end_time: meetingRecord.end_time,
+        duration: meetingRecord.duration,
+        username: username
+      });
+      
+      await newMeetingRecord.save();
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Task created successfully',
+      taskId: uniqueTaskId,
+      isMeeting: !!isMeeting
+    });
+    
+  } catch (error) {
+    console.error('Error creating self-task:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while creating task',
+      error: error.message
+    });
+  }
+});
+// GET route to fetch all self-tasks for a user
+app.get('/user-tasks/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { selfTasksOnly } = req.query; // Optional query parameter to filter self-tasks
+    
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username is required'
+      });
+    }
+
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    let tasks;
+    
+    // Filter tasks based on selfTasksOnly parameter
+    if (selfTasksOnly === 'true') {
+      tasks = user.tasks.filter(task => task.isSelfTask === true);
+    } else {
+      tasks = user.tasks;
+    }
+
+    // Return filtered tasks for the user
+    return res.status(200).json({
+      success: true,
+      tasks: tasks
+    });
+    
+  } catch (error) {
+    console.error('Error fetching user tasks:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while fetching tasks',
+      error: error.message
+    });
+  }
+});
 // const PING_SERVICE_URL = process.env.PING_SERVICE_URL;
 
 // const pingSecondaryService = async () => {

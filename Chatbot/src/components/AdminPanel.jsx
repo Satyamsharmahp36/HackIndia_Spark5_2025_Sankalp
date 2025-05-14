@@ -19,13 +19,17 @@ import {
   FileText,
   Link,
   User,
-  Bot // Added Bot icon for the new button
-} from 'lucide-react';
+  Bot,
+  Plus,
+  ListChecks ,
+  Clipboard// Added Bot icon for the new button
+} from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from "react-toastify";
 import DailyWorkflow from "./DailyWorkflow";
 import CalendarScheduler from "./AdminComponents/CalendarScheduler";
 import AccessManagement from "./AdminComponents/AccessManagement";
+import SelfTaskForm from "./AdminComponents/SelfTaskForm";
 import CalendarMeetingForm from "./AdminComponents/CalendarMeetingForm";
 import MeetingDetailsPopup from "./AdminComponents/MeetingDetailsPopup";
 import axios from "axios";
@@ -53,10 +57,11 @@ const AdminPanel = ({ userData, onClose }) => {
   const [showMeetingDetailsPopup, setShowMeetingDetailsPopup] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [creatingBot, setCreatingBot] = useState(false);
-  const [showAccessManagement,setShowAccessManagement]= useState(false);
-  const [taskSchedulingEnabled,setTaskSchedulingEnabled]=useState(false);
-  const [taskSchedulingLoaded,setTaskSchedulingLoaded]=useState(false);
+  const [showAccessManagement, setShowAccessManagement] = useState(false);
+  const [taskSchedulingEnabled, setTaskSchedulingEnabled] = useState(false);
+  const [taskSchedulingLoaded, setTaskSchedulingLoaded] = useState(false);
   const [toggleSchedulingLoading, setToggleSchedulingLoading] = useState(false);
+  const [showSelfTask, setShowSelfTask] = useState(false);
 
   const scrollbarStyles = `
   ::-webkit-scrollbar {
@@ -132,13 +137,13 @@ const AdminPanel = ({ userData, onClose }) => {
   useEffect(() => {
     const fetchTaskSchedulingStatus = async () => {
       if (!userData?.user?.username) return;
-      
+
       try {
         const response = await axios.get(
           `${import.meta.env.VITE_BACKEND}/gettaskscheduling`,
           { params: { username: userData.user.username } }
         );
-        
+
         if (response.data && response.data.success) {
           setTaskSchedulingEnabled(!!response.data.taskSchedulingEnabled);
         } else {
@@ -150,7 +155,7 @@ const AdminPanel = ({ userData, onClose }) => {
         setTaskSchedulingLoaded(true);
       }
     };
-    
+
     fetchTaskSchedulingStatus();
   }, [userData?.user?.username]);
 
@@ -166,7 +171,9 @@ const AdminPanel = ({ userData, onClose }) => {
       if (response.data && response.data.success) {
         // Set our local state based on the response
         setTaskSchedulingEnabled(!!response.data.taskSchedulingEnabled);
-        toast.success(response.data.message || "Task scheduling setting updated");
+        toast.success(
+          response.data.message || "Task scheduling setting updated"
+        );
       } else {
         toast.error("Failed to update task scheduling status");
       }
@@ -177,7 +184,6 @@ const AdminPanel = ({ userData, onClose }) => {
       setToggleSchedulingLoading(false);
     }
   };
-
 
   const renderTaskSchedulingButton = () => {
     if (!taskSchedulingLoaded) {
@@ -191,7 +197,7 @@ const AdminPanel = ({ userData, onClose }) => {
         </motion.button>
       );
     }
-    
+
     return (
       <motion.button
         whileHover={{ scale: 1.05 }}
@@ -199,19 +205,26 @@ const AdminPanel = ({ userData, onClose }) => {
         onClick={toggleTaskScheduling}
         disabled={toggleSchedulingLoading}
         className={`px-4 py-2 ${
-          taskSchedulingEnabled ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+          taskSchedulingEnabled
+            ? "bg-green-600 hover:bg-green-700"
+            : "bg-red-600 hover:bg-red-700"
         } text-white rounded-lg flex items-center gap-2 transition-all`}
       >
-        <Calendar className={`w-4 h-4 ${toggleSchedulingLoading ? "animate-spin" : ""}`} />
-        {toggleSchedulingLoading 
-          ? "Updating..." 
-          : taskSchedulingEnabled 
-            ? "Task Scheduling: On" 
-            : "Task Scheduling: Off"}
+        <Calendar
+          className={`w-4 h-4 ${toggleSchedulingLoading ? "animate-spin" : ""}`}
+        />
+        {toggleSchedulingLoading
+          ? "Updating..."
+          : taskSchedulingEnabled
+          ? "Task Scheduling: On"
+          : "Task Scheduling: Off"}
       </motion.button>
     );
   };
 
+  const handleSelfTaskToggle = () => {
+    setShowSelfTask(!showSelfTask);
+  };
 
   const handleAccessManagementUpdate = async (updatedData) => {
     try {
@@ -235,7 +248,6 @@ const AdminPanel = ({ userData, onClose }) => {
     }
   };
 
-  
   const toggleTaskStatus = async (task) => {
     try {
       setLoading(true);
@@ -322,76 +334,90 @@ const AdminPanel = ({ userData, onClose }) => {
     setShowMeetingDetailsPopup(false);
     setSelectedMeeting(null);
   };
-// Updated handleCreateBotAssistant function
-const handleCreateBotAssistant = async (task) => {
-  try {
-    if (!task.isMeeting) {
-      toast.error("Meeting data not available");
-      return;
-    }
-    
-    setCreatingBot(true);
-    toast.info("Creating bot assistant for meeting...");
-
-    // Ensure geminiApiKey exists
-    if (!userData.user.geminiApiKey) {
-      toast.error("API key is required but not found");
-      setCreatingBot(false);
-      return;
-    }
-
-    // Prepare the bot data with proper validation
-    const botData = {
-      name: task.topicContext || task.isMeeting.title || "Meeting Assistant", 
-      email: userData.user.email || "", 
-      mobileNo: userData.user.mobileNo || "0000000000",
-      username: task.uniqueTaskId, 
-      password: userData.user.password || "defaultpassword", // Make sure this exists
-      geminiApiKey: userData.user.geminiApiKey,
-      plan: "meeting", 
-      prompt: task.isMeeting.meetingRawData || task.taskDescription || task.taskQuestion || "",
-      google: userData.user.google ? {
-        accessToken: userData.user.google.accessToken || null, 
-        refreshToken: userData.user.google.refreshToken || null,
-        tokenExpiryDate: userData.user.google.tokenExpiryDate || null
-      } : null
-    };
-    
-    console.log("Creating bot with data:", {
-      ...botData,
-      password: "[REDACTED]" // Don't log the actual password
-    });
-    
-    // Make the API call with error handling
+  // Updated handleCreateBotAssistant function
+  const handleCreateBotAssistant = async (task) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND}/register`, botData);
-      
-      if (response.data && response.data.userId) {
-        toast.success("Bot assistant created successfully!");
-        
-        // Open the new bot in a new tab
-        window.open(`${import.meta.env.VITE_FRONTEND}/home/${task.uniqueTaskId}`, '_blank');
-        
-        // Refresh user data to show updated bot status
-        await refreshUserData();
-      } else {
-        toast.error(response.data?.message || "Failed to create bot assistant");
+      if (!task.isMeeting) {
+        toast.error("Meeting data not available");
+        return;
+      }
+
+      setCreatingBot(true);
+      toast.info("Creating bot assistant for meeting...");
+
+      // Ensure geminiApiKey exists
+      if (!userData.user.geminiApiKey) {
+        toast.error("API key is required but not found");
+        setCreatingBot(false);
+        return;
+      }
+
+      // Prepare the bot data with proper validation
+      const botData = {
+        name: task.topicContext || task.isMeeting.title || "Meeting Assistant",
+        email: userData.user.email || "",
+        mobileNo: userData.user.mobileNo || "0000000000",
+        username: task.uniqueTaskId,
+        password: userData.user.password || "defaultpassword", // Make sure this exists
+        geminiApiKey: userData.user.geminiApiKey,
+        plan: "meeting",
+        prompt:
+          task.isMeeting.meetingRawData ||
+          task.taskDescription ||
+          task.taskQuestion ||
+          "",
+        google: userData.user.google
+          ? {
+              accessToken: userData.user.google.accessToken || null,
+              refreshToken: userData.user.google.refreshToken || null,
+              tokenExpiryDate: userData.user.google.tokenExpiryDate || null,
+            }
+          : null,
+      };
+
+      console.log("Creating bot with data:", {
+        ...botData,
+        password: "[REDACTED]", // Don't log the actual password
+      });
+
+      // Make the API call with error handling
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND}/register`,
+          botData
+        );
+
+        if (response.data && response.data.userId) {
+          toast.success("Bot assistant created successfully!");
+
+          // Open the new bot in a new tab
+          window.open(
+            `${import.meta.env.VITE_FRONTEND}/home/${task.uniqueTaskId}`,
+            "_blank"
+          );
+
+          // Refresh user data to show updated bot status
+          await refreshUserData();
+        } else {
+          toast.error(
+            response.data?.message || "Failed to create bot assistant"
+          );
+        }
+      } catch (error) {
+        console.error("API Error:", error.response?.data || error.message);
+        if (error.response?.data?.message) {
+          toast.error(`Error: ${error.response.data.message}`);
+        } else {
+          toast.error("Server error when creating bot assistant");
+        }
       }
     } catch (error) {
-      console.error("API Error:", error.response?.data || error.message);
-      if (error.response?.data?.message) {
-        toast.error(`Error: ${error.response.data.message}`);
-      } else {
-        toast.error("Server error when creating bot assistant");
-      }
+      console.error("Error creating bot assistant:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setCreatingBot(false);
     }
-  } catch (error) {
-    console.error("Error creating bot assistant:", error);
-    toast.error("An unexpected error occurred");
-  } finally {
-    setCreatingBot(false);
-  }
-};
+  };
   const generateUserDescription = async (prompt) => {
     try {
       if (!userData.user.geminiApiKey) {
@@ -587,7 +613,7 @@ const handleCreateBotAssistant = async (task) => {
                 startTime={calendarData.startTime}
                 endTime={calendarData.endTime}
                 userEmails={calendarData.userEmails}
-                onSuccess={refreshUserData} 
+                onSuccess={refreshUserData}
               />
             </div>
           </div>
@@ -617,7 +643,36 @@ const handleCreateBotAssistant = async (task) => {
           </div>
         </div>
       )}
-
+      {showSelfTask && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+          <div className="bg-gray-900 rounded-xl p-4 w-full max-w-3xl max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-white">
+                Create Self Task
+              </h3>
+              <button
+                onClick={handleSelfTaskToggle}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2">
+              <SelfTaskForm
+                userData={userData}
+                onClose={() => {
+                  handleSelfTaskToggle();
+                  refreshUserData();
+                }}
+                onSuccess={() => {
+                  refreshUserData();
+                  setShowSelfTask(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -712,7 +767,15 @@ const handleCreateBotAssistant = async (task) => {
                   Access Management
                 </motion.button>
                 {renderTaskSchedulingButton()}
-
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleSelfTaskToggle()}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Self Task
+                </motion.button>
               </div>
 
               <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -771,7 +834,7 @@ const handleCreateBotAssistant = async (task) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4">
-{sortedTasks.map((task) => (
+                  {sortedTasks.map((task) => (
                     <motion.div
                       key={task.uniqueTaskId || task._id}
                       initial={{ opacity: 0, y: 10 }}
@@ -782,13 +845,29 @@ const handleCreateBotAssistant = async (task) => {
                       <div className="p-4">
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-2">
-                            <UserIcon className="w-5 h-5 text-blue-400" />
+                            {task.isSelfTask ? (
+                              <Clipboard className="w-5 h-5 text-purple-400" />
+                            ) : (
+                              <UserIcon className="w-5 h-5 text-blue-400" />
+                            )}
+
                             <span className="text-white font-medium">
-                              {task.presentUserData?.name || "Unknown User"}
+                              {task.isSelfTask
+                                ? "Self Task"
+                                : task.presentUserData?.name || "Unknown User"}
                             </span>
+
                             <span className="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded-full">
                               ID: {task.uniqueTaskId || "N/A"}
                             </span>
+
+                            {task.isSelfTask && (
+                              <span className="text-xs text-purple-300 bg-purple-900 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <ListChecks className="w-3 h-3" />
+                                Self Task
+                              </span>
+                            )}
+
                             {task.isMeeting && task.isMeeting.title && (
                               <span className="text-xs text-blue-300 bg-blue-900 px-2 py-0.5 rounded-full flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
@@ -844,8 +923,10 @@ const handleCreateBotAssistant = async (task) => {
 
                         <p className="text-gray-400 text-sm mb-4">
                           <span className="text-gray-300 font-bold ">
-                            User Message :-{" "}
-                          </span>
+                            {task.isSelfTask
+                              ? "Task Message :-"
+                              : "User Message :-"}
+                          </span>{" "}
                           {task.taskQuestion}
                         </p>
 
@@ -882,13 +963,13 @@ const handleCreateBotAssistant = async (task) => {
                                 {task.isMeeting.status && (
                                   <span
                                     className={`mt-2 inline-block text-xs px-2 py-0.5 rounded-full 
-                                    ${
-                                      task.isMeeting.status === "pending"
-                                        ? "bg-yellow-900 text-yellow-300"
-                                        : task.isMeeting.status === "scheduled"
-                                        ? "bg-blue-900 text-blue-300"
-                                        : "bg-green-900 text-green-300"
-                                    }`}
+                  ${
+                    task.isMeeting.status === "pending"
+                      ? "bg-yellow-900 text-yellow-300"
+                      : task.isMeeting.status === "scheduled"
+                      ? "bg-blue-900 text-blue-300"
+                      : "bg-green-900 text-green-300"
+                  }`}
                                   >
                                     {task.isMeeting.status
                                       .charAt(0)
@@ -910,169 +991,190 @@ const handleCreateBotAssistant = async (task) => {
                                   Schedule
                                 </motion.button>
                               )}
-                              
-                              {task.isMeeting.status === 'scheduled' && task.isMeeting.meetingLink && (
-                                <motion.button
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => handleOpenMeetingLink(task.isMeeting.meetingLink)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                                >
-                                  <Link className="w-4 h-4" />
-                                  Meeting Link
-                                </motion.button>
-                              )}
-                                {task.isMeeting.status === 'completed' && (
-                                  <div className="flex items-center gap-2">
+
+                              {task.isMeeting.status === "scheduled" &&
+                                task.isMeeting.meetingLink && (
+                                  <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() =>
+                                      handleOpenMeetingLink(
+                                        task.isMeeting.meetingLink
+                                      )
+                                    }
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                  >
+                                    <Link className="w-4 h-4" />
+                                    Meeting Link
+                                  </motion.button>
+                                )}
+                              {task.isMeeting.status === "completed" && (
+                                <div className="flex items-center gap-2">
+                                  <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() =>
+                                      handleViewMeetingDetails(task.isMeeting)
+                                    }
+                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    View Details
+                                  </motion.button>
+
+                                  {task.isMeeting.botActivated ? (
                                     <motion.button
                                       whileHover={{ scale: 1.05 }}
                                       whileTap={{ scale: 0.95 }}
-                                      onClick={() => handleViewMeetingDetails(task.isMeeting)}
-                                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                      onClick={() =>
+                                        window.open(
+                                          `${
+                                            import.meta.env.VITE_FRONTEND
+                                          }/home/${task.uniqueTaskId}`,
+                                          "_blank"
+                                        )
+                                      }
+                                      className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
                                     >
-                                      <FileText className="w-4 h-4" />
-                                      View Details
+                                      <Bot className="w-4 h-4" />
+                                      Assist Bot
                                     </motion.button>
-                                    
-                                    {task.isMeeting.botActivated ? (
-                                      <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => window.open(`${import.meta.env.VITE_FRONTEND}/home/${task.uniqueTaskId}`, '_blank')}
-                                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                                      >
-                                        <Bot className="w-4 h-4" />
-                                        Assist Bot
-                                      </motion.button>
-                                    ) : (
-                                      <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => handleCreateBotAssistant(task)}
-                                        disabled={creatingBot}
-                                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                                      >
-                                        <Bot className="w-4 h-4" />
-                                        {creatingBot ? 'Creating...' : 'Get Bot'}
-                                      </motion.button>
-                                    )}
-                                  </div>
-                                )}
+                                  ) : (
+                                    <motion.button
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() =>
+                                        handleCreateBotAssistant(task)
+                                      }
+                                      disabled={creatingBot}
+                                      className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                                    >
+                                      <Bot className="w-4 h-4" />
+                                      {creatingBot ? "Creating..." : "Get Bot"}
+                                    </motion.button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
 
-                        
-                        
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-1 text-gray-400 text-xs">
                             <Calendar className="w-4 h-4" />
                             <span>{formatDate(task.createdAt)}</span>
                           </div>
 
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleViewUserDetails(task)}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md flex items-center gap-1"
-                          >
-                            {expandedUser === task._id ? (
-                              <>
-                                <ChevronUp className="w-3 h-3" />
-                                Hide Details
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="w-3 h-3" />
-                                User Details
-                              </>
-                            )}
-                          </motion.button>
+                          {!task.isSelfTask && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleViewUserDetails(task)}
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md flex items-center gap-1"
+                            >
+                              {expandedUser === task._id ? (
+                                <>
+                                  <ChevronUp className="w-3 h-3" />
+                                  Hide Details
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-3 h-3" />
+                                  User Details
+                                </>
+                              )}
+                            </motion.button>
+                          )}
                         </div>
                       </div>
 
-                      <AnimatePresence>
-                        {expandedUser === task._id && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="p-4 border-t border-gray-700 bg-gray-850">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="text-gray-400 text-xs mb-1">
-                                    Name
-                                  </h4>
-                                  <p className="text-white">
-                                    {task.presentUserData?.name || "N/A"}
-                                  </p>
+                      {/* Only render the user details section if it's not a self task */}
+                      {!task.isSelfTask && (
+                        <AnimatePresence>
+                          {expandedUser === task._id && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="p-4 border-t border-gray-700 bg-gray-850">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <h4 className="text-gray-400 text-xs mb-1">
+                                      Name
+                                    </h4>
+                                    <p className="text-white">
+                                      {task.presentUserData?.name || "N/A"}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-gray-400 text-xs mb-1">
+                                      Email
+                                    </h4>
+                                    <p className="text-white">
+                                      {task.presentUserData?.email || "N/A"}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-gray-400 text-xs mb-1">
+                                      Mobile
+                                    </h4>
+                                    <p className="text-white">
+                                      {task.presentUserData?.mobileNo || "N/A"}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-gray-400 text-xs mb-1">
+                                      User's Chat Assistant
+                                    </h4>
+                                    {task.presentUserData?.username ? (
+                                      <a
+                                        href={`${
+                                          import.meta.env.VITE_FRONTEND
+                                        }/home/${
+                                          task.presentUserData.username
+                                        }`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-500 hover:underline flex items-center"
+                                      >
+                                        {task.presentUserData.username}
+                                        <ExternalLink className="w-3 h-3 ml-1" />
+                                      </a>
+                                    ) : (
+                                      <p className="text-white">N/A</p>
+                                    )}
+                                  </div>
                                 </div>
-                                <div>
-                                  <h4 className="text-gray-400 text-xs mb-1">
-                                    Email
+
+                                <div className="mt-4">
+                                  <h4 className="text-gray-400 text-xs mb-2">
+                                    About User
                                   </h4>
-                                  <p className="text-white">
-                                    {task.presentUserData?.email || "N/A"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <h4 className="text-gray-400 text-xs mb-1">
-                                    Mobile
-                                  </h4>
-                                  <p className="text-white">
-                                    {task.presentUserData?.mobileNo || "N/A"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <h4 className="text-gray-400 text-xs mb-1">
-                                    User's Chat Assistant
-                                  </h4>
-                                  {task.presentUserData?.username ? (
-                                    <a
-                                      href={`${
-                                        import.meta.env.VITE_FRONTEND
-                                      }/home/${task.presentUserData.username}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-500 hover:underline flex items-center"
-                                    >
-                                      {task.presentUserData.username}
-                                      <ExternalLink className="w-3 h-3 ml-1" />
-                                    </a>
+                                  {userDescriptions[task._id] ? (
+                                    <p className="text-gray-300 text-sm whitespace-pre-line">
+                                      {userDescriptions[task._id]}
+                                    </p>
                                   ) : (
-                                    <p className="text-white">N/A</p>
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                      <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                                      <span>Generating description...</span>
+                                    </div>
                                   )}
                                 </div>
-                              </div>
-
-                              <div className="mt-4">
-                                <h4 className="text-gray-400 text-xs mb-2">
-                                  About User
-                                </h4>
-                                {userDescriptions[task._id] ? (
-                                  <p className="text-gray-300 text-sm whitespace-pre-line">
-                                    {userDescriptions[task._id]}
+                                <div className="mt-3 pt-3 border-t border-gray-700">
+                                  <p className="text-gray-400 text-xs italic">
+                                    You can use username of this sender on
+                                    chatmate and ask question's and schedule
+                                    tasks through their chat Assistant.
                                   </p>
-                                ) : (
-                                  <div className="flex items-center gap-2 text-gray-400">
-                                    <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <span>Generating description...</span>
-                                  </div>
-                                )}
+                                </div>
                               </div>
-                              <div className="mt-3 pt-3 border-t border-gray-700">
-                                <p className="text-gray-400 text-xs italic">
-                                  You can use username of this sender on
-                                  chatmate and ask question's and schedule tasks
-                                  through their chat Assistant.
-                                </p>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      )}
                     </motion.div>
                   ))}
                 </div>
