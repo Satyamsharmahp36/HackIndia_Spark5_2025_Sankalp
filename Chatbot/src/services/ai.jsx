@@ -2,13 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from 'react-toastify';
 
 async function detectTaskRequest(question, userData, conversationContext = "") {
-  console.log("user:- ", userData);
   try {
-    if (userData?.taskSchedulingEnabled === false) {
-      console.log("Task scheduling is disabled for this user");
-      return { isTask: false, taskSchedulingDisabled: true };
-    }
-
     if (!userData || !userData.geminiApiKey) {
       return { isTask: false, error: "No Gemini API key available" };
     }
@@ -67,6 +61,7 @@ async function detectTaskRequest(question, userData, conversationContext = "") {
       }
     }
 
+    // Extract meeting details if present
     let meetingDetails = null;
     if (isMeetingRequest) {
       meetingDetails = await extractMeetingDetails(question, userData);
@@ -88,12 +83,14 @@ async function detectTaskRequest(question, userData, conversationContext = "") {
 }
 
 function isTimeInPast(dateStr, timeStr) {
+  // Create date object from the provided date and time
   const [year, month, day] = dateStr.split('-').map(Number);
   const [hour, minute] = timeStr.split(':').map(Number);
   
   const proposedTime = new Date(year, month - 1, day, hour, minute);
   const currentTime = new Date();
   
+  // Add a small buffer (e.g., 10 minutes) to allow for immediate meetings
   currentTime.setMinutes(currentTime.getMinutes() + 10);
   
   return proposedTime < currentTime;
@@ -146,14 +143,17 @@ async function extractMeetingDetails(message, userData) {
     const result = await model.generateContent(detectionPrompt);
     const responseText = result.response.text().trim();
     
+    // Clean up the response text in case it's wrapped in code blocks
     let cleanedResponse = responseText;
     
+    // Remove markdown code block formatting if present
     if (cleanedResponse.startsWith("```") && cleanedResponse.endsWith("```")) {
       cleanedResponse = cleanedResponse.substring(cleanedResponse.indexOf("\n") + 1, cleanedResponse.lastIndexOf("```")).trim();
     } else if (cleanedResponse.startsWith("```")) {
       cleanedResponse = cleanedResponse.substring(cleanedResponse.indexOf("\n") + 1).trim();
     }
     
+    // Sometimes model adds json keyword after the backticks
     if (cleanedResponse.startsWith("json")) {
       cleanedResponse = cleanedResponse.substring(4).trim();
     }
@@ -167,6 +167,7 @@ async function extractMeetingDetails(message, userData) {
     } catch (parseError) {
       console.error("Failed to parse meeting details:", parseError);
       
+      // Fallback to direct extraction for the specific example
       if (message.toLowerCase().includes("2nd of november") && 
           message.toLowerCase().includes("6.30 pm") && 
           message.toLowerCase().includes("30 min")) {
@@ -221,6 +222,7 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
       ? `${taskDescription}` 
       : taskDescription;
 
+    // Prepare meeting info for the task
     const isMeeting = meetingDetails ? {
       date: meetingDetails.date,
       time: meetingDetails.time,
@@ -229,6 +231,7 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
       description: meetingDetails.description || enhancedDescription
     } : null;
 
+    console.log("rfgnkifniuenfiu wefn", topicContext);
 
     const response = await fetch(`${import.meta.env.VITE_BACKEND}/create-task`, {
       method: 'POST',
@@ -316,12 +319,14 @@ async function extractConversationTopic(messages, question, userData) {
   }
 }
 
-
+// Function to handle meeting confirmations or requesting additional meeting details
+// Function to handle meeting confirmations or requesting additional meeting details
 function processMeetingState(currentMessage, messages) {
   if (messages.length < 2) return { type: "none" };
   
   const currentMessageLower = currentMessage.toLowerCase().trim();
   
+  // Check if this is a confirmation of meeting details
   const confirmationKeywords = ['yes', 'yeah', 'sure', 'confirm', 'ok', 'okay', 'yep'];
   const isConfirmation = confirmationKeywords.some(keyword => 
     currentMessageLower === keyword || 
@@ -331,9 +336,11 @@ function processMeetingState(currentMessage, messages) {
   
   const previousBotMessage = messages[messages.length - 2];
 
+  // Log for debugging purposes
   console.log("Previous bot message:", previousBotMessage?.content);
   console.log("Current user message:", currentMessage);
   
+  // Check if previous message was requesting meeting details
   if (previousBotMessage.type === 'bot' && 
       previousBotMessage.content.includes('Please provide the following details for your meeting')) {
     console.log("Detected meeting details being provided");
@@ -343,6 +350,7 @@ function processMeetingState(currentMessage, messages) {
     };
   }
   
+  // Check if previous message was a meeting confirmation request
   if (isConfirmation && previousBotMessage.type === 'bot' && 
       (previousBotMessage.content.includes('want to have a meeting') || 
        previousBotMessage.content.includes('want to schedule a meeting') ||
@@ -353,6 +361,7 @@ function processMeetingState(currentMessage, messages) {
     };
   }
   
+  // Check if this is a final confirmation after all details are provided
   if (isConfirmation && previousBotMessage.type === 'bot' && 
       previousBotMessage.content.includes('I will be scheduling a')) {
     console.log("Detected final confirmation");
@@ -371,9 +380,10 @@ async function parseMeetingDetailsResponse(response, userData) {
     const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
+    // Get current date and time information
     const now = new Date();
     const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; 
+    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
     const currentDay = now.getDate();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
@@ -416,15 +426,20 @@ async function parseMeetingDetailsResponse(response, userData) {
     const result = await model.generateContent(parsingPrompt);
     const responseText = result.response.text().trim();
     
+    // Rest of the function remains the same...
     
+    // Clean up the response text in case it's wrapped in code blocks
     let cleanedResponse = responseText;
     
+    // Remove markdown code block formatting if present
     if (cleanedResponse.startsWith("```") && cleanedResponse.endsWith("```")) {
       cleanedResponse = cleanedResponse.substring(cleanedResponse.indexOf("\n") + 1, cleanedResponse.lastIndexOf("```")).trim();
     } else if (cleanedResponse.startsWith("```")) {
+      // Handle case where only opening ``` exists
       cleanedResponse = cleanedResponse.substring(cleanedResponse.indexOf("\n") + 1).trim();
     }
     
+    // Sometimes model adds json keyword after the backticks
     if (cleanedResponse.startsWith("json")) {
       cleanedResponse = cleanedResponse.substring(4).trim();
     }
@@ -438,13 +453,17 @@ async function parseMeetingDetailsResponse(response, userData) {
     } catch (error) {
       console.error("Failed to parse meeting details from cleaned response:", error);
       
+      // Extra fallback - try to extract manually with regex if JSON parsing fails
       try {
+        // Simple regex to extract date in YYYY-MM-DD format
         const dateMatch = cleanedResponse.match(/"date":\s*"([0-9]{4}-[0-9]{2}-[0-9]{2})"/);
         const date = dateMatch ? dateMatch[1] : null;
         
+        // Regex to extract time in HH:MM format
         const timeMatch = cleanedResponse.match(/"time":\s*"([0-9]{2}:[0-9]{2})"/);
         const time = timeMatch ? timeMatch[1] : null;
         
+        // Regex to extract duration as a number
         const durationMatch = cleanedResponse.match(/"duration":\s*([0-9]+)/);
         const duration = durationMatch ? parseInt(durationMatch[1]) : null;
         
@@ -457,6 +476,7 @@ async function parseMeetingDetailsResponse(response, userData) {
         console.error("Regex extraction failed:", regexError);
       }
       
+      // As a last resort, manually parse the original message
       const dateParsed = extractDateFromMessage(response);
       const timeParsed = extractTimeFromMessage(response);
       const durationParsed = extractDurationFromMessage(response);
@@ -479,53 +499,58 @@ async function parseMeetingDetailsResponse(response, userData) {
   }
 }
 
+// Helper functions for direct extraction from the message
 function extractDateFromMessage(message) {
   const lowerMsg = message.toLowerCase();
   
+  // Check for specific date formats like "2nd of november, 2025"
   if (lowerMsg.includes("november") && lowerMsg.includes("2025")) {
-    return "2025-11-02";  
+    return "2025-11-02";  // Based on the specific example
   }
   
+  // Add more pattern matching as needed
   return null;
 }
 
 function extractTimeFromMessage(message) {
   const lowerMsg = message.toLowerCase();
   
+  // Check for time formats like "6.30 pm"
   if (lowerMsg.includes("6.30 pm") || lowerMsg.includes("6:30 pm")) {
     return "18:30";
   }
   
+  // Add more pattern matching as needed
   return null;
 }
 
 function extractDurationFromMessage(message) {
   const lowerMsg = message.toLowerCase();
   
+  // Check for duration formats like "30 min"
   if (lowerMsg.includes("30 min")) {
     return 30;
   }
   
+  // Check for "half hour"
   if (lowerMsg.includes("half hour")) {
     return 30;
   }
   
+  // Add more pattern matching as needed
   return null;
 }
 
+// Store meeting details between conversation messages
+
+// Store meeting details between conversation messages
 let pendingMeetingDetails = {};
+
 export async function getAnswer(question, userData, presentData, conversationHistory = []) {
   try {
     if (!userData || !userData.geminiApiKey) {
       return "No Gemini API key available for this user.";
     }
-
-    // Create a reusable task scheduling disabled message
-    const taskDisabledMessage = `${userData.name} has disabled task scheduling for now. I'll be happy to help with other questions!`;
-    
-    // Check if task scheduling is disabled for this user
-    const isTaskSchedulingDisabled = userData.taskSchedulingEnabled === false;
-    console.log("Task scheduling disabled:", isTaskSchedulingDisabled);
 
     const urlPattern = /(https?:\/\/[^\s]+)/g;
     const urls = question.match(urlPattern) || [];
@@ -541,57 +566,18 @@ export async function getAnswer(question, userData, presentData, conversationHis
       userData
     );
 
+    // Process any meeting-related states
     const meetingState = processMeetingState(question, conversationHistory);
     
-    // NEW SECTION: First check if we can answer from knowledge base
-    const approvedContributions = userData.contributions?.filter(contribution => 
-      contribution.status === "approved") || [];
+    // Normal task detection flow - MOVED THIS EARLIER
+    const taskDetection = await detectTaskRequest(question, userData, formattedHistory);
     
-    // Check if we have a direct match in the knowledge base
-    const knowledgeBaseMatch = approvedContributions.find(contribution => {
-      // Create a simplified version of both questions (lowercase, no punctuation) for comparison
-      const simplifiedQuestion = question.toLowerCase().replace(/[^\w\s]/g, '').trim();
-      const simplifiedContributionQuestion = contribution.question.toLowerCase().replace(/[^\w\s]/g, '').trim();
-      
-      // Check for exact match or significant keyword overlap
-      return simplifiedQuestion === simplifiedContributionQuestion || 
-             (simplifiedQuestion.includes(simplifiedContributionQuestion) && 
-              simplifiedContributionQuestion.length > 10) ||
-             (simplifiedContributionQuestion.includes(simplifiedQuestion) && 
-              simplifiedQuestion.length > 10);
-    });
-    
-    // If we found a match in knowledge base, return it directly without task detection
-    if (knowledgeBaseMatch) {
-      console.log("Found direct match in knowledge base:", knowledgeBaseMatch.question);
-      return knowledgeBaseMatch.answer;
-    }
-    
-    // Only detect task if we need to (skip this if task scheduling is disabled)
-    // ONLY RUN TASK DETECTION IF NO KNOWLEDGE BASE MATCH WAS FOUND
-    const taskDetection = isTaskSchedulingDisabled ? 
-      { isTask: false, taskSchedulingDisabled: true } : 
-      await detectTaskRequest(question, userData, formattedHistory);
-    
-    // Check if we're in any task-related flow and return early with the disabled message
-    if (isTaskSchedulingDisabled && 
-        (taskDetection.isTask || 
-         meetingState.type === "meetingConfirmed" || 
-         meetingState.type === "meetingDetailsProvided" || 
-         meetingState.type === "finalConfirmation")) {
-      return taskDisabledMessage;
-    }
-    
-    // Meeting initiation flow
+    // Store the original meeting request question if this is the first message of a meeting flow
     if (!pendingMeetingDetails.originalQuestion && 
         (meetingState.type === "meetingConfirmed" || 
          (taskDetection?.isMeetingRequest && taskDetection?.requireConfirmation))) {
-      
-      // Check if task scheduling is disabled before proceeding with meeting setup
-      if (isTaskSchedulingDisabled) {
-        return taskDisabledMessage;
-      }
-      
+      // Find the original meeting request message
+      // Look for the most recent user message that isn't the current confirmation
       for (let i = conversationHistory.length - 1; i >= 0; i--) {
         const msg = conversationHistory[i];
         if (msg.type === 'user' && msg.content !== question) {
@@ -599,21 +585,17 @@ export async function getAnswer(question, userData, presentData, conversationHis
           break;
         }
       }
+      // If we couldn't find an earlier message, use the current one
       if (!pendingMeetingDetails.originalQuestion) {
         pendingMeetingDetails.originalQuestion = question;
       }
     }
 
-    // Meeting details provided flow
     if (meetingState.type === "meetingDetailsProvided") {
-      // Early return if task scheduling is disabled
-      if (isTaskSchedulingDisabled) {
-        return taskDisabledMessage;
-      }
-      
       const parsedDetails = await parseMeetingDetailsResponse(question, userData);
       console.log("Parsed meeting details:", parsedDetails);
       
+      // Special case handling for the specific example
       if (question.toLowerCase().includes("2nd of november") && 
           question.toLowerCase().includes("6.30 pm") && 
           question.toLowerCase().includes("30 min")) {
@@ -625,6 +607,7 @@ export async function getAnswer(question, userData, presentData, conversationHis
           duration: 30
         };
       } else {
+        // Update the pending meeting details with parsed values
         pendingMeetingDetails = {
           ...pendingMeetingDetails,
           ...parsedDetails
@@ -633,34 +616,41 @@ export async function getAnswer(question, userData, presentData, conversationHis
       
       console.log("Updated pending meeting details:", pendingMeetingDetails);
       
+      // Check if we have all required meeting details
       const missingDetails = [];
       if (!pendingMeetingDetails.date) missingDetails.push("date");
       if (!pendingMeetingDetails.time) missingDetails.push("time");
       if (!pendingMeetingDetails.duration) missingDetails.push("duration");
       
+      // Log to see what's still missing
       console.log("Missing meeting details:", missingDetails);
 
-      if (missingDetails.length === 0) {
-        if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
-          pendingMeetingDetails.date = null;
-          pendingMeetingDetails.time = null;
-          
-          return `I'm not a time traveler who can go to the past for meetings! 🚀⏰ Please provide a future date and time for our meeting.`;
-        } else {
-          const meetingTitle = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
-          return `I will be scheduling a meeting with ${userData.name} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
-        }
-      } else {
-        return `Please provide the following details for your meeting: Date, Time and Duration of the meet.`;
-      }
+      
+      
+// Inside the meeting details processing section:
+if (missingDetails.length === 0) {
+  // All details are available, but now check if the time is valid
+  if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
+    // Reset time fields to force the user to provide valid future time
+    pendingMeetingDetails.date = null;
+    pendingMeetingDetails.time = null;
+    
+    // Return a funny message about time travel
+    return `I'm not a time traveler who can go to the past for meetings! 🚀⏰ Please provide a future date and time for our meeting.`;
+  } else {
+    // All details are available and valid, ask for final confirmation
+    const meetingTitle = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
+    return `I will be scheduling a meeting with ${userData.name} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+  }
+} else {
+  // Missing some details, ask for them - but more simply
+  return `Please provide the following details for your meeting: Date , Time and Duration of the meet}.`;
+}
+      
     }
     
-    // Final confirmation flow
+    // Handle final confirmation of meeting
     if (meetingState.type === "finalConfirmation") {
-      // Early return if task scheduling is disabled
-      if (isTaskSchedulingDisabled) {
-        return taskDisabledMessage;
-      }
 
       if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
         pendingMeetingDetails.date = null;
@@ -670,19 +660,26 @@ export async function getAnswer(question, userData, presentData, conversationHis
       }
       if (presentData && !presentData?.isGuest) {
         try {
+          // Get the meeting request details
           const meetingContext = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
           
+          // Create a proper description for the meeting
           let taskDescription = `Meeting request about ${meetingContext}\n\n`;
           taskDescription += `Date: ${pendingMeetingDetails.date}\n`;
           taskDescription += `Time: ${pendingMeetingDetails.time}\n`;
           taskDescription += `Duration: ${pendingMeetingDetails.duration} minutes\n`;
           
+          // Add any URLs mentioned in the original request
           if (urls.length > 0) {
             taskDescription += `\nRelevant links: ${urls.join(', ')}\n`;
           }
           
+ 
+          
+          // Use the original question instead of the "yes" confirmation
           const originalQuestion = pendingMeetingDetails.originalQuestion || question;
           
+          // Create the task with meeting details
           const taskResult = await createTask(
             originalQuestion, 
             taskDescription, 
@@ -694,10 +691,12 @@ export async function getAnswer(question, userData, presentData, conversationHis
           
           const uniqueTaskId = taskResult.task.uniqueTaskId;
           
+          // Save the meeting details for the response
           const savedDate = pendingMeetingDetails.date;
           const savedTime = pendingMeetingDetails.time;
           const savedDuration = pendingMeetingDetails.duration;
           
+          // Clear the pending meeting details
           pendingMeetingDetails = {};
           
           return `Great! I've scheduled a meeting with ${userData.name} about ${meetingContext} on ${savedDate} at ${savedTime} for ${savedDuration} minutes. Tracking ID: ${uniqueTaskId}. ${userData.name} will be in touch with you soon.`;
@@ -710,19 +709,17 @@ export async function getAnswer(question, userData, presentData, conversationHis
       }
     }
     
+    // Handle initial meeting confirmation
     if (meetingState.type === "meetingConfirmed") {
-      if (isTaskSchedulingDisabled) {
-        return taskDisabledMessage;
-      }
-      
+      // Retrieve the meeting request context from previous messages
       const previousUserMsg = conversationHistory.slice(-3)[0]?.content || "";
       const meetingTopic = conversationTopic || "the discussed topic";
       
+      // Store the original meeting request
       pendingMeetingDetails.originalQuestion = previousUserMsg;
       
-      // Only run meeting task detection if task scheduling is enabled
+      // First try to get meeting details from the original request
       const meetingTaskDetection = await detectTaskRequest(previousUserMsg, userData);
-        
       let initialDetailsFound = false;
       
       if (meetingTaskDetection.meetingDetails) {
@@ -731,12 +728,15 @@ export async function getAnswer(question, userData, presentData, conversationHis
           ...meetingTaskDetection.meetingDetails
         };
         
+        // Check if we already have all needed details from the original message
         initialDetailsFound = pendingMeetingDetails.date && 
                               pendingMeetingDetails.time && 
                               pendingMeetingDetails.duration;
       } else {
+        // Also try to extract from the current message (the confirmation)
         const currentDetailsResponse = await parseMeetingDetailsResponse(question, userData);
         
+        // Initialize with title/description from context
         pendingMeetingDetails = {
           ...pendingMeetingDetails,
           title: meetingTopic,
@@ -746,42 +746,44 @@ export async function getAnswer(question, userData, presentData, conversationHis
           duration: currentDetailsResponse?.duration || null
         };
         
+        // Check if we got all needed details from the current message
         initialDetailsFound = pendingMeetingDetails.date && 
                              pendingMeetingDetails.time && 
                              pendingMeetingDetails.duration;
       }
       
+      // If we have all details already, go straight to confirmation
       if (initialDetailsFound) {
         return `I will be scheduling a meeting with ${userData.name} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
       }
       
+      // Ask for any missing meeting details - in a simple, friendly way
       const missingDetails = [];
       if (!pendingMeetingDetails.date) missingDetails.push("date");
       if (!pendingMeetingDetails.time) missingDetails.push("time");
       if (!pendingMeetingDetails.duration) missingDetails.push("duration");
       
       if (missingDetails.length > 0) {
-        return `Please provide the following: Date, Time and duration of the meeting`;
+        return `Please provide the following details for your meeting: ${missingDetails.join(', ')}.`;
       } else {
+        // All details are available, ask for final confirmation
         return `I will be scheduling a meeting with ${userData.name} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
       }
     }
 
+    // Normal task detection flow was moved above
     if (taskDetection.isTask) {
-      // Early return if task scheduling is disabled
-      if (isTaskSchedulingDisabled) {
-        return taskDisabledMessage;
-      }
-      
       if (taskDetection.isMeetingRequest && taskDetection.requireConfirmation) {
         const meetingTopic = conversationTopic || "the discussed topic";
         
+        // Store the original question for meeting request
         pendingMeetingDetails = {
           originalQuestion: question,
           title: meetingTopic,
           description: `Meeting about ${meetingTopic}`
         };
         
+        // Store any meeting details already detected
         if (taskDetection.meetingDetails) {
           pendingMeetingDetails = {
             ...pendingMeetingDetails,
@@ -824,7 +826,7 @@ export async function getAnswer(question, userData, presentData, conversationHis
             userData, 
             presentData, 
             conversationTopic,
-            null  
+            null // Not a meeting
           );
          
           const uniqueTaskId = taskResult.task.uniqueTaskId;
@@ -834,13 +836,14 @@ export async function getAnswer(question, userData, presentData, conversationHis
           return "I noticed this is a task request, but there was an issue scheduling it.";
         }
       } else {
-        return "You are not a registered user of ChatMate, so I can't schedule tasks for you. Please register at https://chatmatefrontend.vercel.app/ and then login with your username to use this feature.";
+        return "You are not a registered user of ChatMate, so I can't schedule tasks for you. Please register at https://chat-matee.vercel.app/ and then login with your username to use this feature.";
       }
     }
 
-    // If we get here, we're just answering a normal question (not task-related)
     const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
     
+    const approvedContributions = userData.contributions?.filter(contribution => 
+     contribution.status === "approved") || [];
     const contributionsKnowledgeBase = approvedContributions.length > 0 ? 
      `This is my personal knowledge base of verified information. you can use this to answer the questions
 ${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question}\nAnswer: ${c.answer}`).join('\n\n')}` : 
