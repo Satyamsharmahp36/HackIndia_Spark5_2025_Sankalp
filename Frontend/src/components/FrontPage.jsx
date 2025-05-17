@@ -11,6 +11,7 @@ import LoginPage from './LoginPage';
 import ContactUsPage from './ContactUsPage';
 import HowItWorksPage from './HowItWorksPage';
 import PromotionPopup from './PromotionPopup';
+import OrganizationRegistrationPage from './OrganisationRegistration';
 
 function FrontPage() {
   const [activeMascot, setActiveMascot] = useState('default');
@@ -179,6 +180,10 @@ function FrontPage() {
     openModal('signup');
   }, [openModal]);
 
+  const handleRegisterOrg = useCallback(() => {
+    openModal('organization');
+  }, [openModal]);
+
   const y1 = useTransform(scrollYProgress, [0, 1], [0, -100]);
   const y2 = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
@@ -186,7 +191,12 @@ function FrontPage() {
     signup: <SignupPage />,
     login: <LoginPage />,
     contact: <ContactUsPage />,
-    howitworks: <HowItWorksPage />
+    howitworks: <HowItWorksPage />,
+    organization: <OrganizationRegistrationPage onBack={closeModal} onComplete={(data) => {
+      console.log('Organization registration completed:', data);
+      closeModal();
+      // You could add additional logic here like showing a success message
+    }} />
   };
 
   return (
@@ -297,7 +307,7 @@ function FrontPage() {
           
           <motion.div 
             variants={itemVariants}
-            className="flex space-x-4"
+            className="flex flex-wrap justify-center gap-4"
           >
             <motion.button
               onClick={() => openModal('howitworks')}
@@ -314,6 +324,15 @@ function FrontPage() {
               className="px-8 py-3 border border-purple-500 rounded-full text-white font-bold hover:bg-purple-500/20 transition-all duration-300"
             >
               Contact Us
+            </motion.button>
+            <motion.button
+              onClick={handleRegisterOrg}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-3 bg-gradient-to-r from-green-500 to-teal-500 rounded-full text-white font-bold hover:from-green-600 hover:to-teal-600 transition-all duration-300 flex items-center"
+            >
+              <Building2 className="w-5 h-5 mr-2" />
+              Register Organization
             </motion.button>
           </motion.div>
         </motion.div>
@@ -528,6 +547,59 @@ function FrontPage() {
             </div>
           </motion.div>
         </div>
+      </motion.div>
+
+      {/* Organization Registration Section */}
+      <motion.div
+        className="container mx-auto px-4 py-16"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={containerVariants}
+      >
+        <motion.div
+          variants={itemVariants}
+          className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-lg border border-blue-800/50 rounded-xl p-8 max-w-4xl mx-auto"
+        >
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="md:w-1/2">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <Building2 className="w-16 h-16 text-blue-400 mb-4" />
+              </motion.div>
+              <h3 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Register Your Organization</h3>
+              <p className="text-gray-300 mb-6">Set up your company workspace with ChatMate. Manage teams, departments, and leverage AI assistance across your organization.</p>
+              <ul className="space-y-3 mb-6">
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                  <span>Centralized organization management</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                  <span>Department-based access control</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                  <span>SSO integration options</span>
+                </li>
+              </ul>
+            </div>
+            <div className="md:w-1/2 flex justify-center">
+              <motion.button
+                onClick={handleRegisterOrg}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg text-white font-bold hover:from-blue-600 hover:to-purple-600 transition-all duration-300 flex items-center shadow-lg shadow-blue-500/20"
+              >
+                <Building2 className="w-6 h-6 mr-2" />
+                Register Your Organization
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
       </motion.div>
 
       <motion.footer
