@@ -113,6 +113,21 @@ const userSchema = new mongoose.Schema({
     },
     createdAt: { type: Date, default: Date.now }
   }],
+  visitors: [{
+    username: { type: String, required: true },
+    name: { type: String, default: 'Guest' },
+    isVerified: { type: Boolean, default: false },
+    visitCount: { type: Number, default: 1 },
+    lastVisit: { type: Date, default: Date.now },
+    firstVisit: { type: Date, default: Date.now }
+  }],
+  visitorAnalytics: {
+    totalVisits: { type: Number, default: 0 },
+    uniqueVisitors: { type: Number, default: 0 },
+    verifiedVisitors: { type: Number, default: 0 },
+    unverifiedVisitors: { type: Number, default: 0 },
+    lastUpdated: { type: Date, default: Date.now }
+  },
   google: {
     id: { type: String },
     accessToken: { type: String },
@@ -909,6 +924,8 @@ app.get('/verify-user/:identifier', async (req, res) => {
         password: user.password,
         userPrompt:user.userPrompt,
         taskSchedulingEnabled:user.taskSchedulingEnabled,
+        visitors:user.visitors,
+        visitorAnalytics:user.visitorAnalytics,
         google:user.google
       } 
     });
@@ -1992,6 +2009,80 @@ app.get('/user-tasks/:username', async (req, res) => {
       message: 'Server error while fetching tasks',
       error: error.message
     });
+  }
+});
+
+//visitors routes 
+// Track a visitor
+app.post('/track-visitor', async (req, res) => {
+  try {
+    const { profileOwnerUsername, visitorUsername, isVerified, visitorName } = req.body;
+    
+    // Find the profile owner
+    const profileOwner = await User.findOne({ username: profileOwnerUsername });
+    if (!profileOwner) {
+      return res.status(404).json({ message: 'Profile owner not found' });
+    }
+    
+    // Check if visitor already exists
+    const existingVisitor = profileOwner.visitors.find(v => v.username === visitorUsername);
+    
+    if (existingVisitor) {
+      // Update existing visitor
+      existingVisitor.visitCount += 1;
+      existingVisitor.lastVisit = Date.now();
+      existingVisitor.isVerified = isVerified; // Update verification status
+      if (visitorName) existingVisitor.name = visitorName;
+    } else {
+      // Add new visitor
+      profileOwner.visitors.push({
+        username: visitorUsername,
+        name: visitorName || 'Guest',
+        isVerified: isVerified,
+        visitCount: 1,
+        lastVisit: Date.now(),
+        firstVisit: Date.now()
+      });
+      
+      // Increment unique visitors count
+      profileOwner.visitorAnalytics.uniqueVisitors += 1;
+      if (isVerified) {
+        profileOwner.visitorAnalytics.verifiedVisitors += 1;
+      } else {
+        profileOwner.visitorAnalytics.unverifiedVisitors += 1;
+      }
+    }
+    
+    // Increment total visits
+    profileOwner.visitorAnalytics.totalVisits += 1;
+    profileOwner.visitorAnalytics.lastUpdated = Date.now();
+    
+    await profileOwner.save();
+    
+    return res.status(200).json({ message: 'Visitor tracked successfully' });
+  } catch (error) {
+    console.error('Error tracking visitor:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Get visitors data
+app.get('/visitors/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    return res.status(200).json({
+      visitors: user.visitors,
+      analytics: user.visitorAnalytics
+    });
+  } catch (error) {
+    console.error('Error fetching visitors:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 });
 // const PING_SERVICE_URL = process.env.PING_SERVICE_URL;
