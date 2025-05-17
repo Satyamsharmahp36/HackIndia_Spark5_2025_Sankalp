@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import AccessManagement from './AdminComponents/AccessManagement';
+import VisitorAnalytics from './AdminComponents/VisitorAnalytics';
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -15,7 +15,10 @@ import {
   AlertCircle,
   ArrowLeft,
   Lock,
-  ShieldAlert
+  ShieldAlert,
+  Activity,
+  Settings,
+  Users
 } from 'lucide-react';
 import ChatBot from './ChatBot';
 import AdminPanel from './AdminPanel';
@@ -23,7 +26,7 @@ import AdminPanel from './AdminPanel';
 const HomePage = ({ userData, onLogout }) => {
   const { username } = useParams(); 
   const navigate = useNavigate();
-  const [showAccessManagement, setShowAccessManagement] = useState(false);
+  const [showVisitorAnalytics, setShowVisitorAnalytics] = useState(false);
   
   const [profileOwnerData, setProfileOwnerData] = useState(null);
   const [profileOwnerName, setProfileOwnerName] = useState('');
@@ -243,8 +246,35 @@ const HomePage = ({ userData, onLogout }) => {
     return accessList.includes(username);
   };
 
+  const trackVisitor = async () => {
+    try {
+      if (!profileOwnerData?.user?.username) return;
+      
+      const visitorName = presentUserData?.user?.name || presentUserName || 'Guest';
+      const visitorUsername = presentUserData?.user?.username || presentUserName || `guest-${Math.random().toString(36).substring(2, 10)}`;
+      const isVerified = !!(presentUserData && !presentUserData.user?.isGuest);
+      
+      await fetch(
+        `${import.meta.env.VITE_BACKEND}/track-visitor`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            profileOwnerUsername: profileOwnerData.user.username,
+            visitorUsername,
+            visitorName,
+            isVerified
+          })
+        }
+      );
+    } catch (error) {
+      console.error('Error tracking visitor:', error);
+    }
+  };
+
   const handleGetStarted = () => {
     setShowChatBot(true);
+    trackVisitor();
   };
 
   const refetchUserData = async () => {

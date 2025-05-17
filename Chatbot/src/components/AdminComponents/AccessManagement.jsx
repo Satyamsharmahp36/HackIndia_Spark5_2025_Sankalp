@@ -586,6 +586,11 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
       showMessage("error", "An error occurred during group removal");
     }
   };
+  const handleClose = () => {
+    console.log("Close button clicked");
+    onClose();
+  };
+
 
   const showMessage = (type, text) => {
     setMessage({ type, text });
@@ -666,7 +671,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
             Access Management
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-700"
             disabled={isLoading || isActionLoading}
           >
