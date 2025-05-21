@@ -956,8 +956,8 @@ const AdminPanel = ({ userData, onClose }) => {
                 <User className="w-4 h-4" /> User Info
               </motion.button>
             )}
-
-            {task.isMeeting.botActivated ? (
+           {task.isMeeting.status === "completed" &&(
+             task.isMeeting.botActivated ? (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -985,6 +985,7 @@ const AdminPanel = ({ userData, onClose }) => {
                 <Bot className="w-4 h-4" />
                 {creatingBot ? "Creating..." : "Get Bot"}
               </motion.button>
+              )
             )}
           </div>
 
@@ -1390,7 +1391,6 @@ const AdminPanel = ({ userData, onClose }) => {
             <button
               onClick={() => {
                 onClose();
-                onPromptUpdated();
               }}
               className="p-2 text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
               title="Close Panel"
