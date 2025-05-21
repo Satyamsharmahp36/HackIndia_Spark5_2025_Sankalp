@@ -1,4 +1,3 @@
-// Schema/MeetingRecord.js
 const mongoose = require('mongoose');
 
 const meetingRecordSchema = new mongoose.Schema({
