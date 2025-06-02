@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import { UserCheck, Sparkles, Info, ChevronRight } from 'lucide-react';
+import Cookies from 'js-cookie';
+import { useAppContext } from '../Appcontext'
 
 const UserVerificationPage = ({ onUserVerified }) => {
   const [username, setUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+  const { setMain, main } = useAppContext();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,13 +36,17 @@ const UserVerificationPage = ({ onUserVerified }) => {
       const data = await response.json();
       
       if (response.ok) {
-         sessionStorage.setItem('userName', username.trim());
-        sessionStorage.setItem('userData', JSON.stringify(data));
-        sessionStorage.setItem('hasStartedChat', 'true');
+        // Set username in cookies instead of sessionStorage
+        Cookies.set('userName', username.trim());
         
-         onUserVerified(data);
+        // Trigger AppContext refetch
+        setMain(!main);
         
-         navigate(`home/${username.trim()}`);
+        // Call the verification callback
+        onUserVerified(data);
+        
+        // Navigate to the user's home page
+        navigate(`home/${username.trim()}`);
       } else {
         setErrorMessage('User not found. Please try a different username.');
         setTimeout(() => setErrorMessage(''), 3000);

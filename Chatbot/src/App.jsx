@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import Cookies from 'js-cookie';
 import HomePage from './components/HomePage';
 import UserVerificationPage from './components/UserVerificationPage';
+import { useAppContext } from './Appcontext'; // Adjust path as needed
 
 const UserChatRoute = ({ onUserVerified }) => {
   const { username } = useParams();
   const [loading, setLoading] = useState(true);
   const [userExists, setUserExists] = useState(false);
+  const { setMain, main } = useAppContext();
   
   useEffect(() => {
     const fetchUserData = async () => {
@@ -16,11 +19,12 @@ const UserChatRoute = ({ onUserVerified }) => {
         const data = await response.json();
         
         if (response.ok) {
-          sessionStorage.setItem('userName', username);
-          sessionStorage.setItem('userData', JSON.stringify(data));
-          sessionStorage.setItem('hasStartedChat', 'true');
+          // Set username in cookies instead of sessionStorage
+          Cookies.set('userName', username);
           onUserVerified(data);
           setUserExists(true);
+          // Trigger AppContext refetch
+          setMain(!main);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -30,7 +34,7 @@ const UserChatRoute = ({ onUserVerified }) => {
     };
     
     fetchUserData();
-  }, [username]);
+  }, [username, setMain, main]);
   
   if (loading) {
     return (
@@ -51,29 +55,27 @@ const UserChatRoute = ({ onUserVerified }) => {
   return <HomePage />;
 };
 
-const App = () => {
+// Create the main App component that contains routing logic
+const AppContent = () => {
   const [showChat, setShowChat] = useState(false);
   const [userName, setUserName] = useState('');
-  const [userData, setUserData] = useState(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const { userData, setMain, main } = useAppContext();
   
   useEffect(() => {
-    const hasStarted = sessionStorage.getItem('hasStartedChat');
-    const storedUserData = sessionStorage.getItem('userData');
-    const storedUserName = sessionStorage.getItem('userName');
+    // Check if user is already logged in via cookies
+    const cookieUserName = Cookies.get('userName');
     
-    if (hasStarted === 'true' && storedUserData) {
-      setUserData(JSON.parse(storedUserData));
-      if (storedUserName) setUserName(storedUserName);
+    if (cookieUserName && userData) {
+      setUserName(cookieUserName);
       setShowChat(true);
     }
-  }, []);
+  }, [userData]);
   
   const handleGetStarted = (name) => {
     setUserName(name);
     setIsTransitioning(true);
-    sessionStorage.setItem('hasStartedChat', 'true');
-
+    
     setTimeout(() => {
       setShowChat(true);
       setIsTransitioning(false);
@@ -81,21 +83,20 @@ const App = () => {
   };
   
   const handleUserVerified = (verifiedUserData) => {
-    setUserData(verifiedUserData);
     setShowChat(true);
   };
   
   const handleLogout = () => {
-    sessionStorage.removeItem('hasStartedChat');
-    sessionStorage.removeItem('userData');
-    sessionStorage.removeItem('userName');
-    localStorage.removeItem('verifiedUserId');
+    // Clear cookies instead of storage
+    Cookies.remove('userName');
     
     setShowChat(false);
-    setUserData(null);
     setUserName('');
+    // Trigger AppContext refetch to clear data
+    setMain(!main);
   };
-    const TransitionAnimation = () => (
+
+  const TransitionAnimation = () => (
     <motion.div
       key="transition"
       initial={{ opacity: 0 }}
@@ -131,38 +132,45 @@ const App = () => {
   );
   
   return (
+    <div className="min-h-screen bg-gray-900">
+      <AnimatePresence mode="wait">
+        {isTransitioning ? (
+          <TransitionAnimation />
+        ) : (
+          <Routes>            
+            <Route 
+              path="/" 
+              element={
+                <motion.div
+                  key="home-verification"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <UserVerificationPage 
+                    onUserVerified={handleUserVerified}
+                    onGetStarted={handleGetStarted}
+                  />
+                </motion.div>
+              } 
+            />
+            
+            <Route 
+              path="home/:username" 
+              element={<UserChatRoute onUserVerified={handleUserVerified} />} 
+            />
+          </Routes>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Main App component that wraps everything with a single BrowserRouter
+const App = () => {
+  return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-900">
-        <AnimatePresence mode="wait">
-          {isTransitioning ? (
-            <TransitionAnimation />
-          ) : (
-            <Routes>            
-              <Route 
-                path="/" 
-                element={
-                  <motion.div
-                    key="home-verification"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <UserVerificationPage 
-                      onUserVerified={handleUserVerified}
-                      onGetStarted={handleGetStarted}
-                    />
-                  </motion.div>
-                } 
-              />
-              
-              <Route 
-                path="home/:username" 
-                element={<UserChatRoute onUserVerified={handleUserVerified} />} 
-              />
-            </Routes>
-          )}
-        </AnimatePresence>
-      </div>
+      <AppContent />
     </BrowserRouter>
   );
 };

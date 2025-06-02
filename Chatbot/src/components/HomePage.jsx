@@ -3,6 +3,8 @@ import VisitorAnalytics from './AdminComponents/VisitorAnalytics';
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import Cookies from 'js-cookie';
+import { useAppContext } from '../Appcontext'; // Adjust the import path as needed
 import { 
   ArrowRight, 
   Bot, 
@@ -23,9 +25,17 @@ import {
 import ChatBot from './ChatBot';
 import AdminPanel from './AdminPanel';
 
-const HomePage = ({ userData, onLogout }) => {
+const HomePage = ({ onLogout }) => {
   const { username } = useParams(); 
   const navigate = useNavigate();
+  const { 
+    userData, 
+    userName, 
+    presentUserData, 
+    presentUserName: contextPresentUserName,
+    setPer 
+  } = useAppContext();
+  
   const [showVisitorAnalytics, setShowVisitorAnalytics] = useState(false);
   
   const [profileOwnerData, setProfileOwnerData] = useState(null);
@@ -33,7 +43,6 @@ const HomePage = ({ userData, onLogout }) => {
   const [isProfileOwnerLoaded, setIsProfileOwnerLoaded] = useState(false);
   
   const [presentUserName, setPresentUserName] = useState('');
-  const [presentUserData, setPresentUserData] = useState(null);
   const [isPresentUserAuthenticated, setIsPresentUserAuthenticated] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +52,7 @@ const HomePage = ({ userData, onLogout }) => {
   const [showUserNotFoundModal, setShowUserNotFoundModal] = useState(false);
   const [showAccessDeniedModal, setShowAccessDeniedModal] = useState(false);
   
-   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [tempUserData, setTempUserData] = useState(null);
@@ -97,7 +106,7 @@ const HomePage = ({ userData, onLogout }) => {
 
       const data = await response.json();
       if (response.ok) {
-         setTempUserData(data);
+        setTempUserData(data);
         return true;
       }
       return false;
@@ -107,7 +116,7 @@ const HomePage = ({ userData, onLogout }) => {
     }
   };
 
-   const verifyPassword = async (username, password) => {
+  const verifyPassword = async (username, password) => {
     try {
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND}/verify-password`,
@@ -127,24 +136,10 @@ const HomePage = ({ userData, onLogout }) => {
   };
 
   useEffect(() => {
-     const storedAuthStatus = localStorage.getItem('isPresentUserAuthenticated');
-    const storedPresentUserName = localStorage.getItem('presentUserName');
-    const storedPresentUserData = localStorage.getItem('presentUserData');
-    
-    if (storedAuthStatus === 'true' && storedPresentUserName && storedPresentUserData) {
-      setPresentUserName(storedPresentUserName);
-      setPresentUserData(JSON.parse(storedPresentUserData));
+    // Check if user is already authenticated via context
+    if (contextPresentUserName && presentUserData) {
+      setPresentUserName(contextPresentUserName);
       setIsPresentUserAuthenticated(true);
-    } else {
-       const sessionPresentUser = sessionStorage.getItem('presentUserName');
-      if (sessionPresentUser) {
-        setPresentUserName(sessionPresentUser);
-        const sessionPresentUserData = sessionStorage.getItem('presentUserData');
-        if (sessionPresentUserData) {
-          setPresentUserData(JSON.parse(sessionPresentUserData));
-          setIsPresentUserAuthenticated(true);
-        }
-      }
     }
 
     if (username) {
@@ -154,7 +149,7 @@ const HomePage = ({ userData, onLogout }) => {
       setProfileOwnerName(userData.user?.name || '');
       setIsProfileOwnerLoaded(true);
     }
-  }, [username, userData]);
+  }, [username, userData, contextPresentUserName, presentUserData]);
 
   const handlePresentUserSubmit = async (e) => {
     e.preventDefault();
@@ -171,7 +166,6 @@ const HomePage = ({ userData, onLogout }) => {
       const userExists = await fetchPresentUser(presentUserName.trim());
       
       if (userExists) {
-        
         // Check if the user has access permission
         if (checkAccessPermission(presentUserName.trim())) {
           setShowPasswordModal(true);
@@ -191,7 +185,7 @@ const HomePage = ({ userData, onLogout }) => {
     }
   };
 
-   const handlePasswordSubmit = async (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     
     if (!password.trim()) {
@@ -206,13 +200,9 @@ const HomePage = ({ userData, onLogout }) => {
       const isPasswordValid = await verifyPassword(presentUserName.trim(), password.trim());
       
       if (isPasswordValid) {
-        setPresentUserData(tempUserData);
-        sessionStorage.setItem('presentUserName', presentUserName.trim());
-        sessionStorage.setItem('presentUserData', JSON.stringify(tempUserData));
-        
-         localStorage.setItem('presentUserName', presentUserName.trim());
-        localStorage.setItem('presentUserData', JSON.stringify(tempUserData));
-        localStorage.setItem('isPresentUserAuthenticated', 'true');
+        // Set cookie and trigger context update
+        Cookies.set('presentUserName', presentUserName.trim());
+        setPer(prev => !prev); // Trigger context refetch
         
         setIsPresentUserAuthenticated(true);
         setShowPasswordModal(false);
@@ -279,7 +269,7 @@ const HomePage = ({ userData, onLogout }) => {
 
   const refetchUserData = async () => {
     try {
-      const savedUsername = localStorage.getItem('userName') || sessionStorage.getItem('userName');
+      const savedUsername = Cookies.get('userName');
       
       if (!savedUsername) {
         throw new Error('No username found');
@@ -296,9 +286,6 @@ const HomePage = ({ userData, onLogout }) => {
       const data = await response.json();
 
       if (response.ok) {
-        sessionStorage.setItem('presentUserData', JSON.stringify(data));
-        localStorage.setItem('presentUserData', JSON.stringify(data));
-        setPresentUserData(data);
         return data;
       } else {
         throw new Error(data.message || 'Failed to refetch user data');
@@ -319,24 +306,15 @@ const HomePage = ({ userData, onLogout }) => {
     setShowUserNotFoundModal(false);
     setShowPasswordModal(false);
     
-      const guestData = {
-      user: {
-        name: presentUserName.trim(),
-        username: presentUserName.trim(),
-        isGuest: true
-      }
-    };
-    
-    setPresentUserData(guestData);
-    sessionStorage.setItem('presentUserName', presentUserName.trim());
-    sessionStorage.setItem('presentUserData', JSON.stringify(guestData));
+    // Create guest user cookie (this won't trigger context since it's not a real user)
+    // We'll handle guest users locally in this component
     setIsPresentUserAuthenticated(true);
   };
 
   const skipPassword = () => {
     setShowPasswordModal(false);
     
-     setPresentUserName('');
+    setPresentUserName('');
     setErrorMessage('Please enter a two-word name to continue as guest');
     setTimeout(() => setErrorMessage(''), 5000);
   };
@@ -348,11 +326,9 @@ const HomePage = ({ userData, onLogout }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('presentUserName');
-    localStorage.removeItem('presentUserData');
-    localStorage.removeItem('isPresentUserAuthenticated');
-    sessionStorage.removeItem('presentUserName');
-    sessionStorage.removeItem('presentUserData');
+    // Remove cookies to trigger context update
+    Cookies.remove('presentUserName');
+    setPer(prev => !prev); // Trigger context refetch
     
     if (onLogout) {
       onLogout();
@@ -360,7 +336,6 @@ const HomePage = ({ userData, onLogout }) => {
     
     setIsPresentUserAuthenticated(false);
     setShowChatBot(false);
-    setPresentUserData(null);
     setPresentUserName('');
   };
 
@@ -378,9 +353,7 @@ const HomePage = ({ userData, onLogout }) => {
     </button>
   );
 
-  
-
-   const renderPasswordModal = () => (
+  const renderPasswordModal = () => (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -539,7 +512,7 @@ const HomePage = ({ userData, onLogout }) => {
 
   const chatBotView = (
     <div className="h-screen flex items-center justify-center bg-gradient-to-r from-slate-500 to-slate-800 relative">
-       <div className="absolute top-4 left-4 z-50">
+      <div className="absolute top-4 left-4 z-50">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -551,7 +524,7 @@ const HomePage = ({ userData, onLogout }) => {
       </div>
       
       <ChatBot
-        userName={presentUserName} 
+        userName={contextPresentUserName || presentUserName} 
         userData={profileOwnerData}
         onRefetchUserData={refetchUserData}  
         presentUserData={presentUserData}
@@ -567,7 +540,6 @@ const HomePage = ({ userData, onLogout }) => {
         </button>
       </div>
 
-      
       {showAdminPanel && (
         <AdminPanel 
           userData={profileOwnerData}
@@ -610,7 +582,7 @@ const HomePage = ({ userData, onLogout }) => {
         </div>
       </div>
       
-       <div className="absolute top-4 left-4 z-50">
+      <div className="absolute top-4 left-4 z-50">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -759,7 +731,7 @@ const HomePage = ({ userData, onLogout }) => {
                 <Bot className="w-8 h-8 text-white" />
               </motion.div>
               <h2 className="text-xl font-bold">
-                Hello, <span className="text-blue-400">{presentUserData?.user?.name || presentUserName}</span>!
+                Hello, <span className="text-blue-400">{presentUserData?.user?.name || contextPresentUserName || presentUserName}</span>!
               </h2>
               <p className="text-gray-300">
                 Ready to start chatting with{profileOwnerName ? ` ${profileOwnerName}'s` : ""} AI Assistant?
@@ -777,7 +749,7 @@ const HomePage = ({ userData, onLogout }) => {
           )}
         </motion.div>
         
-        {showAdminPanel && (
+{showAdminPanel && (
           <AdminPanel 
             userData={profileOwnerData} 
             onClose={() => setShowAdminPanel(false)} 
@@ -794,14 +766,8 @@ const HomePage = ({ userData, onLogout }) => {
   return showChatBot ? chatBotView : homeView;
 };
 
+// Updated PropTypes - removed userData since it's now from context
 HomePage.propTypes = {
-  userData: PropTypes.shape({
-    user: PropTypes.shape({
-      _id: PropTypes.string,
-      name: PropTypes.string,
-      username: PropTypes.string
-    })
-  }),
   onLogout: PropTypes.func
 };
 
