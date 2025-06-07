@@ -1,8 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Lock, AlertTriangle, Unlock } from 'lucide-react';
+import { useAppContext } from '../../Appcontext';
 
 const AuthenticationScreen = ({ passwordInput, setPasswordInput, checkPassword, error }) => {
+  const { userData } = useAppContext();
+
   return (
     <div className="p-8 space-y-6 flex flex-col items-center overflow-y-auto">
       <motion.div 

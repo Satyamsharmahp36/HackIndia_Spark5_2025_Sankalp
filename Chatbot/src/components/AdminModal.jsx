@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X ,Lock, Unlock} from 'lucide-react';
 import apiService from '../services/apiService';
+import { useAppContext } from '../Appcontext';
 
 import AuthenticationScreen from './AdminComponents/AuthenticationScreen';
 import DataManagementTab from './AdminComponents/DataManagementTab';
@@ -11,7 +12,9 @@ import TabNavigation from './AdminComponents/TabNavigation';
 import NotificationMessage from './AdminComponents/NotificationMessage';
 import LoadingOverlay from './AdminComponents/LoadingOverlay';
 
-const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) => {
+const AdminModal = ({ isOpen, onClose, onPromptUpdated, password }) => {
+  const { userData, refreshUserData } = useAppContext();
+  
   const [passwordInput, setPasswordInput] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [promptContent, setPromptContent] = useState('');
@@ -54,8 +57,8 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
   const checkPassword = () => {
     if (passwordInput === password) {
       setAuthenticated(true);
-      setPromptContent(userData.prompt || '');
-      setResponseStyleContent(userData.userPrompt || '');
+      setPromptContent(userData.user.prompt || '');
+      setResponseStyleContent(userData.user.userPrompt || '');
       loadContributions();
     } else {
       setError('Invalid password');
@@ -67,8 +70,8 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
     setIsLoading(true);
     try {
       const filteredContributions = status 
-        ? userData.contributions.filter(contribution => contribution.status === status)
-        : userData.contributions || [];
+        ? userData.user.contributions.filter(contribution => contribution.status === status)
+        : userData.user.contributions || [];
       
       setContributions(filteredContributions);
     } catch (err) {
@@ -82,7 +85,8 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
   const updatePrompt = async () => {
     setIsLoading(true);
     try {
-      await apiService.updatePrompt(promptContent, sessionStorage.getItem('userName'));
+      await apiService.updatePrompt(promptContent, userData.user.username);
+      await refreshUserData();
       setSuccessMessage('Prompt updated successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
       if (typeof onPromptUpdated === 'function') {
@@ -99,8 +103,8 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
   const updateResponseStyle = async () => {
     setIsLoading(true);
     try {
-      await apiService.updateUserPrompt(responseStyleContent, sessionStorage.getItem('userName'));
-      
+      await apiService.updateUserPrompt(responseStyleContent, userData.user.username);
+      await refreshUserData();
       setSuccessMessage('Response style updated successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
       
@@ -119,7 +123,8 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
     if (window.confirm('Are you sure you want to clear the prompt?')) {
       setIsLoading(true);
       try {
-        await apiService.clearPrompt(sessionStorage.getItem('userName'));
+        await apiService.clearPrompt(userData.user.username);
+        await refreshUserData();
         setPromptContent('');
         setSuccessMessage('Prompt cleared successfully');
         setTimeout(() => setSuccessMessage(''), 3000);
@@ -139,7 +144,8 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
     if (window.confirm('Are you sure you want to clear the response style?')) {
       setIsLoading(true);
       try {
-        await apiService.clearUserPrompt(sessionStorage.getItem('userName'));
+        await apiService.clearUserPrompt(userData.user.username);
+        await refreshUserData();
         setResponseStyleContent('');
         setSuccessMessage('Response style cleared successfully');
         setTimeout(() => setSuccessMessage(''), 3000);
@@ -159,13 +165,14 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
   const updateContributionStatuse = async (id, status) => {
     setIsLoading(true);
     try {
-      await apiService.updateContributionStatus(id, status, sessionStorage.getItem('userName'));
-      if (typeof onPromptUpdated === 'function') {
-        onPromptUpdated();
-      }
+      await apiService.updateContributionStatus(id, status, userData.user.username);
+      await refreshUserData();
       loadContributions(statusFilter);
       setSuccessMessage(`Contribution ${status}`);
       setTimeout(() => setSuccessMessage(''), 3000);
+      if (typeof onPromptUpdated === 'function') {
+        onPromptUpdated();
+      }
     } catch (err) {
       setError('Failed to update contribution');
       setTimeout(() => setError(''), 3000);
@@ -193,16 +200,15 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
   const refreshAllData = async () => {
     setRefreshing(true);
     try {
-      const userId = sessionStorage.getItem('userName');
-      const refreshedData = await apiService.getUserData(userId);
+      await refreshUserData();
       
-      if (refreshedData) {
-        if (refreshedData.prompt) setPromptContent(refreshedData.prompt);
-        if (refreshedData.userPrompt) setResponseStyleContent(refreshedData.userPrompt);
-        if (refreshedData.contributions) {
+      if (userData.user) {
+        if (userData.user.prompt) setPromptContent(userData.user.prompt);
+        if (userData.user.userPrompt) setResponseStyleContent(userData.user.userPrompt);
+        if (userData.user.contributions) {
           const filtered = statusFilter 
-            ? refreshedData.contributions.filter(c => c.status === statusFilter)
-            : refreshedData.contributions;
+            ? userData.user.contributions.filter(c => c.status === statusFilter)
+            : userData.user.contributions;
           setContributions(filtered);
         }
       }
@@ -222,20 +228,21 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password, userData }) =>
   };
   
   useEffect(() => {
-    if (authenticated && userData) {
-      setPromptContent(userData.prompt || '');
-      setResponseStyleContent(userData.userPrompt || '');
+    if (authenticated && userData.user) {
+      setPromptContent(userData.user.prompt || '');
+      console.log("Setting response style content to:", userData.user.userPrompt);
+      setResponseStyleContent(userData.user.userPrompt || '');
       
       if (activeTab === 'contributions') {
         loadContributions(statusFilter);
       }
     }
-  }, [userData, authenticated]);
+  }, [userData.user, authenticated]);
 
   useEffect(() => {
     if (isOpen && authenticated) {
-      setPromptContent(userData.prompt || '');
-      setResponseStyleContent(userData.userPrompt || '');
+      setPromptContent(userData.user.prompt || '');
+      setResponseStyleContent(userData.user.userPrompt || '');
       loadContributions(statusFilter);
     }
   }, [isOpen, authenticated]);

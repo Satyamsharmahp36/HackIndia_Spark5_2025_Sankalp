@@ -4,39 +4,38 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Cookies from 'js-cookie';
 import HomePage from './components/HomePage';
 import UserVerificationPage from './components/UserVerificationPage';
-import { useAppContext } from './Appcontext'; // Adjust path as needed
+import { useAppContext } from './Appcontext';
 
 const UserChatRoute = ({ onUserVerified }) => {
   const { username } = useParams();
   const [loading, setLoading] = useState(true);
   const [userExists, setUserExists] = useState(false);
-  const { setMain, main } = useAppContext();
+  const { setUserName, refreshUserData, isInitialized } = useAppContext();
   
   useEffect(() => {
-    const fetchUserData = async () => {
+    const verifyUser = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_BACKEND}/verify-user/${username}`);
         const data = await response.json();
         
         if (response.ok) {
-          // Set username in cookies instead of sessionStorage
-          Cookies.set('userName', username);
+          setUserName(username); // This will trigger context update
           onUserVerified(data);
           setUserExists(true);
-          // Trigger AppContext refetch
-          setMain(!main);
         }
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error verifying user:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchUserData();
-  }, [username, setMain, main]);
+    if (isInitialized) {
+      verifyUser();
+    }
+  }, [username, setUserName, isInitialized]);
   
-  if (loading) {
+  if (!isInitialized || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-800">
         <motion.div
@@ -55,45 +54,45 @@ const UserChatRoute = ({ onUserVerified }) => {
   return <HomePage />;
 };
 
-// Create the main App component that contains routing logic
 const AppContent = () => {
-  const [showChat, setShowChat] = useState(false);
-  const [userName, setUserName] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const { userData, setMain, main } = useAppContext();
+  const { 
+    userData, 
+    userName,
+    setUserName,
+    refreshUserData,
+    isInitialized 
+  } = useAppContext();
   
   useEffect(() => {
-    // Check if user is already logged in via cookies
-    const cookieUserName = Cookies.get('userName');
-    
-    if (cookieUserName && userData) {
-      setUserName(cookieUserName);
-      setShowChat(true);
-    }
-  }, [userData]);
+    const initializeApp = async () => {
+      if (!isInitialized) return;
+      
+      const cookieUserName = Cookies.get('userName');
+      if (cookieUserName && !userName) {
+        setUserName(cookieUserName);
+      }
+    };
+
+    initializeApp();
+  }, [isInitialized, userName, setUserName]);
   
-  const handleGetStarted = (name) => {
-    setUserName(name);
+  const handleGetStarted = async (name) => {
     setIsTransitioning(true);
+    setUserName(name);
     
     setTimeout(() => {
-      setShowChat(true);
       setIsTransitioning(false);
     }, 1000);
   };
   
-  const handleUserVerified = (verifiedUserData) => {
-    setShowChat(true);
+  const handleUserVerified = async (verifiedUserData) => {
+    await refreshUserData();
   };
   
-  const handleLogout = () => {
-    // Clear cookies instead of storage
+  const handleLogout = async () => {
     Cookies.remove('userName');
-    
-    setShowChat(false);
-    setUserName('');
-    // Trigger AppContext refetch to clear data
-    setMain(!main);
+    setUserName(null);
   };
 
   const TransitionAnimation = () => (
@@ -130,6 +129,18 @@ const AppContent = () => {
       </motion.div>
     </motion.div>
   );
+
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-800">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gray-900">
@@ -166,7 +177,6 @@ const AppContent = () => {
   );
 };
 
-// Main App component that wraps everything with a single BrowserRouter
 const App = () => {
   return (
     <BrowserRouter>

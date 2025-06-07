@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MessageCircle, Clock, Settings, Info, Save, X } from 'lucide-react';
+import { useAppContext } from '../../Appcontext';
 
 const ResponseStyleTab = ({ 
   responseStyleContent, 
@@ -9,6 +10,8 @@ const ResponseStyleTab = ({
   clearResponseStyle,
   isLoading 
 }) => {
+  const { userData, refreshUserData } = useAppContext();
+
   const styleTemplates = [
     { name: "Professional", desc: "Formal, precise responses with authoritative tone" },
     { name: "Friendly", desc: "Casual, warm tone with conversational style" },
@@ -17,6 +20,16 @@ const ResponseStyleTab = ({
     { name: "Creative", desc: "Imaginative responses with metaphors and analogies" },
     { name: "Technical", desc: "Detailed technical explanations with terminology" }
   ];
+
+  const handleUpdate = async () => {
+    await updateResponseStyle();
+    await refreshUserData(); // Refresh context after update
+  };
+
+  const handleClear = async () => {
+    await clearResponseStyle();
+    await refreshUserData(); // Refresh context after clearing
+  };
 
   return (
     <div className="space-y-6">
@@ -69,6 +82,7 @@ const ResponseStyleTab = ({
             onChange={(e) => setResponseStyleContent(e.target.value)}
             className="w-full p-3 bg-gray-800 text-white focus:outline-none focus:ring-1 focus:ring-purple-500 rounded-lg h-48 resize-none font-mono text-sm border border-gray-700"
             placeholder="Define how you want the AI to respond (e.g., funny, precise, strict, etc.)..."
+            disabled={isLoading}
           />
         </div>
       </div>
@@ -77,7 +91,7 @@ const ResponseStyleTab = ({
         <motion.button
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
-          onClick={updateResponseStyle}
+          onClick={handleUpdate}
           disabled={isLoading}
           className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg shadow-lg hover:shadow-purple-500/30 transition-all font-medium flex items-center justify-center"
         >
@@ -88,7 +102,7 @@ const ResponseStyleTab = ({
         <motion.button
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
-          onClick={clearResponseStyle}
+          onClick={handleClear}
           disabled={isLoading}
           className="py-4 px-6 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-lg hover:from-red-700 hover:to-red-600 shadow-lg hover:shadow-red-500/30 transition-all font-medium flex items-center justify-center"
         >

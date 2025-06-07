@@ -6,25 +6,24 @@ import ContributionForm from './ContributionForm';
 import AdminModal from './AdminModal';
 import MessageContent from './MessageContent';
 import languages from '../services/languages'
+import { useAppContext } from '../Appcontext';
 
-const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => {
-  const chatHistoryKey = `${userName || 'anonymous'}_${userData.user.name}`;
+const ChatBot = () => {
+  const { 
+    userData,
+    userName, 
+    presentUserData, 
+    presentUserName,
+    refreshUserData,
+    refreshPresentUserData 
+  } = useAppContext();
 
-  const [messages, setMessages] = useState(() => {
-    const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
-    
-    const userChatHistory = allChatHistories[chatHistoryKey] 
-      ? allChatHistories[chatHistoryKey] 
-      : [
-          {
-            type: 'bot',
-            content: `Hi${userName ? ' ' + userName : ''}! I'm ${userData.user.name} AI assistant. Feel free to ask me about my projects, experience, or skills!`,
-            timestamp: new Date().toISOString()
-          }
-        ];
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [currentUserData, setCurrentUserData] = useState(null);
 
-    return userChatHistory;
-  });
+  const chatHistoryKey = currentUserData?.user?.name ? `${presentUserName || 'anonymous'}_${currentUserData.user.name}` : null;
+
+  const [messages, setMessages] = useState([]);
   
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +33,6 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
   const [lastQuestion, setLastQuestion] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
-  const [currentUserData, setCurrentUserData] = useState(userData);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState({
@@ -77,48 +75,42 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
 `;
 
   useEffect(() => {
-    setCurrentUserData(userData);
-  }, [userData]);
+    const initializeChat = async () => {
+      if (userData?.user) {
+        setCurrentUserData(userData);
+        setIsInitialized(true);
 
-  useEffect(() => {
-    const storedName = sessionStorage.getItem('presentUserName');
-    if (!userName && storedName) {
-      const updatedChatHistoryKey = `${storedName}_${userData.user.name}`;
-      const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
-      
-      if (allChatHistories[updatedChatHistoryKey]) {
-        setMessages(allChatHistories[updatedChatHistoryKey]);
-      } else if (messages.length === 1 && messages[0].type === 'bot') {
-        setMessages([
-          {
-            type: 'bot',
-            content: `Hi ${storedName}! I'm ${userData.user.name}'s AI assistant. Feel free to ask me about my projects, experience, or skills!`,
-            timestamp: new Date().toISOString()
-          }
-        ]);
+        const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
+        const historyKey = `${presentUserName || 'anonymous'}_${userData.user.name}`;
+        
+        const userChatHistory = allChatHistories[historyKey] 
+          ? allChatHistories[historyKey] 
+          : [
+              {
+                type: 'bot',
+                content: `Hi${presentUserName ? ' ' + presentUserName : ''}! I'm ${userData.user.name} AI assistant. Feel free to ask me about my projects, experience, or skills!`,
+                timestamp: new Date().toISOString()
+              }
+            ];
+
+        setMessages(userChatHistory);
       }
-    }
-  }, [userName, userData.user.name]);
+    };
+
+    initializeChat();
+  }, [userData, presentUserName]);
 
   useEffect(() => {
-    const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
+    if (!chatHistoryKey || messages.length === 0) return;
     
-    if (allChatHistories[chatHistoryKey]) {
-      setMessages(allChatHistories[chatHistoryKey]);
-    }
-  }, [chatHistoryKey]);
+    const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
+    allChatHistories[chatHistoryKey] = messages;
+    localStorage.setItem('chatHistories', JSON.stringify(allChatHistories));
+  }, [messages, chatHistoryKey]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
-      allChatHistories[chatHistoryKey] = messages;
-      localStorage.setItem('chatHistories', JSON.stringify(allChatHistories));
-    }
-  }, [messages, chatHistoryKey]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -194,7 +186,7 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
   
         const initialMessage = {
           type: 'bot',
-          content: `Hi${userName ? ' ' + userName : ''}! I'm ${userData.user.name} AI assistant. Feel free to ask me about my projects, experience, or skills!`,
+          content: `Hi${presentUserName ? ' ' + presentUserName : ''}! I'm ${currentUserData.user.name} AI assistant. Feel free to ask me about my projects, experience, or skills!`,
           timestamp: new Date().toISOString()
         };
   
@@ -290,7 +282,7 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
   
       const englishResponse = await getAnswer(
         textForAI, 
-        currentUserData.user, 
+        userData.user,
         presentUserData ? presentUserData.user : null,
         updatedMessages 
       );
@@ -332,14 +324,8 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
 
   const handlePromptUpdated = async () => {
     try {
-      const updatedData = await onRefetchUserData();
-      
-      if (updatedData) {
-        setCurrentUserData(updatedData);
-      }
-      
+      await refreshUserData();
       setPromptUpdated(true);
-      
       setTimeout(() => setPromptUpdated(false), 3000);
     } catch (error) {
       console.error('Error refetching user data:', error);
@@ -348,19 +334,9 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
 
   const handleContriUpdated = async () => {
     try {
-      console.log("Contribution updated, fetching fresh data...");
-      const updatedData = await onRefetchUserData();
-      
-      if (updatedData) {
-        console.log("Fresh data received:", updatedData);
-        setCurrentUserData(updatedData);
-      } else {
-        console.log("No data returned from onRefetchUserData");
-      }
-      
+      await refreshUserData();
       setPromptUpdated(true);
       setTimeout(() => setPromptUpdated(false), 3000);
-      
     } catch (error) {
       console.error('Error refetching user data:', error);
     }
@@ -380,6 +356,20 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
   const toggleLanguageDropdown = () => {
     setShowLanguageDropdown(prev => !prev);
   };
+
+  if (!isInitialized || !currentUserData?.user) {
+    return (
+      <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-900 text-white shadow-2xl overflow-hidden items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        >
+          <Loader2 className="w-8 h-8 text-blue-500" />
+        </motion.div>
+        <p className="mt-4 text-gray-400">Initializing chat...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-900 text-white shadow-2xl overflow-hidden">
@@ -503,7 +493,7 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
                   <User className="w-4 h-4 mr-2 text-blue-300" />
                 )}
                 <div className="text-xs opacity-70">
-                  {message.type === 'bot' ? 'Assistant' : sessionStorage.getItem('presentUserName') || 'You'}
+                  {message.type === 'bot' ? 'Assistant' : presentUserName || 'You'}
                   {message.timestamp && (
                     <span className="ml-2 text-xs opacity-50">
                       {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -678,7 +668,6 @@ const ChatBot = ({ userName, userData, onRefetchUserData, presentUserData }) => 
         onClose={() => setShowSettings(false)}
         onPromptUpdated={handlePromptUpdated}
         password={currentUserData.user.password}
-        userData={currentUserData.user}
       />
 
       <ContributionForm

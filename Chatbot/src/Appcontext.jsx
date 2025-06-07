@@ -5,132 +5,119 @@ const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
-  const [userName, setUserName] = useState(null);
+  const [userName, setUserName] = useState(() => Cookies.get('userName') || null);
   const [main, setMain] = useState(true);
   const [presentUserData, setPresentUserData] = useState(null);
-  const [presentUserName, setPresentUserName] = useState(null);
+  const [presentUserName, setPresentUserName] = useState(() => Cookies.get('presentUserName') || null);
   const [per, setPer] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Helper function to refresh user data
+  const refreshUserData = async () => {
+    try {
+      if (!userName) return null;
+      
+      const response = await fetch(`${import.meta.env.VITE_BACKEND}/verify-user/${userName}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserData(data);
+        return data;
+      } else {
+        console.error(`Failed to refresh user data: ${response.status}`);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+      return null;
+    }
+  };
+
+  // Helper function to refresh present user data
+  const refreshPresentUserData = async () => {
+    try {
+      if (!presentUserName) return null;
+      
+      const response = await fetch(`${import.meta.env.VITE_BACKEND}/verify-user/${presentUserName}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPresentUserData(data);
+        return data;
+      } else {
+        console.error(`Failed to refresh present user data: ${response.status}`);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error refreshing present user data:", error);
+      return null;
+    }
+  };
+
+  // Initial data fetch on mount
   useEffect(() => {
-    const userNameFinal = Cookies.get('userName');
-    if (userNameFinal) {
-      setUserName(userNameFinal);
+    const initializeData = async () => {
+      try {
+        // Fetch both user data and present user data in parallel
+        await Promise.all([
+          userName && refreshUserData(),
+          presentUserName && refreshPresentUserData()
+        ]);
+        
+        setIsInitialized(true);
+      } catch (error) {
+        console.error("Error initializing data:", error);
+        setIsInitialized(true); // Set initialized even on error to prevent infinite loading
+      }
+    };
+
+    initializeData();
+  }, []); // Run only on mount
+
+  // Watch for userName changes
+  useEffect(() => {
+    if (userName) {
+      Cookies.set('userName', userName, { expires: 7 }); // Set cookie to expire in 7 days
+      refreshUserData();
     } else {
+      Cookies.remove('userName');
       setUserData(null);
     }
-  }, [main]);
+  }, [userName]);
 
+  // Watch for presentUserName changes
   useEffect(() => {
-    const userNameFinal = Cookies.get('presentUserName');
-    if (userNameFinal) {
-      setPresentUserName(userNameFinal);
+    if (presentUserName) {
+      Cookies.set('presentUserName', presentUserName, { expires: 7 }); // Set cookie to expire in 7 days
+      refreshPresentUserData();
     } else {
+      Cookies.remove('presentUserName');
       setPresentUserData(null);
     }
-  }, [per]);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!userName) {
-        setUserData(null);
-        return;
-      }
-
-
-      try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND}/verify-user/${userName}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        console.log(response)
-        
-        if (response.ok) {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const userData = await response.json();
-            setUserData(userData);
-          } else {
-            console.error("Server returned non-JSON response");
-            setUserData(null);
-            Cookies.remove('userName');
-          }
-        } else {
-          console.error(`Failed to fetch user data: ${response.status} ${response.statusText}`);
-          setUserData(null);
-          Cookies.remove('userName');
-        }
-      } catch (err) {
-        console.error("Failed to fetch user data", err);
-        setUserData(null);
-        // Clear invalid cookie
-        Cookies.remove('userName');
-      }
-    };
-    
-    if (userName) {
-      fetchUserData(); 
-    }
-  }, [userName, main]);
-
-  useEffect(() => {
-    const fetchPresentUserData = async () => {
-      if (!presentUserName) {
-        setPresentUserData(null);
-        return;
-      }
-
-      try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND}/verify-user/${presentUserName}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-        
-        // Check if response is ok and content-type is JSON
-        if (response.ok) {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const userData = await response.json();
-            setPresentUserData(userData);
-          } else {
-            console.error("Server returned non-JSON response for present user");
-            setPresentUserData(null);
-            Cookies.remove('presentUserName');
-          }
-        } else {
-          console.error(`Failed to fetch present user data: ${response.status} ${response.statusText}`);
-          setPresentUserData(null);
-          Cookies.remove('presentUserName');
-        }
-      } catch (err) {
-        console.error("Failed to fetch present user data", err);
-        setPresentUserData(null);
-        // Clear invalid cookie
-        Cookies.remove('presentUserName');
-      }
-    };
-    
-    // FIX: Use presentUserName instead of userName
-    if (presentUserName) {
-      fetchPresentUserData(); 
-    }
-  }, [presentUserName, per]);
+  }, [presentUserName]);
 
   return (
     <AppContext.Provider
       value={{
         userData,
         userName,
-        main,
-        setMain,
-        per,
-        setPer,
+        setUserName, // Add setter for userName
         presentUserData,
-        presentUserName
+        presentUserName,
+        setPresentUserName, // Add setter for presentUserName
+        refreshUserData,
+        refreshPresentUserData,
+        isInitialized
       }}
     >
       {children}

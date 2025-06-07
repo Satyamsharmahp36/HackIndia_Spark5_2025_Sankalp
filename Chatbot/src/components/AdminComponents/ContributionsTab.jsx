@@ -1,25 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  User, 
-  RefreshCw, 
-  Filter, 
-  ChevronDown, 
-  Clock, 
-  CheckCircle, 
-  XCircle
-} from 'lucide-react';
+import { User, RefreshCw, Filter, ChevronDown, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { useAppContext } from '../../Appcontext';
 
-const ContributionsTab = ({ 
-  contributions, 
-  statusFilter, 
-  sortOrder, 
-  handleFilterChange, 
-  handleSortChange, 
-  updateContributionStatus, 
-  refreshAllData, 
-  refreshing 
+const ContributionsTab = ({
+  contributions,
+  statusFilter,
+  sortOrder,
+  handleFilterChange,
+  handleSortChange,
+  updateContributionStatus,
+  refreshAllData,
+  refreshing
 }) => {
+  const { userData } = useAppContext();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between bg-gray-800 p-4 rounded-lg shadow-md">

@@ -14,9 +14,12 @@ import {
   X,
   Search
 } from 'lucide-react';
+import { useAppContext } from '../../Appcontext';
 import PropTypes from 'prop-types';
 
-const VisitorAnalytics = ({ userData, onClose }) => {
+const VisitorAnalytics = ({ onClose }) => {
+  const { userData } = useAppContext();
+  
   const [visitors, setVisitors] = useState([]);
   const [analytics, setAnalytics] = useState({
     totalVisits: 0,
@@ -32,9 +35,11 @@ const VisitorAnalytics = ({ userData, onClose }) => {
   const [sortOrder, setSortOrder] = useState('desc');
   
   useEffect(() => {
-    if (!userData?.user?.username) return;
+    let isMounted = true;
     
     const fetchVisitors = async () => {
+      if (!userData?.user?.username) return;
+      
       try {
         setIsLoading(true);
         const response = await fetch(
@@ -46,7 +51,9 @@ const VisitorAnalytics = ({ userData, onClose }) => {
         );
         
         const data = await response.json();
-        console.log(data);
+        
+        if (!isMounted) return;
+        
         if (response.ok) {
           setVisitors(data.visitors || []);
           setAnalytics(data.analytics || {
@@ -59,15 +66,22 @@ const VisitorAnalytics = ({ userData, onClose }) => {
           setError(data.message || 'Failed to fetch visitors');
         }
       } catch (error) {
+        if (!isMounted) return;
         console.error('Error fetching visitors:', error);
         setError('Error connecting to server');
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
     
     fetchVisitors();
-  }, [userData]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [userData?.user?.username]);
   
   const formatDate = (dateString) => {
     const options = { 
@@ -384,11 +398,6 @@ const VisitorAnalytics = ({ userData, onClose }) => {
 };
 
 VisitorAnalytics.propTypes = {
-  userData: PropTypes.shape({
-    user: PropTypes.shape({
-      username: PropTypes.string
-    })
-  }),
   onClose: PropTypes.func.isRequired
 };
 

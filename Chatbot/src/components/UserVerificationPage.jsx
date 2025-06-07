@@ -11,7 +11,7 @@ const UserVerificationPage = ({ onUserVerified }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
-  const { setMain, main } = useAppContext();
+  const { refreshUserData } = useAppContext();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,11 +36,11 @@ const UserVerificationPage = ({ onUserVerified }) => {
       const data = await response.json();
       
       if (response.ok) {
-        // Set username in cookies instead of sessionStorage
+        // Set username in cookies
         Cookies.set('userName', username.trim());
         
-        // Trigger AppContext refetch
-        setMain(!main);
+        // Trigger AppContext refetch using the new helper function
+        refreshUserData();
         
         // Call the verification callback
         onUserVerified(data);
