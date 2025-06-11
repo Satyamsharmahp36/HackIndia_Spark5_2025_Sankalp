@@ -360,7 +360,7 @@ const AdminModal = ({ isOpen, onClose, onPromptUpdated, password }) => {
                 
                 {activeTab === 'contributions' && (
                   <ContributionsTab 
-                    contributions={contributions}
+                    contributions={userData?.user?.contributions}
                     statusFilter={statusFilter}
                     sortOrder={sortOrder}
                     handleFilterChange={handleFilterChange}

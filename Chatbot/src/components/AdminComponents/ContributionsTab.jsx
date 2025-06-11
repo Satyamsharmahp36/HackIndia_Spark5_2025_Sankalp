@@ -24,17 +24,6 @@ const ContributionsTab = ({
         </h3>
         
         <div className="flex items-center space-x-3">
-          <motion.button
-            whileHover={{ scale: 0.95 }}
-            whileTap={{ scale: 0.85 }}
-            onClick={refreshAllData}
-            disabled={refreshing}
-            className="flex items-center space-x-1 bg-gray-700 hover:bg-gray-700 text-lg border-gray-700 text-white px-2 py-1 rounded-full transition-colors shadow-lg hover:shadow-blue-500/20"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-          </motion.button>
-          
           <div className="relative group">
             <div className="flex items-center space-x-3 bg-gray-900 rounded-full px-4 py-2 border border-gray-700 hover:border-blue-500 transition-colors cursor-pointer">
               <Filter className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors" />
