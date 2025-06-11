@@ -3,6 +3,8 @@ import VisitorAnalytics from './AdminComponents/VisitorAnalytics';
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import Cookies from 'js-cookie';
+import { useAppContext } from '../Appcontext';
 import { 
   ArrowRight, 
   Bot, 
@@ -23,30 +25,37 @@ import {
 import ChatBot from './ChatBot';
 import AdminPanel from './AdminPanel';
 
-const HomePage = ({ userData, onLogout }) => {
+const HomePage = ({ onLogout }) => {
   const { username } = useParams(); 
   const navigate = useNavigate();
-  const [showVisitorAnalytics, setShowVisitorAnalytics] = useState(false);
+  const { 
+    userData, 
+    userName,
+    setUserName,
+    presentUserData, 
+    presentUserName,
+    setPresentUserName,
+    refreshUserData,
+    refreshPresentUserData,
+    isInitialized
+  } = useAppContext();
   
+  const [showVisitorAnalytics, setShowVisitorAnalytics] = useState(false);
   const [profileOwnerData, setProfileOwnerData] = useState(null);
   const [profileOwnerName, setProfileOwnerName] = useState('');
   const [isProfileOwnerLoaded, setIsProfileOwnerLoaded] = useState(false);
-  
-  const [presentUserName, setPresentUserName] = useState('');
-  const [presentUserData, setPresentUserData] = useState(null);
   const [isPresentUserAuthenticated, setIsPresentUserAuthenticated] = useState(false);
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showChatBot, setShowChatBot] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showUserNotFoundModal, setShowUserNotFoundModal] = useState(false);
   const [showAccessDeniedModal, setShowAccessDeniedModal] = useState(false);
-  
-   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [tempUserData, setTempUserData] = useState(null);
+  const [isUserDataLoaded, setIsUserDataLoaded] = useState(false);
 
   const backgroundBubbles = useMemo(() => {
     return [...Array(20)].map((_, i) => ({
@@ -76,6 +85,8 @@ const HomePage = ({ userData, onLogout }) => {
         setProfileOwnerData(data);
         setProfileOwnerName(data.user?.name || username);
         setIsProfileOwnerLoaded(true);
+        setIsUserDataLoaded(true);
+        await refreshUserData(); // Refresh context after setting local state
         return true;
       }
       return false;
@@ -97,7 +108,8 @@ const HomePage = ({ userData, onLogout }) => {
 
       const data = await response.json();
       if (response.ok) {
-         setTempUserData(data);
+        setTempUserData(data);
+        await refreshPresentUserData(); // Refresh present user data in context
         return true;
       }
       return false;
@@ -107,7 +119,7 @@ const HomePage = ({ userData, onLogout }) => {
     }
   };
 
-   const verifyPassword = async (username, password) => {
+  const verifyPassword = async (username, password) => {
     try {
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND}/verify-password`,
@@ -127,34 +139,29 @@ const HomePage = ({ userData, onLogout }) => {
   };
 
   useEffect(() => {
-     const storedAuthStatus = localStorage.getItem('isPresentUserAuthenticated');
-    const storedPresentUserName = localStorage.getItem('presentUserName');
-    const storedPresentUserData = localStorage.getItem('presentUserData');
-    
-    if (storedAuthStatus === 'true' && storedPresentUserName && storedPresentUserData) {
-      setPresentUserName(storedPresentUserName);
-      setPresentUserData(JSON.parse(storedPresentUserData));
-      setIsPresentUserAuthenticated(true);
-    } else {
-       const sessionPresentUser = sessionStorage.getItem('presentUserName');
-      if (sessionPresentUser) {
-        setPresentUserName(sessionPresentUser);
-        const sessionPresentUserData = sessionStorage.getItem('presentUserData');
-        if (sessionPresentUserData) {
-          setPresentUserData(JSON.parse(sessionPresentUserData));
-          setIsPresentUserAuthenticated(true);
-        }
+    const initializeData = async () => {
+      // Check if user is already authenticated via context
+      if (presentUserName && presentUserData) {
+        setIsPresentUserAuthenticated(true);
       }
-    }
 
-    if (username) {
-      fetchProfileOwner(username);
-    } else if (userData) {
-      setProfileOwnerData(userData);
-      setProfileOwnerName(userData.user?.name || '');
-      setIsProfileOwnerLoaded(true);
-    }
-  }, [username, userData]);
+      if (username) {
+        const success = await fetchProfileOwner(username);
+        if (success) {
+          await refreshUserData(); // Ensure context is updated after successful fetch
+          setIsUserDataLoaded(true);
+        }
+      } else if (userData) {
+        setProfileOwnerData(userData);
+        setProfileOwnerName(userData.user?.name || '');
+        setIsProfileOwnerLoaded(true);
+        setIsUserDataLoaded(true);
+        await refreshUserData(); // Refresh context to ensure it's up to date
+      }
+    };
+
+    initializeData();
+  }, [username, userData?.user?.username, presentUserName]);
 
   const handlePresentUserSubmit = async (e) => {
     e.preventDefault();
@@ -171,7 +178,6 @@ const HomePage = ({ userData, onLogout }) => {
       const userExists = await fetchPresentUser(presentUserName.trim());
       
       if (userExists) {
-        
         // Check if the user has access permission
         if (checkAccessPermission(presentUserName.trim())) {
           setShowPasswordModal(true);
@@ -191,7 +197,7 @@ const HomePage = ({ userData, onLogout }) => {
     }
   };
 
-   const handlePasswordSubmit = async (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     
     if (!password.trim()) {
@@ -206,13 +212,9 @@ const HomePage = ({ userData, onLogout }) => {
       const isPasswordValid = await verifyPassword(presentUserName.trim(), password.trim());
       
       if (isPasswordValid) {
-        setPresentUserData(tempUserData);
-        sessionStorage.setItem('presentUserName', presentUserName.trim());
-        sessionStorage.setItem('presentUserData', JSON.stringify(tempUserData));
-        
-         localStorage.setItem('presentUserName', presentUserName.trim());
-        localStorage.setItem('presentUserData', JSON.stringify(tempUserData));
-        localStorage.setItem('isPresentUserAuthenticated', 'true');
+        // Set cookie and trigger context update
+        Cookies.set('presentUserName', presentUserName.trim());
+        await refreshPresentUserData(); // Wait for context to update
         
         setIsPresentUserAuthenticated(true);
         setShowPasswordModal(false);
@@ -279,30 +281,9 @@ const HomePage = ({ userData, onLogout }) => {
 
   const refetchUserData = async () => {
     try {
-      const savedUsername = localStorage.getItem('userName') || sessionStorage.getItem('userName');
-      
-      if (!savedUsername) {
-        throw new Error('No username found');
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND}/verify-user/${savedUsername}`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        sessionStorage.setItem('presentUserData', JSON.stringify(data));
-        localStorage.setItem('presentUserData', JSON.stringify(data));
-        setPresentUserData(data);
-        return data;
-      } else {
-        throw new Error(data.message || 'Failed to refetch user data');
-      }
+      await refreshUserData(); // Wait for the refresh to complete
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay to ensure state updates
+      return userData; // Return the updated userData
     } catch (error) {
       console.error('Error refetching user data:', error);
       throw error;
@@ -319,24 +300,15 @@ const HomePage = ({ userData, onLogout }) => {
     setShowUserNotFoundModal(false);
     setShowPasswordModal(false);
     
-      const guestData = {
-      user: {
-        name: presentUserName.trim(),
-        username: presentUserName.trim(),
-        isGuest: true
-      }
-    };
-    
-    setPresentUserData(guestData);
-    sessionStorage.setItem('presentUserName', presentUserName.trim());
-    sessionStorage.setItem('presentUserData', JSON.stringify(guestData));
+    // Create guest user cookie (this won't trigger context since it's not a real user)
+    // We'll handle guest users locally in this component
     setIsPresentUserAuthenticated(true);
   };
 
   const skipPassword = () => {
     setShowPasswordModal(false);
     
-     setPresentUserName('');
+    setPresentUserName('');
     setErrorMessage('Please enter a two-word name to continue as guest');
     setTimeout(() => setErrorMessage(''), 5000);
   };
@@ -347,12 +319,10 @@ const HomePage = ({ userData, onLogout }) => {
     setShowAccessDeniedModal(false);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('presentUserName');
-    localStorage.removeItem('presentUserData');
-    localStorage.removeItem('isPresentUserAuthenticated');
-    sessionStorage.removeItem('presentUserName');
-    sessionStorage.removeItem('presentUserData');
+  const handleLogout = async () => {
+    // Remove cookies and refresh context
+    Cookies.remove('presentUserName');
+    await refreshPresentUserData(); // Wait for context to update
     
     if (onLogout) {
       onLogout();
@@ -360,7 +330,6 @@ const HomePage = ({ userData, onLogout }) => {
     
     setIsPresentUserAuthenticated(false);
     setShowChatBot(false);
-    setPresentUserData(null);
     setPresentUserName('');
   };
 
@@ -378,9 +347,7 @@ const HomePage = ({ userData, onLogout }) => {
     </button>
   );
 
-  
-
-   const renderPasswordModal = () => (
+  const renderPasswordModal = () => (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -539,7 +506,7 @@ const HomePage = ({ userData, onLogout }) => {
 
   const chatBotView = (
     <div className="h-screen flex items-center justify-center bg-gradient-to-r from-slate-500 to-slate-800 relative">
-       <div className="absolute top-4 left-4 z-50">
+      <div className="absolute top-4 left-4 z-50">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -550,12 +517,8 @@ const HomePage = ({ userData, onLogout }) => {
         </motion.button>
       </div>
       
-      <ChatBot
-        userName={presentUserName} 
-        userData={profileOwnerData}
-        onRefetchUserData={refetchUserData}  
-        presentUserData={presentUserData}
-      />
+      <ChatBot />
+      
       <div className="absolute top-4 right-4 flex gap-3">
         {renderHomeButton()}
         <button
@@ -567,10 +530,8 @@ const HomePage = ({ userData, onLogout }) => {
         </button>
       </div>
 
-      
       {showAdminPanel && (
         <AdminPanel 
-          userData={profileOwnerData}
           onClose={() => setShowAdminPanel(false)} 
         />
       )}
@@ -610,7 +571,7 @@ const HomePage = ({ userData, onLogout }) => {
         </div>
       </div>
       
-       <div className="absolute top-4 left-4 z-50">
+      <div className="absolute top-4 left-4 z-50">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -779,7 +740,6 @@ const HomePage = ({ userData, onLogout }) => {
         
         {showAdminPanel && (
           <AdminPanel 
-            userData={profileOwnerData} 
             onClose={() => setShowAdminPanel(false)} 
           />
         )}
@@ -791,17 +751,23 @@ const HomePage = ({ userData, onLogout }) => {
     </motion.div>
   );
 
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+        />
+        <p className="ml-4 text-xl">Loading...</p>
+      </div>
+    );
+  }
+
   return showChatBot ? chatBotView : homeView;
 };
 
 HomePage.propTypes = {
-  userData: PropTypes.shape({
-    user: PropTypes.shape({
-      _id: PropTypes.string,
-      name: PropTypes.string,
-      username: PropTypes.string
-    })
-  }),
   onLogout: PropTypes.func
 };
 

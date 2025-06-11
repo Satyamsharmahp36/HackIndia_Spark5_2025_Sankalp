@@ -1,38 +1,41 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import Cookies from 'js-cookie';
 import HomePage from './components/HomePage';
 import UserVerificationPage from './components/UserVerificationPage';
+import { useAppContext } from './Appcontext';
 
 const UserChatRoute = ({ onUserVerified }) => {
   const { username } = useParams();
   const [loading, setLoading] = useState(true);
   const [userExists, setUserExists] = useState(false);
+  const { setUserName, refreshUserData, isInitialized } = useAppContext();
   
   useEffect(() => {
-    const fetchUserData = async () => {
+    const verifyUser = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_BACKEND}/verify-user/${username}`);
         const data = await response.json();
         
         if (response.ok) {
-          sessionStorage.setItem('userName', username);
-          sessionStorage.setItem('userData', JSON.stringify(data));
-          sessionStorage.setItem('hasStartedChat', 'true');
+          setUserName(username); // This will trigger context update
           onUserVerified(data);
           setUserExists(true);
         }
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error verifying user:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchUserData();
-  }, [username]);
+    if (isInitialized) {
+      verifyUser();
+    }
+  }, [username, setUserName, isInitialized]);
   
-  if (loading) {
+  if (!isInitialized || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-800">
         <motion.div
@@ -51,51 +54,48 @@ const UserChatRoute = ({ onUserVerified }) => {
   return <HomePage />;
 };
 
-const App = () => {
-  const [showChat, setShowChat] = useState(false);
-  const [userName, setUserName] = useState('');
-  const [userData, setUserData] = useState(null);
+const AppContent = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const { 
+    userData, 
+    userName,
+    setUserName,
+    refreshUserData,
+    isInitialized 
+  } = useAppContext();
   
   useEffect(() => {
-    const hasStarted = sessionStorage.getItem('hasStartedChat');
-    const storedUserData = sessionStorage.getItem('userData');
-    const storedUserName = sessionStorage.getItem('userName');
-    
-    if (hasStarted === 'true' && storedUserData) {
-      setUserData(JSON.parse(storedUserData));
-      if (storedUserName) setUserName(storedUserName);
-      setShowChat(true);
-    }
-  }, []);
-  
-  const handleGetStarted = (name) => {
-    setUserName(name);
-    setIsTransitioning(true);
-    sessionStorage.setItem('hasStartedChat', 'true');
+    const initializeApp = async () => {
+      if (!isInitialized) return;
+      
+      const cookieUserName = Cookies.get('userName');
+      if (cookieUserName && !userName) {
+        setUserName(cookieUserName);
+      }
+    };
 
+    initializeApp();
+  }, [isInitialized, userName, setUserName]);
+  
+  const handleGetStarted = async (name) => {
+    setIsTransitioning(true);
+    setUserName(name);
+    
     setTimeout(() => {
-      setShowChat(true);
       setIsTransitioning(false);
     }, 1000);
   };
   
-  const handleUserVerified = (verifiedUserData) => {
-    setUserData(verifiedUserData);
-    setShowChat(true);
+  const handleUserVerified = async (verifiedUserData) => {
+    await refreshUserData();
   };
   
-  const handleLogout = () => {
-    sessionStorage.removeItem('hasStartedChat');
-    sessionStorage.removeItem('userData');
-    sessionStorage.removeItem('userName');
-    localStorage.removeItem('verifiedUserId');
-    
-    setShowChat(false);
-    setUserData(null);
-    setUserName('');
+  const handleLogout = async () => {
+    Cookies.remove('userName');
+    setUserName(null);
   };
-    const TransitionAnimation = () => (
+
+  const TransitionAnimation = () => (
     <motion.div
       key="transition"
       initial={{ opacity: 0 }}
@@ -129,40 +129,58 @@ const App = () => {
       </motion.div>
     </motion.div>
   );
+
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-800">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
   
   return (
+    <div className="min-h-screen bg-gray-900">
+      <AnimatePresence mode="wait">
+        {isTransitioning ? (
+          <TransitionAnimation />
+        ) : (
+          <Routes>            
+            <Route 
+              path="/" 
+              element={
+                <motion.div
+                  key="home-verification"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <UserVerificationPage 
+                    onUserVerified={handleUserVerified}
+                    onGetStarted={handleGetStarted}
+                  />
+                </motion.div>
+              } 
+            />
+            
+            <Route 
+              path="home/:username" 
+              element={<UserChatRoute onUserVerified={handleUserVerified} />} 
+            />
+          </Routes>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const App = () => {
+  return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-900">
-        <AnimatePresence mode="wait">
-          {isTransitioning ? (
-            <TransitionAnimation />
-          ) : (
-            <Routes>            
-              <Route 
-                path="/" 
-                element={
-                  <motion.div
-                    key="home-verification"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <UserVerificationPage 
-                      onUserVerified={handleUserVerified}
-                      onGetStarted={handleGetStarted}
-                    />
-                  </motion.div>
-                } 
-              />
-              
-              <Route 
-                path="home/:username" 
-                element={<UserChatRoute onUserVerified={handleUserVerified} />} 
-              />
-            </Routes>
-          )}
-        </AnimatePresence>
-      </div>
+      <AppContent />
     </BrowserRouter>
   );
 };

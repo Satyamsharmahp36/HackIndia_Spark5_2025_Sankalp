@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, Save, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useAppContext } from '../Appcontext';
 
-const DailyWorkflow = ({ userData }) => {
+const DailyWorkflow = ({ onRefresh }) => {
+  const { userData, refreshUserData } = useAppContext();
   const [dailyTasks, setDailyTasks] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -18,6 +20,7 @@ const DailyWorkflow = ({ userData }) => {
     
     setLoading(true);
     try {
+      console.log("Fetching daily tasks for user:", userData.user.username);
       const response = await fetch(`${import.meta.env.VITE_BACKEND}/daily-tasks/${userData.user.username}`);
       
       if (!response.ok) {
@@ -25,6 +28,7 @@ const DailyWorkflow = ({ userData }) => {
       }
       
       const data = await response.json();
+      console.log("Response data:", data);
       setDailyTasks(data.content);
       setLastUpdated(data.lastUpdated);
     } catch (error) {
@@ -57,6 +61,8 @@ const DailyWorkflow = ({ userData }) => {
       
       const data = await response.json();
       setLastUpdated(data.dailyTasks.lastUpdated);
+      await refreshUserData();
+      if (onRefresh) onRefresh();
       toast.success('Daily workflow updated successfully');
     } catch (error) {
       console.error('Error updating daily tasks:', error);

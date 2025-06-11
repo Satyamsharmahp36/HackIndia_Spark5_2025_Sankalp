@@ -40,10 +40,13 @@ import MeetingDetailsPopup from "./AdminComponents/MeetingDetailsPopup";
 import axios from "axios";
 import apiService from "../services/apiService";
 import VisitorAnalytics from "./AdminComponents/VisitorAnalytics";
-import MainTabNavigator from "./AdminComponents/MainTabNavigator"
+import MainTabNavigator from "./AdminComponents/MainTabNavigator";
 import NotificationMessage from "./AdminComponents/NotificationMessage";
+import { useAppContext } from '../Appcontext';
 
-const AdminPanel = ({ userData, onClose }) => {
+const AdminPanel = ({ onClose }) => {
+  const { userData, refreshUserData } = useAppContext();
+
   // Original state management
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
@@ -80,7 +83,6 @@ const AdminPanel = ({ userData, onClose }) => {
   const [successMessage, setSuccessMessage] = useState("");
   const [activeTab, setActiveTab] = useState("prompt");
   const [contributions, setContributions] = useState([]);
-  const [currentUserData, setCurrentUserData] = useState(userData);
   const [promptUpdated, setPromptUpdated] = useState(false);
 
   // New state for UI improvements
@@ -129,6 +131,13 @@ const AdminPanel = ({ userData, onClose }) => {
     setPasswordError("");
   }, []);
 
+  // Add effect to keep tasks in sync with userData
+  useEffect(() => {
+    if (userData?.user?.tasks) {
+      setTasks(userData.user.tasks);
+    }
+  }, [userData?.user?.tasks]);
+
   const handleLogin = () => {
     if (password === userData.user.password) {
       setIsAuthenticated(true);
@@ -144,19 +153,14 @@ const AdminPanel = ({ userData, onClose }) => {
     setTasks(userData.user.tasks);
   };
 
-  const refreshUserData = async () => {
+  const handleRefreshUserData = async () => {
     try {
       setRefreshing(true);
       toast.info("Refreshing user data...");
 
-      const result = await apiService.getUserData(userData.user.username);
-
-      if (result.success && result.data) {
-        setTasks(result.data.user.tasks || []);
-        toast.success("User data refreshed successfully");
-      } else {
-        toast.error("Failed to refresh user data");
-      }
+      await refreshUserData();
+      setTasks(userData.user.tasks || []);
+      toast.success("User data refreshed successfully");
     } catch (error) {
       console.error("Error refreshing user data:", error);
       toast.error("Error refreshing user data");
@@ -428,7 +432,7 @@ const AdminPanel = ({ userData, onClose }) => {
           );
 
           // Refresh user data to show updated bot status
-          await refreshUserData();
+          await handleRefreshUserData();
         } else {
           toast.error(
             response.data?.message || "Failed to create bot assistant"
@@ -1379,7 +1383,7 @@ const AdminPanel = ({ userData, onClose }) => {
           <div className="flex items-center gap-3">
             {renderTaskSchedulingButton()}
             <button
-              onClick={refreshUserData}
+              onClick={handleRefreshUserData}
               disabled={refreshing}
               className="p-2 text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
               title="Refresh Data"
@@ -1558,7 +1562,7 @@ const AdminPanel = ({ userData, onClose }) => {
             )}
 
             {activeView === "workflow" && (
-              <DailyWorkflow userData={userData} onRefresh={refreshUserData} />
+              <DailyWorkflow userData={userData} onRefresh={handleRefreshUserData} />
             )}
 
             {activeView === "access" && showAccessManagement && (
@@ -1614,7 +1618,7 @@ const AdminPanel = ({ userData, onClose }) => {
                 handleFilterChange={handleFilterChange}
                 handleSortChange={handleSortChange}
                 updateContributionStatus={updateContributionStatuse}
-                refreshAllData={refreshUserData}
+                refreshAllData={handleRefreshUserData}
                 refreshing={refreshing}
               />
             )} */}
@@ -1629,10 +1633,10 @@ const AdminPanel = ({ userData, onClose }) => {
             userData={userData}
             onClose={() => {
               handleSelfTaskToggle();
-              refreshUserData();
+              handleRefreshUserData();
             }}
             onSuccess={() => {
-              refreshUserData();
+              handleRefreshUserData();
               setShowSelfTask(false);
             }}
           />
@@ -1675,7 +1679,7 @@ const AdminPanel = ({ userData, onClose }) => {
                   startTime={calendarData.startTime}
                   endTime={calendarData.endTime}
                   userEmails={calendarData.userEmails}
-                  onSuccess={refreshUserData}
+                  onSuccess={handleRefreshUserData}
                 />
               </div>
             </div>
@@ -1721,4 +1725,5 @@ const AdminPanel = ({ userData, onClose }) => {
     </motion.div>
   );
 };
+
 export default AdminPanel;

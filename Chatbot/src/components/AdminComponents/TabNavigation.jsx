@@ -1,7 +1,10 @@
 import React from 'react';
 import { Settings, MessageCircle, User } from 'lucide-react';
+import { useAppContext } from '../../Appcontext';
 
-const TabNavigation = ({ activeTab, setActiveTab, userData }) => {
+const TabNavigation = ({ activeTab, setActiveTab }) => {
+  const { userData } = useAppContext();
+
   return (
     <div className="flex border-b border-gray-700 bg-gray-800 px-4">
       <button
@@ -14,7 +17,7 @@ const TabNavigation = ({ activeTab, setActiveTab, userData }) => {
       >
         <div className="flex items-center space-x-2">
           <Settings className="w-4 h-4" />
-          <span>{userData.name}'s data</span>
+          <span>{userData?.user?.name}'s data</span>
         </div>
       </button>
       <button

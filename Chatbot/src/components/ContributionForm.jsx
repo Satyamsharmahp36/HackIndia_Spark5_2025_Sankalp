@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, X, CheckCircle, AlertTriangle, User, HelpCircle, Loader2, Send, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import apiService from '../services/apiService';
+import { useAppContext } from '../Appcontext';
 
 const ContributionForm = ({ 
   isOpen, 
@@ -9,8 +10,9 @@ const ContributionForm = ({
   lastQuestion,
   onContriUpdated
 }) => {
+  const { userData ,presentUserData,refreshUserData} = useAppContext();
   const [name, setName] = useState(() => {
-    return sessionStorage.getItem('presentUserName') || '';
+    return presentUserData?.user?.username;
   });
   const [question, setQuestion] = useState(lastQuestion || '');
   const [answer, setAnswer] = useState('');
@@ -30,7 +32,8 @@ const ContributionForm = ({
     
     setIsSubmitting(true);
     try {
-      const result = await apiService.submitContribution(name, question, answer, sessionStorage.getItem('userName'));
+      const result = await apiService.submitContribution(name, question, answer, userData?.user?.username);
+      await refreshUserData();
       setSubmitMessage(result.message);
       setSubmitStatus('success');
       setTimeout(() => {
@@ -110,10 +113,10 @@ const ContributionForm = ({
                     onChange={(e) => setName(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-white shadow-inner"
                     placeholder="Enter your name"
-                    disabled={sessionStorage.getItem('presentUserName')}
+                    disabled={presentUserData?.user?.username}
                   />
                 </div>
-                {sessionStorage.getItem('presentUserName') && (
+                {presentUserData?.user?.username && (
                   <p className="text-xs text-gray-400 mt-1 ml-2">Name auto-filled from your homepage entry</p>
                 )}
               </div>
