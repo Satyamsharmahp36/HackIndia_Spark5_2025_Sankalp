@@ -319,5 +319,65 @@ router.post('/login', async (req, res) => {
     }
   });
   
+  // Check if user exists by username and if workspace is integrated (POST, body: { username, workspaceName })
+  router.post('/exists', async (req, res) => {
+    try {
+      const { username, workspaceLink } = req.body;
+      if (!username) {
+        return res.status(400).json({ message: 'username is required' });
+      }
+      const user = await User.findOne({ username });
+      if (!user) {
+        return res.json({ exists: false });
+      }
+      if (!workspaceLink) {
+        // If no workspaceName provided, just return user existence
+        return res.json({ exists: true });
+      }
+      // Check if the workspace is already integrated
+      const alreadyIntegrated = user.integration.some(
+        (integration) => integration.workspacelink === workspaceLink
+      );
+      if (alreadyIntegrated) {
+        return res. json({ exists: true, alreadyIntegrated: true, message: 'already there' });
+      } else {
+        return res.json({ exists: true, alreadyIntegrated: false, message: 'workspace to be registered' });
+      }
+    } catch (error) {
+      return res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
 
+  // Add integration after verifying password
+  router.post('/add-integration', async (req, res) => {
+    try {
+      const { username, password, platform, workspacelink, workspaceName, userid } = req.body;
+      if (!username || !password || !platform || !workspacelink || !workspaceName || !userid) {
+        return res.status(400).json({ message: 'All fields are required' });
+      }
+      const user = await User.findOne({ username });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      if (user.password !== password) {
+        return res.status(401).json({ message: 'Password invalid or incorrect' });
+      }
+      // Check if this integration already exists (by workspacelink)
+      const alreadyIntegrated = user.integration.some(
+        (integration) => integration.workspacelink === workspacelink
+      );
+      if (alreadyIntegrated) {
+        return res.status(409).json({ message: 'Integration already exists for this workspace' });
+      }
+      // Add the integration
+      user.integration.push({ platform, workspacelink, workspaceName, userid });
+      await user.save();
+      return res.status(200).json({ message: 'Integration added successfully', integration: user.integration });
+    } catch (error) {
+      return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+
+  
   module.exports=router;

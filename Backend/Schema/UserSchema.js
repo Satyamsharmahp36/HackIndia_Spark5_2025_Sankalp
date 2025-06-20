@@ -19,6 +19,13 @@ const userSchema = new mongoose.Schema({
       type: [String],
       default: []
     },
+    integration: [{
+      _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+      platform: { type: String, required: true },
+      workspacelink: { type: String, required: true },
+      workspaceName: { type: String, required: true },
+      userid: { type: String, required: true }
+    }],
     accessRestricted: { type: Boolean, default: false },
     dailyTasks: {
       content: { type: String, default: '' },
