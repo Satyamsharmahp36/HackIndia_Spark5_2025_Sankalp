@@ -81,7 +81,7 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
             created: channel.created,
             topic: channel.topic,
             purpose: channel.purpose,
-            creator:purpose.creator
+            creator: channel.purpose.creator
           }))
         }));
         
@@ -145,7 +145,8 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
         {
           channelId: channel.id,
           workspaceLink: workspace.workspacelink,
-          ownerId: channel.creator
+          ownerId: channel.creator,
+          channelName: workspace.name + "-" + channel.name
         }
       );
       
