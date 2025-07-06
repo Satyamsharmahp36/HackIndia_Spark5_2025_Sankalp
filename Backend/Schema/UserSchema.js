@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },  // Username remains unique
     password: { type: String, required: true },
     geminiApiKey: { type: String, required: true },
-    plan: { type: String, enum: ['free', 'pro','meeting'], default: 'free' },
+    plan: { type: String, enum: ['free', 'pro','meeting','chat_slack'], default: 'free' },
     prompt: { type: String, default: '' },
     accessList: { type: [String], default: [] }, 
     groups: [{ 

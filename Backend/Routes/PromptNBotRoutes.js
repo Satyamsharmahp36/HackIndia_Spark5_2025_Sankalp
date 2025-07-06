@@ -221,7 +221,7 @@ router.get('/user-prompt/:userId', async (req, res) => {
   // Create bot for channel with three-tier checking system
   router.post('/create-channel-bot', async (req, res) => {
     try {
-      const { channelId, workspaceLink, ownerId } = req.body;
+      const { channelId, workspaceLink, ownerId,channelName } = req.body;
       
       if (!channelId || !workspaceLink || !ownerId) {
         return res.status(400).json({
@@ -267,7 +267,7 @@ router.get('/user-prompt/:userId', async (req, res) => {
       if (sourceUser) {
         // Create bot using source user's data
         const newBot = new User({
-          name: `Chat Bot - ${channelId}`,
+          name: channelName,
           email: sourceUser.email,
           mobileNo: sourceUser.mobileNo,
           username: channelId,
@@ -321,7 +321,7 @@ router.get('/user-prompt/:userId', async (req, res) => {
       
       // Create bot using chat mate user's data
       const newBot = new User({
-        name: `Chat Bot - ${channelId}`,
+        name: channelName,
         email: chatMateUser.email,
         mobileNo: chatMateUser.mobileNo,
         username: channelId,
