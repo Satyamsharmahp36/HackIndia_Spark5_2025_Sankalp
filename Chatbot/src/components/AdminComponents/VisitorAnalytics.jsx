@@ -71,7 +71,7 @@ const VisitorAnalytics = ({ onClose }) => {
         setError('Error connecting to server');
       } finally {
         if (isMounted) {
-          setIsLoading(false);
+        setIsLoading(false);
         }
       }
     };
