@@ -45,6 +45,7 @@ import TaskControls from "./AdminComponents/TaskControls";
 import AdminPanelOverlays from "./AdminComponents/AdminPanelOverlays";
 import NotificationToast from "./AdminComponents/NotificationToast";
 import useAdminPanelTasks from "./AdminComponents/useAdminPanelTasks";
+import IntegrationDashboard from "./AdminComponents/IntegrationDashboard";
 
 const AdminPanel = ({ onClose }) => {
   const { userData, refreshUserData } = useAppContext();
@@ -72,6 +73,7 @@ const AdminPanel = ({ onClose }) => {
   const [showVisitorAnalytics, setShowVisitorAnalytics] = useState(false);
   const [notification, setNotification] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showIntegrationDashboard, setShowIntegrationDashboard] = useState(false);
 
   // New state for UI improvements
   const [activeView, setActiveView] = useState("tasks"); // 'tasks', 'workflow', 'analytics'
@@ -262,6 +264,10 @@ const AdminPanel = ({ onClose }) => {
 
   const handleSelfTaskToggle = () => {
     setShowSelfTask(!showSelfTask);
+  };
+
+  const handleChatIntegration = () => {
+    setShowIntegrationDashboard(true);
   };
 
   const handleAccessManagementUpdate = async (updatedData) => {
@@ -674,6 +680,7 @@ const AdminPanel = ({ onClose }) => {
             userData={userData}
             handleSelfTaskToggle={handleSelfTaskToggle}
             setShowCalendarScheduler={setShowCalendarScheduler}
+            handleChatIntegration={handleChatIntegration}
           />
 
           {/* Content Area */}
@@ -795,6 +802,13 @@ const AdminPanel = ({ onClose }) => {
         showMeetingDetailsPopup={showMeetingDetailsPopup}
         selectedMeeting={selectedMeeting}
         setShowMeetingDetailsPopup={setShowMeetingDetailsPopup}
+      />
+
+      {/* Integration Dashboard */}
+      <IntegrationDashboard
+        isOpen={showIntegrationDashboard}
+        onClose={() => setShowIntegrationDashboard(false)}
+        userData={userData}
       />
 
       {/* Notifications */}
