@@ -30,7 +30,7 @@ const HomePage = ({ onLogout }) => {
   const navigate = useNavigate();
   const { 
     userData, 
-    userName,
+    userName, 
     setUserName,
     presentUserData, 
     presentUserName,
@@ -140,24 +140,24 @@ const HomePage = ({ onLogout }) => {
 
   useEffect(() => {
     const initializeData = async () => {
-      // Check if user is already authenticated via context
+    // Check if user is already authenticated via context
       if (presentUserName && presentUserData) {
-        setIsPresentUserAuthenticated(true);
-      }
+      setIsPresentUserAuthenticated(true);
+    }
 
-      if (username) {
+    if (username) {
         const success = await fetchProfileOwner(username);
         if (success) {
           await refreshUserData(); // Ensure context is updated after successful fetch
           setIsUserDataLoaded(true);
         }
-      } else if (userData) {
-        setProfileOwnerData(userData);
-        setProfileOwnerName(userData.user?.name || '');
-        setIsProfileOwnerLoaded(true);
+    } else if (userData) {
+      setProfileOwnerData(userData);
+      setProfileOwnerName(userData.user?.name || '');
+      setIsProfileOwnerLoaded(true);
         setIsUserDataLoaded(true);
         await refreshUserData(); // Refresh context to ensure it's up to date
-      }
+    }
     };
 
     initializeData();
@@ -738,7 +738,7 @@ const HomePage = ({ onLogout }) => {
           )}
         </motion.div>
         
-        {showAdminPanel && (
+{showAdminPanel && (
           <AdminPanel 
             onClose={() => setShowAdminPanel(false)} 
           />

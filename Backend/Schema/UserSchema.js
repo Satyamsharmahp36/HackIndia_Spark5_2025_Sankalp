@@ -23,13 +23,19 @@ const userSchema = new mongoose.Schema({
       _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
       platform: { type: String, required: true },
       workspacelink: { type: String, required: true },
+      workspaceBackendLink: { type: String, required: true },
       workspaceName: { type: String, required: true },
-      userid: { type: String, required: true }
+      userid: { type: String, required: true },
+      isOwner: {type:Boolean , required :true},
     }],
     accessRestricted: { type: Boolean, default: false },
     dailyTasks: {
       content: { type: String, default: '' },
       lastUpdated: { type: Date, default: Date.now }
+    },
+    isChatbot: {
+      workspaceLink: { type: String },
+      baseLink: { type: String }
     },
     contributions: [{
       name: String,

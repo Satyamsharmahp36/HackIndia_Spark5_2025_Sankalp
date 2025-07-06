@@ -8,10 +8,11 @@ import {
   Activity,
   Settings,
   MessageCircle,
-  Users
+  Users,
+  Slack
 } from "lucide-react";
 
-const MainTabNavigator = ({ activeView, handleTabChange, userData ,handleSelfTaskToggle,setShowCalendarScheduler}) => {
+const MainTabNavigator = ({ activeView, handleTabChange, userData, handleSelfTaskToggle, setShowCalendarScheduler, handleChatIntegration }) => {
   return (
     <div className="md:w-64 bg-gray-900 p-4 flex-shrink-0 border-r border-gray-700">
       <nav>
@@ -123,6 +124,13 @@ const MainTabNavigator = ({ activeView, handleTabChange, userData ,handleSelfTas
           >
             <Calendar className="w-4 h-4" />
             Schedule Meeting
+          </button>
+          <button
+            onClick={handleChatIntegration}
+            className="w-full px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 text-sm"
+          >
+            <Slack className="w-4 h-4" />
+            Chat Integration
           </button>
         </div>
       </div>
