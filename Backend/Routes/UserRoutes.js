@@ -379,5 +379,98 @@ router.post('/login', async (req, res) => {
     }
   });
 
+  router.get('/integrations/:username', async (req, res) => {
+    try {
+      const { username } = req.params;
+      const { platform } = req.query; // Optional platform filter
+
+      if (!username) {
+        return res.status(400).json({ message: 'Username is required' });
+      }
+
+      const user = await User.findOne({ username });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Filter integrations by platform if specified
+      let integrations = user.integration;
+      if (platform) {
+        integrations = integrations.filter(integration => integration.platform === platform);
+      }
+
+      // Fetch channels for each integration
+      const integrationsWithChannels = await Promise.all(
+        integrations.map(async (integration) => {
+          try {
+            // Construct the API URL to fetch channels
+            const channelsUrl = `${integration.workspaceBackendLink}channels?userId=${integration.userid}`;
+
+            // Fetch channels from the workspace backend using axios
+            const response = await axios.get(channelsUrl);
+
+            if (response.status !== 200) {
+              console.error(`Failed to fetch channels for ${integration.workspaceName}: ${response.status} ${response.statusText}`);
+              return {
+                _id: integration._id,
+                platform: integration.platform,
+                workspacelink: integration.workspacelink,
+                workspaceBackendLink: integration.workspaceBackendLink,
+                workspaceName: integration.workspaceName,
+                userid: integration.userid,
+                channels: [],
+                channelCount: 0,
+                error: `Failed to fetch channels: ${response.status} ${response.statusText}`
+              };
+            }
+
+            const channelsData = response.data;
+            const channels = channelsData.channels || [];
+
+            return {
+              _id: integration._id,
+              platform: integration.platform,
+              workspacelink: integration.workspacelink,
+              workspaceBackendLink: integration.workspaceBackendLink,
+              workspaceName: integration.workspaceName,
+              userid: integration.userid,
+              channels: channels,
+              channelCount: channels.length
+            };
+          } catch (error) {
+            console.error(`Error fetching channels for ${integration.workspaceName}:`, error);
+            console.error(`URL attempted: ${integration.workspaceBackendLink}channels?userId=${integration.userid}`);
+            console.error(`Error details:`, error.response?.data || error.message);
+            return {
+              _id: integration._id,
+              platform: integration.platform,
+              workspacelink: integration.workspacelink,
+              workspaceBackendLink: integration.workspaceBackendLink,
+              workspaceName: integration.workspaceName,
+              userid: integration.userid,
+              channels: [],
+              channelCount: 0,
+              error: `Error fetching channels: ${error.response?.data?.message || error.message}`
+            };
+          }
+        })
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'Integration details fetched successfully',
+        data: integrationsWithChannels,
+        totalIntegrations: integrationsWithChannels.length,
+        totalChannels: integrationsWithChannels.reduce((sum, integration) => sum + integration.channelCount, 0)
+      });
+
+    } catch (error) {
+      console.error('Error fetching integration details:', error);
+      return res.status(500).json({ 
+        message: 'Server error', 
+        error: error.message 
+      });
+    }
+  });
   
   module.exports=router;
