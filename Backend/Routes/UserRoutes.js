@@ -341,7 +341,7 @@ router.post('/login', async (req, res) => {
       if (alreadyIntegrated) {
         return res. json({ exists: true, alreadyIntegrated: true, message: 'already there' });
       } else {
-        return res.json({ exists: true, alreadyIntegrated: false, message: 'workspace to be registered' });
+        return res.json({ exists: true, alreadyIntegrated: false, message: 'workspace to be registered',email:user.email });
       }
     } catch (error) {
       return res.status(500).json({ message: "Server error", error: error.message });
@@ -351,31 +351,30 @@ router.post('/login', async (req, res) => {
   // Add integration after verifying password
   router.post('/add-integration', async (req, res) => {
     try {
-      const { username, password, platform, workspacelink, workspaceName, userid } = req.body;
-      if (!username || !password || !platform || !workspacelink || !workspaceName || !userid) {
-        return res.status(400).json({ message: 'All fields are required' });
+      const { username, platform, workspacelink, workspaceName, userid } = req.body;
+      if (!username || !platform || !workspacelink || !workspaceName || !userid) {
+        return res.status(400).json({ success: false, message: 'All fields are required' });
       }
       const user = await User.findOne({ username });
       if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+        return res.status(404).json({ success: false, message: 'User not found' });
       }
-      
-      if (user.password !== password) {
-        return res.status(401).json({ message: 'Password invalid or incorrect' });
-      }
+      // if (user.password !== password) {
+      //   return res.status(401).json({ success: false, message: 'Password invalid or incorrect' });
+      // }
       // Check if this integration already exists (by workspacelink)
       const alreadyIntegrated = user.integration.some(
         (integration) => integration.workspacelink === workspacelink
       );
       if (alreadyIntegrated) {
-        return res.status(409).json({ message: 'Integration already exists for this workspace' });
+        return res.status(409).json({ success: false, message: 'Integration already exists for this workspace' });
       }
       // Add the integration
       user.integration.push({ platform, workspacelink, workspaceName, userid });
       await user.save();
-      return res.status(200).json({ message: 'Integration added successfully', integration: user.integration });
+      return res.status(200).json({ success: true, message: 'Integration added successfully', integration: user.integration });
     } catch (error) {
-      return res.status(500).json({ message: 'Server error', error: error.message });
+      return res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
   });
 
