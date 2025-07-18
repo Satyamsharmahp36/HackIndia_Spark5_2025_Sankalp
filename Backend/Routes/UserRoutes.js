@@ -342,7 +342,7 @@ router.post('/login', async (req, res) => {
       if (alreadyIntegrated) {
         return res. json({ exists: true, alreadyIntegrated: true, message: 'already there' });
       } else {
-        return res.json({ exists: true, alreadyIntegrated: false, message: 'workspace to be registered' });
+        return res.json({ exists: true, alreadyIntegrated: false, message: 'workspace to be registered',email:user.email });
       }
     } catch (error) {
       return res.status(500).json({ message: "Server error", error: error.message });
@@ -352,65 +352,63 @@ router.post('/login', async (req, res) => {
   // Add integration after verifying password
   router.post('/add-integration', async (req, res) => {
     try {
-      const { username, password, platform, workspacelink, workspaceBackendLink, workspaceName, userid } = req.body;
-      if (!username || !password || !platform || !workspacelink || !workspaceBackendLink || !workspaceName || !userid) {
-        return res.status(400).json({ message: 'All fields are required' });
+      const { username, platform, workspacelink, workspaceName, userid } = req.body;
+      if (!username || !platform || !workspacelink || !workspaceName || !userid) {
+        return res.status(400).json({ success: false, message: 'All fields are required' });
       }
       const user = await User.findOne({ username });
       if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+        return res.status(404).json({ success: false, message: 'User not found' });
       }
-      
-      if (user.password !== password) {
-        return res.status(401).json({ message: 'Password invalid or incorrect' });
-      }
+      // if (user.password !== password) {
+      //   return res.status(401).json({ success: false, message: 'Password invalid or incorrect' });
+      // }
       // Check if this integration already exists (by workspacelink)
       const alreadyIntegrated = user.integration.some(
         (integration) => integration.workspacelink === workspacelink
       );
       if (alreadyIntegrated) {
-        return res.status(409).json({ message: 'Integration already exists for this workspace' });
+        return res.status(409).json({ success: false, message: 'Integration already exists for this workspace' });
       }
       // Add the integration
       user.integration.push({ platform, workspacelink, workspaceName, userid , workspaceBackendLink});
       await user.save();
-      return res.status(200).json({ message: 'Integration added successfully', integration: user.integration });
+      return res.status(200).json({ success: true, message: 'Integration added successfully', integration: user.integration });
     } catch (error) {
-      return res.status(500).json({ message: 'Server error', error: error.message });
+      return res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
   });
 
-  // Fetch integration details with channels for a user
   router.get('/integrations/:username', async (req, res) => {
     try {
       const { username } = req.params;
       const { platform } = req.query; // Optional platform filter
-      
+
       if (!username) {
         return res.status(400).json({ message: 'Username is required' });
       }
-      
+
       const user = await User.findOne({ username });
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
-      
+
       // Filter integrations by platform if specified
       let integrations = user.integration;
       if (platform) {
         integrations = integrations.filter(integration => integration.platform === platform);
       }
-      
+
       // Fetch channels for each integration
       const integrationsWithChannels = await Promise.all(
         integrations.map(async (integration) => {
           try {
             // Construct the API URL to fetch channels
             const channelsUrl = `${integration.workspaceBackendLink}channels?userId=${integration.userid}`;
-            
+
             // Fetch channels from the workspace backend using axios
             const response = await axios.get(channelsUrl);
-            
+
             if (response.status !== 200) {
               console.error(`Failed to fetch channels for ${integration.workspaceName}: ${response.status} ${response.statusText}`);
               return {
@@ -425,10 +423,10 @@ router.post('/login', async (req, res) => {
                 error: `Failed to fetch channels: ${response.status} ${response.statusText}`
               };
             }
-            
+
             const channelsData = response.data;
             const channels = channelsData.channels || [];
-            
+
             return {
               _id: integration._id,
               platform: integration.platform,
@@ -457,7 +455,7 @@ router.post('/login', async (req, res) => {
           }
         })
       );
-      
+
       return res.status(200).json({
         success: true,
         message: 'Integration details fetched successfully',
@@ -465,7 +463,7 @@ router.post('/login', async (req, res) => {
         totalIntegrations: integrationsWithChannels.length,
         totalChannels: integrationsWithChannels.reduce((sum, integration) => sum + integration.channelCount, 0)
       });
-      
+
     } catch (error) {
       console.error('Error fetching integration details:', error);
       return res.status(500).json({ 
@@ -474,6 +472,5 @@ router.post('/login', async (req, res) => {
       });
     }
   });
-
   
   module.exports=router;
