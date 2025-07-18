@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from 'react-toastify';
+import ChunkedAiProcessor from './ChunkedAiProcessor';
 
 async function detectTaskRequest(question, userData, conversationContext = "") {
   try {
@@ -625,33 +626,29 @@ export async function getAnswer(question, userData, presentData, conversationHis
       // Log to see what's still missing
       console.log("Missing meeting details:", missingDetails);
 
-      
-      
-// Inside the meeting details processing section:
-if (missingDetails.length === 0) {
-  // All details are available, but now check if the time is valid
-  if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
-    // Reset time fields to force the user to provide valid future time
-    pendingMeetingDetails.date = null;
-    pendingMeetingDetails.time = null;
-    
-    // Return a funny message about time travel
-    return `I'm not a time traveler who can go to the past for meetings! 🚀⏰ Please provide a future date and time for our meeting.`;
-  } else {
-    // All details are available and valid, ask for final confirmation
-    const meetingTitle = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
-    return `I will be scheduling a meeting with ${userData.name} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
-  }
-} else {
-  // Missing some details, ask for them - but more simply
-  return `Please provide the following details for your meeting: Date , Time and Duration of the meet}.`;
-}
-      
+      // Inside the meeting details processing section:
+      if (missingDetails.length === 0) {
+        // All details are available, but now check if the time is valid
+        if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
+          // Reset time fields to force the user to provide valid future time
+          pendingMeetingDetails.date = null;
+          pendingMeetingDetails.time = null;
+          
+          // Return a funny message about time travel
+          return `I'm not a time traveler who can go to the past for meetings! 🚀⏰ Please provide a future date and time for our meeting.`;
+        } else {
+          // All details are available and valid, ask for final confirmation
+          const meetingTitle = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
+          return `I will be scheduling a meeting with ${userData.name} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+        }
+      } else {
+        // Missing some details, ask for them - but more simply
+        return `Please provide the following details for your meeting: Date , Time and Duration of the meet}.`;
+      }
     }
     
     // Handle final confirmation of meeting
     if (meetingState.type === "finalConfirmation") {
-
       if (isTimeInPast(pendingMeetingDetails.date, pendingMeetingDetails.time)) {
         pendingMeetingDetails.date = null;
         pendingMeetingDetails.time = null;
@@ -673,8 +670,6 @@ if (missingDetails.length === 0) {
           if (urls.length > 0) {
             taskDescription += `\nRelevant links: ${urls.join(', ')}\n`;
           }
-          
- 
           
           // Use the original question instead of the "yes" confirmation
           const originalQuestion = pendingMeetingDetails.originalQuestion || question;
@@ -840,26 +835,75 @@ if (missingDetails.length === 0) {
       }
     }
 
+    // MAIN AI PROCESSING LOGIC WITH CHUNKING SYSTEM
     const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
     
+    // Prepare approved contributions knowledge base
     const approvedContributions = userData.contributions?.filter(contribution => 
-     contribution.status === "approved") || [];
+      contribution.status === "approved") || [];
+    
     const contributionsKnowledgeBase = approvedContributions.length > 0 ? 
-     `This is my personal knowledge base of verified information. you can use this to answer the questions
-${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question}\nAnswer: ${c.answer}`).join('\n\n')}` : 
-     'No specific approved contributions yet.';
-   
-    const prompt = `
-You are ${userData.name}'s personal AI assistant. Answer based on the following details. Also answer the question's in person like instead of AI the ${userData.name} is answering questions.
-If a you don't have data for any information say "I don't have that information. If you have answers to this, please contribute."
+      `This is my personal knowledge base of verified information. You can use this to answer the questions:\n\n${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question}\nAnswer: ${c.answer}`).join('\n\n')}` : 
+      'No specific approved contributions yet.';
+
+    // Prepare full knowledge base including user data
+    const fullKnowledgeBase = `
+USER DATA:
+Name: ${userData.name}
+Context: ${userData.prompt || 'No specific context provided'}
+Daily Tasks: ${userData.dailyTasks?.content || 'No daily tasks set'}
+Response Style: ${userData.userPrompt || 'Answer in a detailed and helpful manner'}
+
+CONTRIBUTIONS KNOWLEDGE BASE:
+${contributionsKnowledgeBase}
+
+CONVERSATION CONTEXT:
+${conversationHistory.length > 0 ? 'Recent conversation history:\n' + formattedHistory : 'No previous conversation'}
+${conversationTopic ? `\nCurrent conversation topic: ${conversationTopic}` : ''}
+`;
+
+    // Check if we need to use chunking based on knowledge base size
+    const knowledgeBaseLines = fullKnowledgeBase.split('\n').length;
+    const shouldUseChunking = knowledgeBaseLines > 500; // 500 lines threshold
+    
+    console.log(`Knowledge base size: ${knowledgeBaseLines} lines. Using chunking: ${shouldUseChunking}`);
+
+    if (shouldUseChunking) {
+      console.log("Using chunked processing for large knowledge base...");
+      
+      // Initialize the chunked processor
+      const chunkedProcessor = new ChunkedAiProcessor(userData, 500); // 500 lines per chunk
+      
+      // Build context for chunked processing
+      const chunkingContext = `
+        You are answering as ${userData.name}, not as an AI assistant.
+        Current question: "${question}"
+        ${conversationTopic ? `Conversation topic: ${conversationTopic}` : ''}
+        ${conversationHistory.length > 0 ? 'This is a follow-up question in an ongoing conversation.' : ''}
+      `;
+      
+      // Use chunked processing for large knowledge base
+      const response = await chunkedProcessor.processLargeKnowledgeBase(
+        question, 
+        fullKnowledgeBase, 
+        chunkingContext
+      );
+      
+      return response;
+    } else {
+      // Use normal processing for smaller knowledge bases
+      console.log("Using normal processing for standard knowledge base...");
+      
+      const prompt = `
+You are ${userData.name}'s personal AI assistant. Answer based on the following details. Also answer the questions in person like instead of AI the ${userData.name} is answering questions.
+If you don't have data for any information say "I don't have that information. If you have answers to this, please contribute."
 Answer questions in a bit elaborate manner and can also add funny things if needed.
-Also note if question is like :- Do you know abotu this cors issue in deployment , then it mean's this question is asked from ${userData.name} , not from AI , so answers on the bases of ${userData.name}
-data not by the AI's knowledge . 
+Also note if question is like :- Do you know about this cors issue in deployment, then it means this question is asked from ${userData.name}, not from AI, so answer based on ${userData.name}'s data not by the AI's knowledge.
 
 Here's ${userData.name}'s latest data:
 ${userData.prompt || 'No specific context provided'}
 
-And this is daily task of user ${userData.dailyTasks.content}
+Daily tasks: ${userData.dailyTasks?.content || 'No daily tasks set'}
 
 ${conversationHistory.length > 0 ? 'RECENT CONVERSATION HISTORY:\n' + formattedHistory + '\n\n' : ''}
 
@@ -867,26 +911,28 @@ ${conversationTopic ? `Current conversation topic: ${conversationTopic}\n\n` : '
 
 Current question: ${question}
 
+KNOWLEDGE BASE:
 ${contributionsKnowledgeBase}
 
 When providing links, give plain URLs like https://github.com/xxxx/
 
-This is the way I want the responses to be ${userData.userPrompt}
+Response style preferences: ${userData.userPrompt || 'Answer in a detailed and helpful manner'}
 
 IMPORTANT: Maintain context from the conversation history when answering follow-up questions. If the question seems like a follow-up to previous messages, make sure your response builds on the earlier conversation.
 `;
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      generationConfig: {
-        maxOutputTokens: 512,
-        temperature: 0.8,
-      },
-    });
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        generationConfig: {
+          maxOutputTokens: 512,
+          temperature: 0.8,
+        },
+      });
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    }
    
   } catch (error) {
     console.error("Error generating answer:", error);
