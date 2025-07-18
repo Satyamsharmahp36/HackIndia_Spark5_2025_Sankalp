@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },  // Username remains unique
     password: { type: String, required: true },
     geminiApiKey: { type: String, required: true },
-    plan: { type: String, enum: ['free', 'pro','meeting'], default: 'free' },
+    plan: { type: String, enum: ['free', 'pro','meeting','chat_slack'], default: 'free' },
     prompt: { type: String, default: '' },
     accessList: { type: [String], default: [] }, 
     groups: [{ 
@@ -23,13 +23,19 @@ const userSchema = new mongoose.Schema({
       _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
       platform: { type: String, required: true },
       workspacelink: { type: String, required: true },
+      workspaceBackendLink: { type: String, required: true },
       workspaceName: { type: String, required: true },
-      userid: { type: String, required: true }
+      userid: { type: String, required: true },
+      isOwner: {type:Boolean , required :true},
     }],
     accessRestricted: { type: Boolean, default: false },
     dailyTasks: {
       content: { type: String, default: '' },
       lastUpdated: { type: Date, default: Date.now }
+    },
+    isChatbot: {
+      workspaceLink: { type: String },
+      baseLink: { type: String }
     },
     contributions: [{
       name: String,

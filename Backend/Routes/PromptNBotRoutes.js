@@ -1,6 +1,8 @@
 const express=require('express');
 const router=express.Router();
 const User = require('../Schema/UserSchema');
+const ConnectedWorkspace = require('../Schema/ConnectedWorkspaceSchema');
+const bcrypt = require('bcryptjs');
 
 //prompt
 router.get('/user-prompt/:userId', async (req, res) => {
@@ -215,5 +217,145 @@ router.get('/user-prompt/:userId', async (req, res) => {
     }
   });
   
+
+  // Create bot for channel with three-tier checking system
+  router.post('/create-channel-bot', async (req, res) => {
+    try {
+      const { channelId, workspaceLink, ownerId,channelName } = req.body;
+      
+      if (!channelId || !workspaceLink || !ownerId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Channel ID, workspace link, and owner ID are required'
+        });
+      }
+      
+      // Check 1: If bot for this channel already exists
+      const existingBot = await User.findOne({ 
+        username: channelId, 
+        plan: 'chat_slack' 
+      });
+      
+      if (existingBot) {
+        return res.status(200).json({
+          success: true,
+          message: 'Bot already exists for this channel',
+          botUsername: existingBot.username,
+          botId: existingBot._id
+        });
+      }
+      
+      // Check 2: Find user with matching integration (userid and workspaceLink)
+      let sourceUser = null;
+      const users = await User.find({ 
+        plan: 'free',
+        integration: { $exists: true, $ne: [] }
+      });
+      
+      for (const user of users) {
+        const matchingIntegration = user.integration.find(integration => 
+          integration.userid === ownerId && 
+          integration.workspacelink === workspaceLink
+        );
+        
+        if (matchingIntegration) {
+          sourceUser = user;
+          break;
+        }
+      }
+      
+      if (sourceUser) {
+        // Create bot using source user's data
+        const newBot = new User({
+          name: channelName,
+          email: sourceUser.email,
+          mobileNo: sourceUser.mobileNo,
+          username: channelId,
+          password: sourceUser.password, // No hashing as requested
+          geminiApiKey: sourceUser.geminiApiKey,
+          plan: 'chat_slack',
+          prompt: '',
+          google: sourceUser.google,
+          isChatbot: {
+            workspaceLink: workspaceLink,
+            baseLink: sourceUser.integration[0].workspaceBackendLink
+          },
+          isBot: true,
+          botActivated: true,
+          createdAt: new Date()
+        });
+        
+        await newBot.save();
+        
+        return res.status(201).json({
+          success: true,
+          message: 'Bot created successfully using integration data',
+          botUsername: newBot.username,
+          botId: newBot._id
+        });
+      }
+      
+      // Check 3: Check ConnectedWorkspace collection
+      const connectedWorkspace = await ConnectedWorkspace.findOne({ 
+        workspaceLink: workspaceLink 
+      });
+      
+      if (!connectedWorkspace) {
+        return res.status(404).json({
+          success: false,
+          message: 'Workspace not found in connected workspaces'
+        });
+      }
+      
+      // Use the chatMateUsername from ConnectedWorkspace to get user data
+      const chatMateUser = await User.findOne({ 
+        username: connectedWorkspace.chatMateUsername 
+      });
+      
+      if (!chatMateUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'Chat mate user not found'
+        });
+      }
+      
+      // Create bot using chat mate user's data
+      const newBot = new User({
+        name: channelName,
+        email: chatMateUser.email,
+        mobileNo: chatMateUser.mobileNo,
+        username: channelId,
+        password: chatMateUser.password, // No hashing as requested
+        geminiApiKey: chatMateUser.geminiApiKey,
+        plan: 'chat_slack', 
+        prompt: '',
+        google: chatMateUser.google,
+        isChatbot: {
+          workspaceLink: workspaceLink,
+          baseLink: chatMateUser.integration[0].workspaceBackendLink
+        },
+        isBot: true,
+        botActivated: true,
+        createdAt: new Date()
+      });
+      
+      await newBot.save();
+      
+      return res.status(201).json({
+        success: true,
+        message: 'Bot created successfully using connected workspace data',
+        botUsername: newBot.username,
+        botId: newBot._id
+      });
+      
+    } catch (error) {
+      console.error('Error creating channel bot:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error when creating channel bot',
+        error: error.message
+      });
+    }
+  });
 
   module.exports=router;

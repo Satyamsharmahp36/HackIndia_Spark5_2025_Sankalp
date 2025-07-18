@@ -2,6 +2,7 @@ const express=require('express');
 const router=express.Router();
 const User = require('../Schema/UserSchema');
 const bcrypt =require('bcryptjs');
+const axios = require('axios');
 
 router.post('/register', async (req, res) => {
     try {
@@ -370,7 +371,7 @@ router.post('/login', async (req, res) => {
         return res.status(409).json({ success: false, message: 'Integration already exists for this workspace' });
       }
       // Add the integration
-      user.integration.push({ platform, workspacelink, workspaceName, userid });
+      user.integration.push({ platform, workspacelink, workspaceName, userid , workspaceBackendLink});
       await user.save();
       return res.status(200).json({ success: true, message: 'Integration added successfully', integration: user.integration });
     } catch (error) {
