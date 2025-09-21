@@ -9,10 +9,11 @@ import {
   Settings,
   MessageCircle,
   Users,
-  Slack
+  Slack,
+  Mail
 } from "lucide-react";
 
-const MainTabNavigator = ({ activeView, handleTabChange, userData, handleSelfTaskToggle, setShowCalendarScheduler, handleChatIntegration }) => {
+const MainTabNavigator = ({ activeView, handleTabChange, userData, handleSelfTaskToggle, setShowCalendarScheduler, handleChatIntegration, handleEmailDashboard }) => {
   return (
     <div className="md:w-64 bg-gray-900 p-4 flex-shrink-0 border-r border-gray-700">
       <nav>
@@ -132,6 +133,27 @@ const MainTabNavigator = ({ activeView, handleTabChange, userData, handleSelfTas
             <Slack className="w-4 h-4" />
             Chat Integration
           </button>
+          <button
+            onClick={handleEmailDashboard}
+            className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 text-sm"
+          >
+            <Mail className="w-4 h-4" />
+            Email Dashboard
+          </button>
+          <li>
+  <button
+    onClick={() => handleTabChange("reminders")}
+    className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${
+      activeView === "reminders"
+        ? "bg-blue-600 text-white"
+        : "text-gray-300 hover:bg-gray-800"
+    }`}
+  >
+    <ClockIcon className="w-5 h-5" />
+    Reminders
+  </button>
+</li>
+
         </div>
       </div>
     </div>

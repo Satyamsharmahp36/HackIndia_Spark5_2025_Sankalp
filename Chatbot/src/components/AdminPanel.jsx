@@ -28,6 +28,7 @@ import {
   Layout,
   Grid,
   List,
+  Mail,
 } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from "react-toastify";
@@ -38,7 +39,7 @@ import apiService from "../services/apiService";
 import VisitorAnalytics from "./AdminComponents/VisitorAnalytics";
 import MainTabNavigator from "./AdminComponents/MainTabNavigator";
 import NotificationMessage from "./AdminComponents/NotificationMessage";
-import { useAppContext } from '../Appcontext';
+import { useAppContext } from "../Appcontext";
 import TaskList from "./AdminComponents/TaskList";
 import AdminPanelHeader from "./AdminComponents/AdminPanelHeader";
 import TaskControls from "./AdminComponents/TaskControls";
@@ -46,6 +47,8 @@ import AdminPanelOverlays from "./AdminComponents/AdminPanelOverlays";
 import NotificationToast from "./AdminComponents/NotificationToast";
 import useAdminPanelTasks from "./AdminComponents/useAdminPanelTasks";
 import IntegrationDashboard from "./AdminComponents/IntegrationDashboard";
+import EmailDashboard from "./AdminComponents/EmailDashboard";
+import ReminderPanel from "./AdminComponents/ReminderPanel";
 
 const AdminPanel = ({ onClose }) => {
   const { userData, refreshUserData } = useAppContext();
@@ -73,7 +76,10 @@ const AdminPanel = ({ onClose }) => {
   const [showVisitorAnalytics, setShowVisitorAnalytics] = useState(false);
   const [notification, setNotification] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
-  const [showIntegrationDashboard, setShowIntegrationDashboard] = useState(false);
+  const [showIntegrationDashboard, setShowIntegrationDashboard] =
+    useState(false);
+  const [showEmailDashboard, setShowEmailDashboard] = useState(false);
+  const [reminders, setReminders] = useState([]);
 
   // New state for UI improvements
   const [activeView, setActiveView] = useState("tasks"); // 'tasks', 'workflow', 'analytics'
@@ -172,6 +178,14 @@ const AdminPanel = ({ onClose }) => {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const handleAddReminder = (reminder) => {
+    // Save reminder to backend & update state here
+    setReminders((prev) => [
+      ...prev,
+      { ...reminder, id: Date.now().toString() },
+    ]);
   };
 
   useEffect(() => {
@@ -338,7 +352,6 @@ const AdminPanel = ({ onClose }) => {
     setMeetingDetails(null);
     setCalendarData(null);
   };
-
 
   const handleCreateBotAssistant = async (task) => {
     try {
@@ -681,27 +694,22 @@ const AdminPanel = ({ onClose }) => {
             handleSelfTaskToggle={handleSelfTaskToggle}
             setShowCalendarScheduler={setShowCalendarScheduler}
             handleChatIntegration={handleChatIntegration}
+            handleEmailDashboard={() => setShowEmailDashboard(true)}
           />
 
           {/* Content Area */}
           <div className="flex-1 overflow-auto p-4">
+            {error && (
+              <NotificationMessage type="error" title="Error" message={error} />
+            )}
 
-          {error && (
-                  <NotificationMessage
-                    type="error"
-                    title="Error"
-                    message={error}
-                  />
-                )}
-                
-                {successMessage && (
-                  <NotificationMessage
-                    type="success"
-                    title="Success"
-                    message={successMessage}
-                  />
-                )}
-
+            {successMessage && (
+              <NotificationMessage
+                type="success"
+                title="Success"
+                message={successMessage}
+              />
+            )}
 
             {activeView === "tasks" && (
               <>
@@ -755,7 +763,10 @@ const AdminPanel = ({ onClose }) => {
             )}
 
             {activeView === "workflow" && (
-              <DailyWorkflow userData={userData} onRefresh={handleRefreshUserData} />
+              <DailyWorkflow
+                userData={userData}
+                onRefresh={handleRefreshUserData}
+              />
             )}
 
             {activeView === "access" && showAccessManagement && (
@@ -781,6 +792,14 @@ const AdminPanel = ({ onClose }) => {
                   }}
                 />
               </div>
+            )}
+
+            {activeView === "reminders" && (
+              <ReminderPanel
+                userId={userData.user.id}
+                reminders={reminders}
+                onAddReminder={handleAddReminder}
+              />
             )}
           </div>
         </div>
@@ -811,8 +830,18 @@ const AdminPanel = ({ onClose }) => {
         userData={userData}
       />
 
+      {/* Email Dashboard */}
+      <EmailDashboard
+        isOpen={showEmailDashboard}
+        onClose={() => setShowEmailDashboard(false)}
+        userData={userData}
+      />
+
       {/* Notifications */}
-      <NotificationToast notification={notification} setNotification={setNotification} />
+      <NotificationToast
+        notification={notification}
+        setNotification={setNotification}
+      />
     </motion.div>
   );
 };

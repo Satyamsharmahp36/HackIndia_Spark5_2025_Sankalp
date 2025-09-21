@@ -1,47 +1,90 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, Bot, Loader2, MessageCircle, LightbulbIcon, ExternalLink, Settings, ChevronDown, X, Trash2, Save, Lock, Unlock, AlertTriangle, Filter, Plus, CheckCircle, XCircle, Clock, Info, HelpCircle, Globe } from 'lucide-react';
-import { getAnswer } from '../services/ai';
-import { motion, AnimatePresence } from 'framer-motion';
-import ContributionForm from './ContributionForm';
-import AdminModal from './AdminModal';
-import MessageContent from './MessageContent';
-import languages from '../services/languages'
-import { useAppContext } from '../Appcontext';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Send,
+  User,
+  Bot,
+  Loader2,
+  MessageCircle,
+  LightbulbIcon,
+  ExternalLink,
+  Settings,
+  ChevronDown,
+  X,
+  Trash2,
+  Save,
+  Lock,
+  Unlock,
+  AlertTriangle,
+  Filter,
+  Plus,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Info,
+  HelpCircle,
+  Globe,
+  Mic,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { getAnswer } from "../services/ai";
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition";
+import { motion, AnimatePresence } from "framer-motion";
+import ContributionForm from "./ContributionForm";
+import AdminModal from "./AdminModal";
+import MessageContent from "./MessageContent";
+import languages from "../services/languages";
+import { useAppContext } from "../Appcontext";
 
 const ChatBot = () => {
-  const { 
+  const {
     userData,
-    userName, 
-    presentUserData, 
+    userName,
+    presentUserData,
     presentUserName,
     refreshUserData,
-    refreshPresentUserData 
+    refreshPresentUserData,
   } = useAppContext();
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentUserData, setCurrentUserData] = useState(null);
 
-  const chatHistoryKey = currentUserData?.user?.name ? `${presentUserName || 'anonymous'}_${currentUserData.user.name}` : null;
+  const chatHistoryKey = currentUserData?.user?.name
+    ? `${presentUserName || "anonymous"}_${currentUserData.user.name}`
+    : null;
 
   const [messages, setMessages] = useState([]);
-  
-  const [input, setInput] = useState('');
+
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showContributionForm, setShowContributionForm] = useState(false);
   const [promptUpdated, setPromptUpdated] = useState(false);
-  const [lastQuestion, setLastQuestion] = useState('');
+  const [lastQuestion, setLastQuestion] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState({
     name: "Auto",
     native: "Detect",
-    code: "auto"
+    code: "auto",
   });
   const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [showTranslationInfo, setShowTranslationInfo] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition();
+
+  const [isVoiceInput, setIsVoiceInput] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -73,6 +116,13 @@ const ChatBot = () => {
     scrollbar-color: #4b5563 #1f2937; 
   }
 `;
+  useEffect(() => {
+    console.log("Current input:", input);
+  }, [input]);
+
+  useEffect(() => {
+    console.log("Speech transcript:", transcript);
+  }, [transcript]);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -80,17 +130,25 @@ const ChatBot = () => {
         setCurrentUserData(userData);
         setIsInitialized(true);
 
-        const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
-        const historyKey = `${presentUserName || 'anonymous'}_${userData.user.name}`;
-        
-        const userChatHistory = allChatHistories[historyKey] 
-          ? allChatHistories[historyKey] 
+        const allChatHistories = JSON.parse(
+          localStorage.getItem("chatHistories") || "{}"
+        );
+        const historyKey = `${presentUserName || "anonymous"}_${
+          userData.user.name
+        }`;
+
+        const userChatHistory = allChatHistories[historyKey]
+          ? allChatHistories[historyKey]
           : [
               {
-                type: 'bot',
-                content: `Hi${presentUserName ? ' ' + presentUserName : ''}! I'm ${userData.user.name} AI assistant. Feel free to ask me about my projects, experience, or skills!`,
-                timestamp: new Date().toISOString()
-              }
+                type: "bot",
+                content: `Hi${
+                  presentUserName ? " " + presentUserName : ""
+                }! I'm ${
+                  userData.user.name
+                } AI assistant. Feel free to ask me about my projects, experience, or skills!`,
+                timestamp: new Date().toISOString(),
+              },
             ];
 
         setMessages(userChatHistory);
@@ -102,10 +160,12 @@ const ChatBot = () => {
 
   useEffect(() => {
     if (!chatHistoryKey || messages.length === 0) return;
-    
-    const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
+
+    const allChatHistories = JSON.parse(
+      localStorage.getItem("chatHistories") || "{}"
+    );
     allChatHistories[chatHistoryKey] = messages;
-    localStorage.setItem('chatHistories', JSON.stringify(allChatHistories));
+    localStorage.setItem("chatHistories", JSON.stringify(allChatHistories));
   }, [messages, chatHistoryKey]);
 
   useEffect(() => {
@@ -117,33 +177,41 @@ const ChatBot = () => {
       scrollToBottom();
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (showDeleteModal && modalRef.current && !modalRef.current.contains(event.target)) {
+      if (
+        showDeleteModal &&
+        modalRef.current &&
+        !modalRef.current.contains(event.target)
+      ) {
         setShowDeleteModal(false);
       }
-      
-      if (showLanguageDropdown && languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
+
+      if (
+        showLanguageDropdown &&
+        languageDropdownRef.current &&
+        !languageDropdownRef.current.contains(event.target)
+      ) {
         setShowLanguageDropdown(false);
       }
     }
 
     if (showDeleteModal || showLanguageDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showDeleteModal, showLanguageDropdown]);
 
   useEffect(() => {
     function handleEscapeKey(event) {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         if (showDeleteModal) {
           setShowDeleteModal(false);
         }
@@ -153,14 +221,14 @@ const ChatBot = () => {
       }
     }
 
-    document.addEventListener('keydown', handleEscapeKey);
+    document.addEventListener("keydown", handleEscapeKey);
     return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
+      document.removeEventListener("keydown", handleEscapeKey);
     };
   }, [showDeleteModal, showLanguageDropdown]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleOpenDeleteModal = () => {
@@ -175,148 +243,226 @@ const ChatBot = () => {
 
   const handleDeleteHistory = () => {
     setIsDeleting(true);
-    
+
     try {
       setShowDeleteModal(false);
-      
+
       setTimeout(() => {
-        const allChatHistories = JSON.parse(localStorage.getItem('chatHistories') || '{}');
+        const allChatHistories = JSON.parse(
+          localStorage.getItem("chatHistories") || "{}"
+        );
         delete allChatHistories[chatHistoryKey];
-        localStorage.setItem('chatHistories', JSON.stringify(allChatHistories));
-  
+        localStorage.setItem("chatHistories", JSON.stringify(allChatHistories));
+
         const initialMessage = {
-          type: 'bot',
-          content: `Hi${presentUserName ? ' ' + presentUserName : ''}! I'm ${currentUserData.user.name} AI assistant. Feel free to ask me about my projects, experience, or skills!`,
-          timestamp: new Date().toISOString()
+          type: "bot",
+          content: `Hi${presentUserName ? " " + presentUserName : ""}! I'm ${
+            currentUserData.user.name
+          } AI assistant. Feel free to ask me about my projects, experience, or skills!`,
+          timestamp: new Date().toISOString(),
         };
-  
+
         setMessages([initialMessage]);
-        
+
         setShowDeleteSuccessModal(true);
-        
+
         setTimeout(() => {
           setShowDeleteSuccessModal(false);
           setIsDeleting(false);
         }, 3000);
       }, 300);
     } catch (error) {
-      console.error('Error deleting chat history:', error);
+      console.error("Error deleting chat history:", error);
       setIsDeleting(false);
     }
+  };
+
+  const handleMicClick = () => {
+    if (listening) {
+      SpeechRecognition.stopListening();
+      setIsVoiceInput(false);
+      setInput(transcript);
+    } else {
+      setInput("");
+      resetTranscript();
+      setIsVoiceInput(true);
+      SpeechRecognition.startListening({
+        continuous: false,
+        language:
+          selectedLanguage.code === "auto" ? "en-US" : selectedLanguage.code,
+      });
+    }
+  };
+  // Send voice transcript as message
+  const handleVoiceSend = () => {
+    setInput(transcript);
+    resetTranscript();
+    setIsVoiceInput(false);
+    handleSendMessage();
+  };
+  // Cancel voice input
+  const handleVoiceCancel = () => {
+    SpeechRecognition.stopListening();
+    resetTranscript();
+    setIsVoiceInput(false);
+    setInput("");
+  };
+  const speakText = (text, languageCode) => {
+    if (!("speechSynthesis" in window)) {
+      console.warn("Speech Synthesis not supported in this browser");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = languageCode === "auto" ? "en-US" : languageCode;
+
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find((v) => v.lang === utterance.lang);
+    if (voice) {
+      utterance.voice = voice;
+    }
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
   };
 
   const detectLanguage = async (text) => {
     if (!text.trim()) return "en";
     if (selectedLanguage.code !== "auto") return selectedLanguage.code;
-    
+
     try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURI(text)}`;
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURI(
+        text
+      )}`;
       const response = await fetch(url);
       const data = await response.json();
       const detectedCode = data[2];
-            const detected = languages.find(lang => lang.code === detectedCode) || 
-                      { name: "Unknown", native: "Unknown", code: detectedCode };
-      
+      const detected = languages.find((lang) => lang.code === detectedCode) || {
+        name: "Unknown",
+        native: "Unknown",
+        code: detectedCode,
+      };
+
       setDetectedLanguage(detected);
       setShowTranslationInfo(detectedCode !== "en");
-      
+
       return detectedCode;
     } catch (error) {
       console.error("Error detecting language:", error);
-      return "en"; 
+      return "en";
     }
   };
   const translateText = async (text, sourceLang, targetLang) => {
     if (!text.trim()) return "";
     if (sourceLang === targetLang) return text;
-    
+
     try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURI(text)}`;
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURI(
+        text
+      )}`;
       const response = await fetch(url);
       const data = await response.json();
-      
-      return data[0].map(item => item[0]).join("");
+
+      return data[0].map((item) => item[0]).join("");
     } catch (error) {
       console.error("Error translating text:", error);
-      return text; 
+      return text;
     }
   };
 
   const handleSendMessage = async () => {
-    if (input.trim() === '') return;
-  
+    if (input.trim() === "") return;
+
     const originalText = input;
-    setInput('');
+    setInput("");
     setIsLoading(true);
     inputRef.current?.focus();
-  
+
     try {
       const detectedLangCode = await detectLanguage(originalText);
       const userMessage = {
-        type: 'user',
+        type: "user",
         content: originalText,
         timestamp: new Date().toISOString(),
-        originalLanguage: detectedLangCode
+        originalLanguage: detectedLangCode,
       };
-      
+
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
       setLastQuestion(originalText);
-      
+
       const urlPattern = /(https?:\/\/[^\s]+)/g;
       const urls = originalText.match(urlPattern) || [];
-      
+
       let textForAI = originalText;
       if (detectedLangCode !== "en") {
         textForAI = await translateText(originalText, detectedLangCode, "en");
-        
+
         if (urls.length > 0) {
           let translatedUrlPattern = /(https?:\/\/[^\s]+)/g;
           let translatedUrls = textForAI.match(translatedUrlPattern) || [];
-          
-          for (let i = 0; i < Math.min(urls.length, translatedUrls.length); i++) {
+
+          for (
+            let i = 0;
+            i < Math.min(urls.length, translatedUrls.length);
+            i++
+          ) {
             textForAI = textForAI.replace(translatedUrls[i], urls[i]);
           }
         }
       }
-  
+
       const englishResponse = await getAnswer(
-        textForAI, 
+        textForAI,
         userData.user,
         presentUserData ? presentUserData.user : null,
-        updatedMessages 
+        updatedMessages
       );
-      
+
       let finalResponse = englishResponse;
       if (detectedLangCode !== "en") {
-        finalResponse = await translateText(englishResponse, "en", detectedLangCode);
+        finalResponse = await translateText(
+          englishResponse,
+          "en",
+          detectedLangCode
+        );
       }
-      
+
       const botMessage = {
-        type: 'bot',
+        type: "bot",
         content: finalResponse,
         timestamp: new Date().toISOString(),
-        originalLanguage: detectedLangCode
+        originalLanguage: detectedLangCode,
       };
-  
-      setMessages(prev => [...prev, botMessage]);
+
+      setMessages((prev) => [...prev, botMessage]);
+
+      if (voiceEnabled) {
+        speakText(finalResponse, detectedLangCode);
+      }
     } catch (error) {
-      console.error('Error in message flow:', error);
-      
+      console.error("Error in message flow:", error);
+
       const errorMessage = {
-        type: 'bot',
-        content: "I'm sorry, I couldn't process your request. Please try again later.",
-        timestamp: new Date().toISOString()
+        type: "bot",
+        content:
+          "I'm sorry, I couldn't process your request. Please try again later.",
+        timestamp: new Date().toISOString(),
       };
-  
-      setMessages(prev => [...prev, errorMessage]);
+
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -328,7 +474,7 @@ const ChatBot = () => {
       setPromptUpdated(true);
       setTimeout(() => setPromptUpdated(false), 3000);
     } catch (error) {
-      console.error('Error refetching user data:', error);
+      console.error("Error refetching user data:", error);
     }
   };
 
@@ -338,13 +484,13 @@ const ChatBot = () => {
       setPromptUpdated(true);
       setTimeout(() => setPromptUpdated(false), 3000);
     } catch (error) {
-      console.error('Error refetching user data:', error);
+      console.error("Error refetching user data:", error);
     }
   };
 
   const autoResizeTextarea = (e) => {
     const textarea = e.target;
-    textarea.style.height = 'auto';
+    textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
   };
 
@@ -354,7 +500,7 @@ const ChatBot = () => {
   };
 
   const toggleLanguageDropdown = () => {
-    setShowLanguageDropdown(prev => !prev);
+    setShowLanguageDropdown((prev) => !prev);
   };
 
   if (!isInitialized || !currentUserData?.user) {
@@ -373,12 +519,15 @@ const ChatBot = () => {
 
   return (
     <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-900 text-white shadow-2xl overflow-hidden">
-            <style>{scrollbarStyles}</style>
+      <style>{scrollbarStyles}</style>
 
       <div className="bg-gray-800 py-4 rounded-t-xl px-6 flex justify-between items-center border-b border-gray-700">
         <div className="flex items-center">
           <Bot className="w-6 h-6 text-blue-400 mr-2" />
-          <h1 className="text-xl font-bold"> {currentUserData.user.name}'s AI Assistant</h1>
+          <h1 className="text-xl font-bold">
+            {" "}
+            {currentUserData.user.name}'s AI Assistant
+          </h1>
         </div>
         <div className="flex gap-2">
           <div className="relative" ref={languageDropdownRef}>
@@ -392,7 +541,7 @@ const ChatBot = () => {
               <span className="hidden sm:inline">{selectedLanguage.name}</span>
               <ChevronDown className="w-4 h-4" />
             </motion.button>
-            
+
             {showLanguageDropdown && (
               <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden z-10">
                 <div className="max-h-64 overflow-y-auto">
@@ -401,21 +550,25 @@ const ChatBot = () => {
                       key={language.code}
                       onClick={() => handleLanguageSelect(language)}
                       className={`w-full px-4 py-2 text-left hover:bg-gray-700 flex items-center ${
-                        selectedLanguage.code === language.code ? 'bg-blue-900' : ''
+                        selectedLanguage.code === language.code
+                          ? "bg-blue-900"
+                          : ""
                       }`}
                     >
                       {language.code === selectedLanguage.code && (
                         <CheckCircle className="w-4 h-4 mr-2 text-blue-400" />
                       )}
                       <span className="mr-1">{language.name}</span>
-                      <span className="text-sm text-gray-400">({language.native})</span>
+                      <span className="text-sm text-gray-400">
+                        ({language.native})
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
           </div>
-          
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -436,7 +589,10 @@ const ChatBot = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages-container">
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        id="chat-messages-container"
+      >
         <AnimatePresence>
           {promptUpdated && (
             <motion.div
@@ -446,7 +602,8 @@ const ChatBot = () => {
               className="bg-green-900 bg-opacity-20 border border-green-500 rounded-lg p-3 text-green-300 flex items-center"
             >
               <CheckCircle className="w-5 h-5 mr-2" />
-              Knowledge base updated successfully! I'm now equipped with the latest information.
+              Knowledge base updated successfully! I'm now equipped with the
+              latest information.
             </motion.div>
           )}
         </AnimatePresence>
@@ -460,9 +617,10 @@ const ChatBot = () => {
               className="bg-blue-900 bg-opacity-20 border border-blue-500 rounded-lg p-3 text-blue-300 flex items-center"
             >
               <Info className="w-5 h-5 mr-2" />
-              Detected {detectedLanguage.name} ({detectedLanguage.native}). Translation is active.
-              <button 
-                onClick={() => setShowTranslationInfo(false)} 
+              Detected {detectedLanguage.name} ({detectedLanguage.native}).
+              Translation is active.
+              <button
+                onClick={() => setShowTranslationInfo(false)}
                 className="ml-auto text-blue-300 hover:text-blue-100"
               >
                 <X className="w-4 h-4" />
@@ -477,37 +635,49 @@ const ChatBot = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className={`flex items-start ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex items-start ${
+              message.type === "user" ? "justify-end" : "justify-start"
+            }`}
           >
             <div
               className={`max-w-[80%] rounded-lg p-3 shadow-md ${
-                message.type === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-none'
-                  : 'bg-gray-800 text-white rounded-bl-none border border-gray-700'
+                message.type === "user"
+                  ? "bg-blue-600 text-white rounded-br-none"
+                  : "bg-gray-800 text-white rounded-bl-none border border-gray-700"
               }`}
             >
               <div className="flex items-center mb-1">
-                {message.type === 'bot' ? (
+                {message.type === "bot" ? (
                   <Bot className="w-4 h-4 mr-2 text-blue-400" />
                 ) : (
                   <User className="w-4 h-4 mr-2 text-blue-300" />
                 )}
                 <div className="text-xs opacity-70">
-                  {message.type === 'bot' ? 'Assistant' : presentUserName || 'You'}
+                  {message.type === "bot"
+                    ? "Assistant"
+                    : presentUserName || "You"}
                   {message.timestamp && (
                     <span className="ml-2 text-xs opacity-50">
-                      {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      {new Date(message.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   )}
-                  {message.originalLanguage && message.originalLanguage !== "en" && (
-                    <span className="ml-2 text-xs bg-blue-900 px-2 py-0.5 rounded-full">
-                      {languages.find(l => l.code === message.originalLanguage)?.name || message.originalLanguage}
-                    </span>
-                  )}
+                  {message.originalLanguage &&
+                    message.originalLanguage !== "en" && (
+                      <span className="ml-2 text-xs bg-blue-900 px-2 py-0.5 rounded-full">
+                        {languages.find(
+                          (l) => l.code === message.originalLanguage
+                        )?.name || message.originalLanguage}
+                      </span>
+                    )}
                 </div>
               </div>
               <div className="text-sm whitespace-pre-wrap break-words">
-                {message.type === 'bot' && index === messages.length - 1 && isLoading ? (
+                {message.type === "bot" &&
+                index === messages.length - 1 &&
+                isLoading ? (
                   <motion.div
                     animate={{ opacity: [0.4, 1, 0.4] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
@@ -524,7 +694,7 @@ const ChatBot = () => {
             </div>
           </motion.div>
         ))}
-        {isLoading && messages[messages.length - 1]?.type === 'user' && (
+        {isLoading && messages[messages.length - 1]?.type === "user" && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -567,12 +737,94 @@ const ChatBot = () => {
               placeholder={`Ask me anything about ${currentUserData.user.name} ...`}
               className="flex-1 bg-transparent outline-none resize-none text-white placeholder-gray-400 max-h-32"
               rows={1}
+              disabled={isVoiceInput}
             />
+
+            {/* --- Mic Button --- */}
+            <div className="flex items-center space-x-2">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleMicClick}
+                disabled={isLoading || !browserSupportsSpeechRecognition}
+                className={`p-2 rounded-full ${
+                  listening ? "bg-blue-600" : "bg-gray-700"
+                } text-white hover:bg-blue-700 transition-colors`}
+                aria-label={
+                  listening ? "Stop voice input" : "Start voice input"
+                }
+              >
+                <Mic className="w-5 h-5" />
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setVoiceEnabled((prev) => !prev)}
+                className={`p-2 rounded-full ${
+                  voiceEnabled ? "bg-green-600" : "bg-gray-600"
+                } text-white hover:bg-green-700 transition-colors`}
+                aria-pressed={voiceEnabled}
+                aria-label={
+                  voiceEnabled ? "Disable voice output" : "Enable voice output"
+                }
+              >
+                {voiceEnabled ? (
+                  isSpeaking ? (
+                    <motion.div
+                      animate={{ scale: [1, 1.5, 1] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1,
+                        ease: "easeInOut",
+                      }}
+                      className="flex items-center justify-center"
+                    >
+                      <Volume2 className="w-5 h-5 text-green-400" />
+                    </motion.div>
+                  ) : (
+                    <Volume2 className="w-5 h-5" />
+                  )
+                ) : (
+                  <VolumeX className="w-5 h-5" />
+                )}
+              </motion.button>
+            </div>
+
+            {!browserSupportsSpeechRecognition && (
+              <span className="text-red-400">
+                Browser doesn't support voice input.
+              </span>
+            )}
+
+            {/* --- If Voice Listening Show Transcript & Controls --- */}
+            {isVoiceInput && (
+              <div className="absolute bottom-14 left-2 right-2 bg-gray-900 rounded-xl shadow-lg border border-blue-700 z-10 p-3 flex items-center gap-2">
+                <span className="flex-1 text-blue-400">
+                  {transcript || (listening ? "Listening..." : "")}
+                </span>
+                <button
+                  onClick={handleVoiceSend}
+                  disabled={!transcript.trim()}
+                  className="px-3 py-1 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+                >
+                  Send
+                </button>
+                <button
+                  onClick={handleVoiceCancel}
+                  className="px-3 py-1 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* --- Send Button --- */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleSendMessage}
-              disabled={isLoading || input.trim() === ''}
+              disabled={isLoading || input.trim() === "" || isVoiceInput}
               className="p-2 ml-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               {isLoading ? (
@@ -586,12 +838,14 @@ const ChatBot = () => {
                 <Send className="w-5 h-5" />
               )}
             </motion.button>
-            
+
             <button
               onClick={handleOpenDeleteModal}
               disabled={isDeleting}
               aria-label="Delete chat history"
-              className={`p-2 ml-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`p-2 ml-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors ${
+                isDeleting ? "opacity-50 cursor-not-allowed" : ""
+              }`}
               data-testid="delete-chat-button"
             >
               <Trash2 className="w-5 h-5" />
@@ -602,7 +856,7 @@ const ChatBot = () => {
 
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm px-4">
-          <div 
+          <div
             ref={modalRef}
             className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-700"
             onClick={(e) => e.stopPropagation()}
@@ -613,7 +867,7 @@ const ChatBot = () => {
                 <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
                 Delete Chat History
               </h2>
-              <button 
+              <button
                 onClick={handleCloseDeleteModal}
                 className="p-1 rounded-full hover:bg-gray-700 transition-colors"
                 aria-label="Close modal"
@@ -621,11 +875,12 @@ const ChatBot = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <p className="text-gray-300 mb-6">
-              Are you sure you want to delete your entire chat history? This action cannot be undone.
+              Are you sure you want to delete your entire chat history? This
+              action cannot be undone.
             </p>
-            
+
             <div className="flex justify-end space-x-3">
               <button
                 onClick={handleCloseDeleteModal}
@@ -646,10 +901,10 @@ const ChatBot = () => {
           </div>
         </div>
       )}
-      
+
       <AnimatePresence>
         {showDeleteSuccessModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
