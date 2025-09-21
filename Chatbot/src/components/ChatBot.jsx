@@ -77,6 +77,9 @@ const ChatBot = () => {
   const [showTranslationInfo, setShowTranslationInfo] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
+  // Track voice input messages
+  const [voiceInputMessages, setVoiceInputMessages] = useState(new Set());
+
   const {
     transcript,
     listening,
@@ -85,6 +88,10 @@ const ChatBot = () => {
   } = useSpeechRecognition();
 
   const [isVoiceInput, setIsVoiceInput] = useState(false);
+  // Track if voice input is actively listening (not just transcript available)
+  const [isActivelyListening, setIsActivelyListening] = useState(false);
+  // Track if message originated from voice (separate from current voice input state)
+  const [messageFromVoice, setMessageFromVoice] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -116,6 +123,7 @@ const ChatBot = () => {
     scrollbar-color: #4b5563 #1f2937; 
   }
 `;
+
   useEffect(() => {
     console.log("Current input:", input);
   }, [input]);
@@ -277,15 +285,18 @@ const ChatBot = () => {
     }
   };
 
+  // Updated handleMicClick to better track listening state
   const handleMicClick = () => {
     if (listening) {
       SpeechRecognition.stopListening();
       setIsVoiceInput(false);
+      setIsActivelyListening(false);
       setInput(transcript);
     } else {
       setInput("");
       resetTranscript();
       setIsVoiceInput(true);
+      setIsActivelyListening(true);
       SpeechRecognition.startListening({
         continuous: false,
         language:
@@ -293,26 +304,42 @@ const ChatBot = () => {
       });
     }
   };
-  // Send voice transcript as message
+  
+  // Updated handleVoiceSend to mark message as from voice
   const handleVoiceSend = () => {
     setInput(transcript);
     resetTranscript();
     setIsVoiceInput(false);
-    handleSendMessage();
+    setIsActivelyListening(false);
+    setMessageFromVoice(true); // MARK: This message came from voice
+    // Don't call handleSendMessage here, let the user click the send button
   };
-  // Cancel voice input
+  
+  // Updated handleVoiceCancel
   const handleVoiceCancel = () => {
     SpeechRecognition.stopListening();
     resetTranscript();
     setIsVoiceInput(false);
+    setIsActivelyListening(false);
     setInput("");
   };
+
+  // Function to stop speaking
+  const stopSpeaking = () => {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  // Updated speakText function
   const speakText = (text, languageCode) => {
     if (!("speechSynthesis" in window)) {
       console.warn("Speech Synthesis not supported in this browser");
       return;
     }
 
+    // Cancel any ongoing speech first
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -357,6 +384,7 @@ const ChatBot = () => {
       return "en";
     }
   };
+  
   const translateText = async (text, sourceLang, targetLang) => {
     if (!text.trim()) return "";
     if (sourceLang === targetLang) return text;
@@ -375,12 +403,21 @@ const ChatBot = () => {
     }
   };
 
+  // Updated handleSendMessage to properly track voice input
   const handleSendMessage = async () => {
     if (input.trim() === "") return;
 
     const originalText = input;
+    const messageId = Date.now(); // Unique identifier for this message
+    const wasVoiceInput = messageFromVoice; // FIXED: Use messageFromVoice instead of isVoiceInput
+    
+    console.log("Voice input debug:", { messageFromVoice, wasVoiceInput }); // Debug log
+    
     setInput("");
     setIsLoading(true);
+    setMessageFromVoice(false); // Reset after capturing the value
+    setIsVoiceInput(false); 
+    setIsActivelyListening(false);
     inputRef.current?.focus();
 
     try {
@@ -390,11 +427,17 @@ const ChatBot = () => {
         content: originalText,
         timestamp: new Date().toISOString(),
         originalLanguage: detectedLangCode,
+        id: messageId,
       };
 
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
       setLastQuestion(originalText);
+
+      // Track if this message was sent via voice
+      if (wasVoiceInput) {
+        setVoiceInputMessages(prev => new Set([...prev, messageId]));
+      }
 
       const urlPattern = /(https?:\/\/[^\s]+)/g;
       const urls = originalText.match(urlPattern) || [];
@@ -438,11 +481,15 @@ const ChatBot = () => {
         content: finalResponse,
         timestamp: new Date().toISOString(),
         originalLanguage: detectedLangCode,
+        responseToId: messageId,
       };
 
       setMessages((prev) => [...prev, botMessage]);
 
-      if (voiceEnabled) {
+      // FIXED: Only speak if voice is enabled AND the original message was sent via voice
+      console.log("Speaking decision:", { voiceEnabled, wasVoiceInput }); // Debug log
+      if (voiceEnabled && wasVoiceInput) {
+        console.log("Speaking response:", finalResponse); // Debug log
         speakText(finalResponse, detectedLangCode);
       }
     } catch (error) {
@@ -737,7 +784,7 @@ const ChatBot = () => {
               placeholder={`Ask me anything about ${currentUserData.user.name} ...`}
               className="flex-1 bg-transparent outline-none resize-none text-white placeholder-gray-400 max-h-32"
               rows={1}
-              disabled={isVoiceInput}
+              disabled={isActivelyListening} // Only disable when actively listening
             />
 
             {/* --- Mic Button --- */}
@@ -757,16 +804,27 @@ const ChatBot = () => {
                 <Mic className="w-5 h-5" />
               </motion.button>
 
+              {/* Updated voice output button with stop functionality */}
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setVoiceEnabled((prev) => !prev)}
+                onClick={() => {
+                  if (isSpeaking) {
+                    stopSpeaking();
+                  } else {
+                    setVoiceEnabled((prev) => !prev);
+                  }
+                }}
                 className={`p-2 rounded-full ${
                   voiceEnabled ? "bg-green-600" : "bg-gray-600"
                 } text-white hover:bg-green-700 transition-colors`}
                 aria-pressed={voiceEnabled}
                 aria-label={
-                  voiceEnabled ? "Disable voice output" : "Enable voice output"
+                  isSpeaking 
+                    ? "Stop speaking"
+                    : voiceEnabled 
+                    ? "Disable voice output" 
+                    : "Enable voice output"
                 }
               >
                 {voiceEnabled ? (
@@ -780,7 +838,7 @@ const ChatBot = () => {
                       }}
                       className="flex items-center justify-center"
                     >
-                      <Volume2 className="w-5 h-5 text-green-400" />
+                      <VolumeX className="w-5 h-5 text-red-400" />
                     </motion.div>
                   ) : (
                     <Volume2 className="w-5 h-5" />
@@ -797,8 +855,8 @@ const ChatBot = () => {
               </span>
             )}
 
-            {/* --- If Voice Listening Show Transcript & Controls --- */}
-            {isVoiceInput && (
+            {/* Updated voice transcript UI */}
+            {isActivelyListening && (
               <div className="absolute bottom-14 left-2 right-2 bg-gray-900 rounded-xl shadow-lg border border-blue-700 z-10 p-3 flex items-center gap-2">
                 <span className="flex-1 text-blue-400">
                   {transcript || (listening ? "Listening..." : "")}
@@ -806,9 +864,9 @@ const ChatBot = () => {
                 <button
                   onClick={handleVoiceSend}
                   disabled={!transcript.trim()}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+                  className="px-3 py-1 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Send
+                  Use Text
                 </button>
                 <button
                   onClick={handleVoiceCancel}
@@ -819,12 +877,12 @@ const ChatBot = () => {
               </div>
             )}
 
-            {/* --- Send Button --- */}
+            {/* Send Button - removed isVoiceInput from disabled condition */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleSendMessage}
-              disabled={isLoading || input.trim() === "" || isVoiceInput}
+              disabled={isLoading || input.trim() === ""} // REMOVED isVoiceInput condition
               className="p-2 ml-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               {isLoading ? (
