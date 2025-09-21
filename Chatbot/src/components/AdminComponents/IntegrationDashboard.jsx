@@ -68,7 +68,7 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
           status: "connected",
           lastSync: "Just now", // You can add last sync time to your API if needed
           workspacelink: integration.workspacelink,
-          workspaceBackendLink: integration.workspaceBackendLink,
+          // workspaceBackendLink: integration.workspaceBackendLink,
           userid: integration.userid,
           channels: integration.channels.map(channel => ({
             id: channel.id,
