@@ -256,19 +256,19 @@ const HomePage = ({ onLogout }) => {
       const visitorUsername = presentUserData?.user?.username || presentUserName || `guest-${Math.random().toString(36).substring(2, 10)}`;
       const isVerified = !!(presentUserData && !presentUserData.user?.isGuest);
       
-      await fetch(
-        `${import.meta.env.VITE_BACKEND}/track-visitor`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            profileOwnerUsername: profileOwnerData.user.username,
-            visitorUsername,
-            visitorName,
-            isVerified
-          })
-        }
-      );
+      // await fetch(
+      //   `${import.meta.env.VITE_BACKEND}/track-visitor`,
+      //   {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({
+      //       profileOwnerUsername: profileOwnerData.user.username,
+      //       visitorUsername,
+      //       visitorName,
+      //       isVerified
+      //     })
+      //   }
+      // );
     } catch (error) {
       console.error('Error tracking visitor:', error);
     }

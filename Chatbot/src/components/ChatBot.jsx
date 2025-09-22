@@ -739,7 +739,7 @@ const ChatBot = () => {
 
         <div className="flex-1 flex flex-col overflow-hidden justify-center w-full">
           {/* Chat content area */}
-          <div className="flex-1 flex flex-col justify-center items-center relative overflow-y-auto max-w-[1200px] mx-auto ">
+          <div className="flex-1 flex flex-col justify-center items-center relative overflow-y-auto w-full max-w-[1200px] mx-auto">
           {messages.length <= 1 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
               <h2 className="text-4xl font-semibold mb-4 text-gray-900">Hi there, {presentUserName || 'User'}</h2>
