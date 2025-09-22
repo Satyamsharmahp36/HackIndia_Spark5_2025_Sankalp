@@ -518,17 +518,6 @@ const HomePage = ({ onLogout }) => {
       </div>
       
       <ChatBot />
-      
-      <div className="absolute top-4 right-4 flex gap-3">
-        {renderHomeButton()}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="text-white bg-red-500 hover:bg-red-600 p-2 rounded-full flex items-center justify-center cursor-pointer"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
-      </div>
 
       {showAdminPanel && (
         <AdminPanel 
