@@ -45,6 +45,7 @@ import AdminModal from "./AdminModal";
 import MessageContent from "./MessageContent";
 import languages from "../services/languages";
 import { useAppContext } from "../Appcontext";
+import AIVoice from "./AIVoice";
 
 const ChatBot = () => {
   const {
@@ -86,13 +87,23 @@ const ChatBot = () => {
   const [showTranslationInfo, setShowTranslationInfo] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [showMicPermissionPrompt, setShowMicPermissionPrompt] = useState(false);
 
   const {
     transcript,
     listening,
     resetTranscript,
     browserSupportsSpeechRecognition,
-  } = useSpeechRecognition();
+    isMicrophoneAvailable
+  } = useSpeechRecognition({
+    clearTranscriptOnListen: true,
+    commands: [
+      {
+        command: '*',
+        callback: (command) => console.log(`Voice command detected: ${command}`),
+      },
+    ],
+  });
 
   const [isVoiceInput, setIsVoiceInput] = useState(false);
 
@@ -131,8 +142,43 @@ const ChatBot = () => {
   }, [input]);
 
   useEffect(() => {
-    console.log("Speech transcript:", transcript);
-  }, [transcript]);
+    console.log("Speech transcript updated:", transcript);
+    console.log("Listening status:", listening);
+    console.log("Browser supports speech recognition:", browserSupportsSpeechRecognition);
+    console.log("Microphone available:", isMicrophoneAvailable);
+  }, [transcript, listening, browserSupportsSpeechRecognition, isMicrophoneAvailable]);
+  
+  // Check for microphone permissions when component mounts
+  useEffect(() => {
+    if (browserSupportsSpeechRecognition) {
+      // Check if we already have microphone permission
+      navigator.permissions.query({ name: 'microphone' })
+        .then(permissionStatus => {
+          console.log("Microphone permission status:", permissionStatus.state);
+          if (permissionStatus.state === 'granted') {
+            // We already have permission
+          } else if (permissionStatus.state === 'prompt') {
+            // We'll be prompted when we try to use the microphone
+          } else if (permissionStatus.state === 'denied') {
+            // Permission has been denied
+            setShowMicPermissionPrompt(true);
+          }
+          
+          // Listen for changes to permission state
+          permissionStatus.onchange = () => {
+            console.log("Microphone permission changed to:", permissionStatus.state);
+            if (permissionStatus.state === 'granted') {
+              setShowMicPermissionPrompt(false);
+            } else if (permissionStatus.state === 'denied') {
+              setShowMicPermissionPrompt(true);
+            }
+          };
+        })
+        .catch(error => {
+          console.error("Error checking microphone permission:", error);
+        });
+    }
+  }, [browserSupportsSpeechRecognition]);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -298,18 +344,53 @@ const ChatBot = () => {
 
   const handleMicClick = () => {
     if (listening) {
+      console.log("Stopping speech recognition");
       SpeechRecognition.stopListening();
       setIsVoiceInput(false);
       setInput(transcript);
     } else {
+      console.log("Starting speech recognition");
       setInput("");
       resetTranscript();
+      console.log("resetTranscript called");
       setIsVoiceInput(true);
-      SpeechRecognition.startListening({
-        continuous: false,
-        language:
-          selectedLanguage.code === "auto" ? "en-US" : selectedLanguage.code,
-      });
+      
+      // Check if browser supports speech recognition
+      if (!browserSupportsSpeechRecognition) {
+        console.error("Browser doesn't support speech recognition");
+        return;
+      }
+      
+      // Check if microphone is available
+      if (!isMicrophoneAvailable) {
+        console.error("Microphone is not available");
+        setShowMicPermissionPrompt(true);
+        // Try to request microphone permission
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(() => {
+            console.log("Microphone permission granted");
+            setShowMicPermissionPrompt(false);
+            // Try starting speech recognition again
+            SpeechRecognition.startListening({
+              continuous: true,
+              language: selectedLanguage.code === "auto" ? "en-US" : selectedLanguage.code,
+            });
+          })
+          .catch(err => {
+            console.error("Error getting microphone permission:", err);
+            setShowMicPermissionPrompt(true);
+          });
+        return;
+      }
+      
+      try {
+        SpeechRecognition.startListening({
+          continuous: true,  // Keep listening until stopped
+          language: selectedLanguage.code === "auto" ? "en-US" : selectedLanguage.code,
+        });
+      } catch (error) {
+        console.error("Error starting speech recognition:", error);
+      }
     }
   };
   // Send voice transcript as message
@@ -706,13 +787,15 @@ const ChatBot = () => {
                   
                   <div className="h-12 bg-white rounded-b-xl border-t border-gray-100">
                     <div className="absolute left-3 bottom-3 flex items-center gap-2">
-                      <button
-                        className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
-                        onClick={handleMicClick}
-                        disabled={isLoading || !browserSupportsSpeechRecognition}
-                      >
-                        <Mic className="w-4 h-4" />
-                      </button>
+                      {!isVoiceInput && (
+                        <button
+                          className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+                          onClick={handleMicClick}
+                          disabled={isLoading || !browserSupportsSpeechRecognition}
+                        >
+                          <Mic className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                     <div className="absolute right-3 bottom-3">
                       <motion.button
@@ -909,14 +992,16 @@ const ChatBot = () => {
                         <Settings className="w-4 h-4" />
                       </button>
                       
-                      <button
-                        className="p-2 rounded-lg bg-white/80 text-gray-600 hover:bg-white transition-colors shadow-sm"
-                        onClick={handleMicClick}
-                        disabled={isLoading || !browserSupportsSpeechRecognition}
-                        aria-label={listening ? "Stop voice input" : "Start voice input"}
-                      >
-                        <Mic className="w-4 h-4" />
-                      </button>
+                      {!isVoiceInput && (
+                        <button
+                          className="p-2 rounded-lg bg-white/80 text-gray-600 hover:bg-white transition-colors shadow-sm"
+                          onClick={handleMicClick}
+                          disabled={isLoading || !browserSupportsSpeechRecognition}
+                          aria-label={listening ? "Stop voice input" : "Start voice input"}
+                        >
+                          <Mic className="w-4 h-4" />
+                        </button>
+                      )}
                       
                       {voiceEnabled ? (
                         <button
@@ -965,32 +1050,33 @@ const ChatBot = () => {
                     Browser doesn't support voice input.
                   </span>
                 )}
-
-                {/* Voice input UI */}
-                {isVoiceInput && (
-                  <div className="absolute -top-20 left-2 right-2 bg-white rounded-xl shadow-lg border border-purple-100 z-10 p-3 flex items-center gap-2">
-                    <span className="flex-1 text-gray-700 text-sm">
-                      {transcript || (listening ? "Listening..." : "")}
-                    </span>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleVoiceSend}
-                      disabled={!transcript.trim()}
-                      className="p-2 rounded-lg bg-purple-600 text-white shadow-sm disabled:opacity-50 disabled:bg-gray-300"
-                    >
-                      <Send className="w-4 h-4" />
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleVoiceCancel}
-                      className="p-2 rounded-lg bg-white text-gray-500 border border-gray-200"
+                
+                {showMicPermissionPrompt && (
+                  <div className="absolute -top-16 left-2 right-2 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-center justify-between">
+                    <span>Please allow microphone access to use voice input</span>
+                    <button 
+                      onClick={() => setShowMicPermissionPrompt(false)}
+                      className="ml-2 p-1 rounded-full hover:bg-yellow-100"
                     >
                       <X className="w-4 h-4" />
-                    </motion.button>
+                    </button>
                   </div>
                 )}
+
+                {/* Voice input UI */}
+                <div className="relative">
+                  <AnimatePresence>
+                    {isVoiceInput && (
+                      <AIVoice
+                        isListening={listening}
+                        onMicClick={handleMicClick}
+                        transcript={transcript}
+                        onSend={handleVoiceSend}
+                        onCancel={handleVoiceCancel}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
           )}
