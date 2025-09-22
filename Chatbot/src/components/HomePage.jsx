@@ -507,14 +507,14 @@ const HomePage = ({ onLogout }) => {
   const chatBotView = (
     <div className="h-screen flex items-center justify-center bg-gradient-to-r from-slate-500 to-slate-800 relative">
       <div className="absolute top-4 left-4 z-50">
-        <motion.button
+        {/* <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={navigateToHome}
           className="text-white bg-blue-600 hover:bg-blue-700 p-2 rounded-full flex items-center justify-center cursor-pointer shadow-lg"
         >
           <ArrowLeft className="w-5 h-5" />
-        </motion.button>
+        </motion.button> */}
       </div>
       
       <ChatBot />

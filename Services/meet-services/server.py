@@ -57,7 +57,8 @@ def run_recording_process(meeting_link, recording_id, task_id, username):
         print(f"Recording failed with return code {process.returncode}")
 
 def send_to_api(results, username, task_id, api_url=os.getenv("SERVER_API") + "/update-meeting-info"):
-    """Send the results along with username and task_id to the specified API endpoint"""
+    """Send theet's discover how computers handle real number calculations and why it's more complex than integer math!
+ results along with username and task_id to the specified API endpoint"""
     try:
         # Create payload with all required information
         payload = {

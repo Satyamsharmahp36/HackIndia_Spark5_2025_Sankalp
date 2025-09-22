@@ -26,6 +26,11 @@ import {
   Mic,
   Volume2,
   VolumeX,
+  Search,
+  BrainCircuit,
+  ArrowUp,
+  Home,
+  Menu,
 } from "lucide-react";
 import { getAnswer } from "../services/ai";
 import SpeechRecognition, {
@@ -98,22 +103,22 @@ const ChatBot = () => {
   }
   
   ::-webkit-scrollbar-track {
-    background: #1f2937; /* gray-800 */
+    background: #f3f4f6; /* gray-100 */
     border-radius: 10px;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: #4b5563; /* gray-600 */
+    background: #d1d5db; /* gray-300 */
     border-radius: 10px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: #6b7280; /* gray-500 */
+    background: #9ca3af; /* gray-400 */
   }
   
   * {
     scrollbar-width: thin;
-    scrollbar-color: #4b5563 #1f2937; 
+    scrollbar-color: #d1d5db #f3f4f6; 
   }
 `;
   useEffect(() => {
@@ -505,378 +510,400 @@ const ChatBot = () => {
 
   if (!isInitialized || !currentUserData?.user) {
     return (
-      <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-900 text-white shadow-2xl overflow-hidden items-center justify-center">
+      <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-50 text-gray-800 shadow-lg overflow-hidden items-center justify-center min-w-[100vw]">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         >
-          <Loader2 className="w-8 h-8 text-blue-500" />
+          <Loader2 className="w-8 h-8 text-gray-500" />
         </motion.div>
-        <p className="mt-4 text-gray-400">Initializing chat...</p>
+        <p className="mt-4 text-gray-500">Initializing chat...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-900 text-white shadow-2xl overflow-hidden">
+    <div className="flex h-screen bg-gray-50 text-gray-800 overflow-hidden">
       <style>{scrollbarStyles}</style>
-
-      <div className="bg-gray-800 py-4 rounded-t-xl px-6 flex justify-between items-center border-b border-gray-700">
-        <div className="flex items-center">
-          <Bot className="w-6 h-6 text-blue-400 mr-2" />
-          <h1 className="text-xl font-bold">
-            {" "}
-            {currentUserData.user.name}'s AI Assistant
-          </h1>
-        </div>
-        <div className="flex gap-2">
-          <div className="relative" ref={languageDropdownRef}>
+      {/* Main content */}
+      <div className="flex-1 flex flex-col w-[100vw]">
+        {/* Header */}
+        <div className="bg-white py-3 px-4 flex justify-between items-center border-b border-gray-200">
+          <div className="flex items-center space-x-2">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={toggleLanguageDropdown}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2"
+              onClick={() => window.history.back()}
+              className="p-2 text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Go back"
             >
-              <Globe className="w-4 h-4" />
-              <span className="hidden sm:inline">{selectedLanguage.name}</span>
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="w-5 h-5 transform rotate-90" />
             </motion.button>
+            <div className="flex items-center">
+              <Bot className="w-5 h-5 text-gray-700 mr-2" />
+              <h1 className="text-lg font-medium">
+                {currentUserData.user.name}'s AI Assistant
+              </h1>
+            </div>
+          </div>
+          
+          <div className="flex gap-2 items-center">
+            {messages.length > 1 && (
+              <button
+                onClick={handleOpenDeleteModal}
+                disabled={isDeleting}
+                aria-label="Delete chat history"
+                className={`text-xs text-red-500 hover:text-red-700 flex items-center gap-1 ${isDeleting ? "opacity-50 cursor-not-allowed" : ""}`}
+                data-testid="delete-chat-button"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Clear chat</span>
+              </button>
+            )}
+            
+            <div className="relative" ref={languageDropdownRef}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleLanguageDropdown}
+                className="p-2 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-1"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm">{selectedLanguage.name}</span>
+                <ChevronDown className="w-3 h-3" />
+              </motion.button>
 
-            {showLanguageDropdown && (
-              <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden z-10">
-                <div className="max-h-64 overflow-y-auto">
-                  {languages.map((language) => (
+              {showLanguageDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-10">
+                  <div className="max-h-64 overflow-y-auto">
+                    {languages.map((language) => (
+                      <button
+                        key={language.code}
+                        onClick={() => handleLanguageSelect(language)}
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center ${
+                          selectedLanguage.code === language.code
+                            ? "bg-gray-100"
+                            : ""
+                        }`}
+                      >
+                        {language.code === selectedLanguage.code && (
+                          <CheckCircle className="w-4 h-4 mr-2 text-blue-500" />
+                        )}
+                        <span className="mr-1 text-sm">{language.name}</span>
+                        <span className="text-xs text-gray-500">
+                          ({language.native})
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowContributionForm(true)}
+              className="px-3 py-1.5 bg-black text-white text-sm rounded-full hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Contribute</span>
+            </motion.button>
+            
+            <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
+              {presentUserName ? presentUserName.charAt(0).toUpperCase() : "U"}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Chat content area */}
+          <div className="flex-1 flex flex-col justify-center items-center relative overflow-y-auto">
+          {messages.length <= 1 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+              <h2 className="text-3xl font-medium mb-8 text-gray-800">What can {currentUserData.user.name}'s AI Assistant help with?</h2>
+              <div className="w-full max-w-md">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-6">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <input 
+                        type="text" 
+                        placeholder="Ask anything" 
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                        className="w-full bg-transparent outline-none text-gray-800 placeholder-gray-400"
+                        disabled={isVoiceInput}
+                      />
+                    </div>
+                    <div className="flex space-x-2">
+                      <button 
+                        className="p-1.5 rounded-full hover:bg-gray-100"
+                        onClick={handleMicClick}
+                        disabled={isLoading || !browserSupportsSpeechRecognition}
+                      >
+                        <Mic className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button 
+                        className="p-1.5 rounded-full hover:bg-gray-100"
+                        onClick={handleSendMessage}
+                        disabled={isLoading || input.trim() === "" || isVoiceInput}
+                      >
+                        <ArrowUp className="w-4 h-4 text-gray-500" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {messages.length > 1 && (
+            <div className="w-full p-4 space-y-4" id="chat-messages-container">
+              <AnimatePresence>
+                {promptUpdated && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 flex items-center"
+                  >
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    Knowledge base updated successfully! I'm now equipped with the
+                    latest information.
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {showTranslationInfo && detectedLanguage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 flex items-center"
+                  >
+                    <Info className="w-5 h-5 mr-2" />
+                    Detected {detectedLanguage.name} ({detectedLanguage.native}).
+                    Translation is active.
                     <button
-                      key={language.code}
-                      onClick={() => handleLanguageSelect(language)}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-700 flex items-center ${
-                        selectedLanguage.code === language.code
-                          ? "bg-blue-900"
-                          : ""
+                      onClick={() => setShowTranslationInfo(false)}
+                      className="ml-auto text-blue-700 hover:text-blue-900"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+                {messages.map((message, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className={`flex items-start ${
+                      message.type === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-xl p-3 shadow-sm ${
+                        message.type === "user"
+                          ? "bg-black text-white rounded-br-none"
+                          : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
                       }`}
                     >
-                      {language.code === selectedLanguage.code && (
-                        <CheckCircle className="w-4 h-4 mr-2 text-blue-400" />
-                      )}
-                      <span className="mr-1">{language.name}</span>
-                      <span className="text-sm text-gray-400">
-                        ({language.native})
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowContributionForm(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Contribute</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowSettings(true)}
-            className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-          </motion.button>
-        </div>
-      </div>
-
-      <div
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-        id="chat-messages-container"
-      >
-        <AnimatePresence>
-          {promptUpdated && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-green-900 bg-opacity-20 border border-green-500 rounded-lg p-3 text-green-300 flex items-center"
-            >
-              <CheckCircle className="w-5 h-5 mr-2" />
-              Knowledge base updated successfully! I'm now equipped with the
-              latest information.
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {showTranslationInfo && detectedLanguage && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-blue-900 bg-opacity-20 border border-blue-500 rounded-lg p-3 text-blue-300 flex items-center"
-            >
-              <Info className="w-5 h-5 mr-2" />
-              Detected {detectedLanguage.name} ({detectedLanguage.native}).
-              Translation is active.
-              <button
-                onClick={() => setShowTranslationInfo(false)}
-                className="ml-auto text-blue-300 hover:text-blue-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {messages.map((message, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className={`flex items-start ${
-              message.type === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
-            <div
-              className={`max-w-[80%] rounded-lg p-3 shadow-md ${
-                message.type === "user"
-                  ? "bg-blue-600 text-white rounded-br-none"
-                  : "bg-gray-800 text-white rounded-bl-none border border-gray-700"
-              }`}
-            >
-              <div className="flex items-center mb-1">
-                {message.type === "bot" ? (
-                  <Bot className="w-4 h-4 mr-2 text-blue-400" />
-                ) : (
-                  <User className="w-4 h-4 mr-2 text-blue-300" />
-                )}
-                <div className="text-xs opacity-70">
-                  {message.type === "bot"
-                    ? "Assistant"
-                    : presentUserName || "You"}
-                  {message.timestamp && (
-                    <span className="ml-2 text-xs opacity-50">
-                      {new Date(message.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  )}
-                  {message.originalLanguage &&
-                    message.originalLanguage !== "en" && (
-                      <span className="ml-2 text-xs bg-blue-900 px-2 py-0.5 rounded-full">
-                        {languages.find(
-                          (l) => l.code === message.originalLanguage
-                        )?.name || message.originalLanguage}
-                      </span>
-                    )}
-                </div>
-              </div>
-              <div className="text-sm whitespace-pre-wrap break-words">
-                {message.type === "bot" &&
-                index === messages.length - 1 &&
-                isLoading ? (
-                  <motion.div
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="flex items-center gap-2"
-                  >
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <div className="flex items-center mb-1">
+                        {message.type === "bot" ? (
+                          <Bot className="w-4 h-4 mr-2 text-gray-500" />
+                        ) : (
+                          <User className="w-4 h-4 mr-2 text-gray-400" />
+                        )}
+                        <div className="text-xs text-gray-500">
+                          {message.type === "bot"
+                            ? "Assistant"
+                            : presentUserName || "You"}
+                          {message.timestamp && (
+                            <span className="ml-2 text-xs text-gray-400">
+                              {new Date(message.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          )}
+                          {message.originalLanguage &&
+                            message.originalLanguage !== "en" && (
+                              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                {languages.find(
+                                  (l) => l.code === message.originalLanguage
+                                )?.name || message.originalLanguage}
+                              </span>
+                            )}
+                        </div>
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap break-words">
+                        {message.type === "bot" &&
+                        index === messages.length - 1 &&
+                        isLoading ? (
+                          <motion.div
+                            animate={{ opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                            className="flex items-center gap-2"
+                          >
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                          </motion.div>
+                        ) : (
+                          <MessageContent content={message.content} />
+                        )}
+                      </div>
+                    </div>
                   </motion.div>
-                ) : (
-                  <MessageContent content={message.content} />
+                ))}
+                {isLoading && messages[messages.length - 1]?.type === "user" && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex items-start justify-start"
+                  >
+                    <div className="max-w-[80%] rounded-xl p-3 shadow-sm bg-white text-gray-800 rounded-bl-none border border-gray-200">
+                      <div className="flex items-center mb-1">
+                        <Bot className="w-4 h-4 mr-2 text-gray-500" />
+                        <div className="text-xs text-gray-500">Assistant</div>
+                      </div>
+                      <div className="text-sm">
+                        <motion.div
+                          animate={{ opacity: [0.4, 1, 0.4] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        </motion.div>
+                      </div>
+                    </div>
+                  </motion.div>
                 )}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-        {isLoading && messages[messages.length - 1]?.type === "user" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex items-start justify-start"
-          >
-            <div className="max-w-[80%] rounded-lg p-3 shadow-md bg-gray-800 text-white rounded-bl-none border border-gray-700">
-              <div className="flex items-center mb-1">
-                <Bot className="w-4 h-4 mr-2 text-blue-400" />
-                <div className="text-xs opacity-70">Assistant</div>
-              </div>
-              <div className="text-sm">
-                <motion.div
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="flex items-center gap-2"
-                >
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                </motion.div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div>
-        <div className="flex items-end p-4 border-t border-gray-700">
-          <div className="relative flex items-center w-full rounded-lg bg-gray-800 p-2">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                autoResizeTextarea(e);
-              }}
-              onKeyDown={handleKeyPress}
-              placeholder={`Ask me anything about ${currentUserData.user.name} ...`}
-              className="flex-1 bg-transparent outline-none resize-none text-white placeholder-gray-400 max-h-32"
-              rows={1}
-              disabled={isVoiceInput}
-            />
-
-            {/* --- Mic Button --- */}
-            <div className="flex items-center space-x-2">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleMicClick}
-                disabled={isLoading || !browserSupportsSpeechRecognition}
-                className={`p-2 rounded-full ${
-                  listening ? "bg-blue-600" : "bg-gray-700"
-                } text-white hover:bg-blue-700 transition-colors`}
-                aria-label={
-                  listening ? "Stop voice input" : "Start voice input"
-                }
-              >
-                <Mic className="w-5 h-5" />
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setVoiceEnabled((prev) => !prev)}
-                className={`p-2 rounded-full ${
-                  voiceEnabled ? "bg-green-600" : "bg-gray-600"
-                } text-white hover:bg-green-700 transition-colors`}
-                aria-pressed={voiceEnabled}
-                aria-label={
-                  voiceEnabled ? "Disable voice output" : "Enable voice output"
-                }
-              >
-                {voiceEnabled ? (
-                  isSpeaking ? (
-                    <motion.div
-                      animate={{ scale: [1, 1.5, 1] }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 1,
-                        ease: "easeInOut",
-                      }}
-                      className="flex items-center justify-center"
-                    >
-                      <Volume2 className="w-5 h-5 text-green-400" />
-                    </motion.div>
-                  ) : (
-                    <Volume2 className="w-5 h-5" />
-                  )
-                ) : (
-                  <VolumeX className="w-5 h-5" />
-                )}
-              </motion.button>
-            </div>
-
-            {!browserSupportsSpeechRecognition && (
-              <span className="text-red-400">
-                Browser doesn't support voice input.
-              </span>
-            )}
-
-            {/* --- If Voice Listening Show Transcript & Controls --- */}
-            {isVoiceInput && (
-              <div className="absolute bottom-14 left-2 right-2 bg-gray-900 rounded-xl shadow-lg border border-blue-700 z-10 p-3 flex items-center gap-2">
-                <span className="flex-1 text-blue-400">
-                  {transcript || (listening ? "Listening..." : "")}
-                </span>
-                <button
-                  onClick={handleVoiceSend}
-                  disabled={!transcript.trim()}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-                >
-                  Send
-                </button>
-                <button
-                  onClick={handleVoiceCancel}
-                  className="px-3 py-1 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div ref={messagesEndRef} />
               </div>
             )}
-
-            {/* --- Send Button --- */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleSendMessage}
-              disabled={isLoading || input.trim() === "" || isVoiceInput}
-              className="p-2 ml-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {isLoading ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                >
-                  <Loader2 className="w-5 h-5" />
-                </motion.div>
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </motion.button>
-
-            <button
-              onClick={handleOpenDeleteModal}
-              disabled={isDeleting}
-              aria-label="Delete chat history"
-              className={`p-2 ml-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors ${
-                isDeleting ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              data-testid="delete-chat-button"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
           </div>
-        </div>
-      </div>
+          </div>
+          
+          {/* Input area - only shown when there are messages */}
+          {messages.length > 1 && (
+            <div className="border-t border-gray-200 bg-white p-4">
+              <div className="relative flex items-center w-full rounded-full bg-white border border-gray-200 p-2 shadow-sm">
+                <div className="flex items-center space-x-2 px-2">
+                  <button 
+                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
+                    onClick={() => setShowSettings(true)}
+                    aria-label="Open settings"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder={`Ask me anything about ${currentUserData.user.name} ...`}
+                  className="flex-1 bg-transparent outline-none text-gray-800 placeholder-gray-400 text-sm"
+                  disabled={isVoiceInput}
+                />
 
+                <div className="flex items-center space-x-1 px-1">
+                  <button 
+                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
+                    onClick={handleMicClick}
+                    disabled={isLoading || !browserSupportsSpeechRecognition}
+                    aria-label={listening ? "Stop voice input" : "Start voice input"}
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleSendMessage}
+                    disabled={isLoading || input.trim() === "" || isVoiceInput}
+                    className="p-2 rounded-full bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    aria-label="Send message"
+                  >
+                    {isLoading ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <Loader2 className="w-4 h-4" />
+                      </motion.div>
+                    ) : (
+                      <ArrowUp className="w-4 h-4" />
+                    )}
+                  </motion.button>
+                </div>
+
+                {!browserSupportsSpeechRecognition && (
+                  <span className="text-red-500 text-xs absolute -top-6 left-2">
+                    Browser doesn't support voice input.
+                  </span>
+                )}
+
+                {/* Voice input UI */}
+                {isVoiceInput && (
+                  <div className="absolute bottom-14 left-2 right-2 bg-white rounded-xl shadow-lg border border-gray-200 z-10 p-3 flex items-center gap-2">
+                    <span className="flex-1 text-gray-700 text-sm">
+                      {transcript || (listening ? "Listening..." : "")}
+                    </span>
+                    <button
+                      onClick={handleVoiceSend}
+                      disabled={!transcript.trim()}
+                      className="px-3 py-1 bg-black text-white rounded-lg text-sm hover:bg-gray-800"
+                    >
+                      Send
+                    </button>
+                    <button
+                      onClick={handleVoiceCancel}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      
+      {/* Modals */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 backdrop-blur-sm px-4">
           <div
             ref={modalRef}
-            className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-700"
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-gray-200"
             onClick={(e) => e.stopPropagation()}
             data-testid="delete-modal-content"
           >
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white flex items-center">
+              <h2 className="text-lg font-medium text-gray-800 flex items-center">
                 <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
                 Delete Chat History
               </h2>
               <button
                 onClick={handleCloseDeleteModal}
-                className="p-1 rounded-full hover:bg-gray-700 transition-colors"
+                className="p-1 rounded-full hover:bg-gray-100 transition-colors"
                 aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
-            <p className="text-gray-300 mb-6">
+            <p className="text-gray-600 mb-6">
               Are you sure you want to delete your entire chat history? This
               action cannot be undone.
             </p>
@@ -884,14 +911,14 @@ const ChatBot = () => {
             <div className="flex justify-end space-x-3">
               <button
                 onClick={handleCloseDeleteModal}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors text-sm"
                 data-testid="delete-modal-cancel"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteHistory}
-                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors flex items-center"
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center text-sm"
                 data-testid="delete-modal-confirm"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -901,7 +928,7 @@ const ChatBot = () => {
           </div>
         </div>
       )}
-
+    
       <AnimatePresence>
         {showDeleteSuccessModal && (
           <motion.div
@@ -910,7 +937,7 @@ const ChatBot = () => {
             exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"
           >
-            <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center">
+            <div className="bg-white border border-green-200 text-green-700 px-6 py-3 rounded-lg shadow-md flex items-center">
               <CheckCircle className="w-5 h-5 mr-2" />
               Chat history deleted successfully
             </div>
@@ -931,7 +958,7 @@ const ChatBot = () => {
         lastQuestion={lastQuestion}
         onContriUpdated={handleContriUpdated}
       />
-    </div>
+      </div>
   );
 };
 

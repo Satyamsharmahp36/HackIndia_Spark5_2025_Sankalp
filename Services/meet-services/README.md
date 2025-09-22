@@ -27,3 +27,13 @@ docker run -it \
     -v $PWD/screenshots:/app/screenshots \ # local storage for intermediate bot screenshots
     gmeet
 ```
+```
+docker run -it \                                                   
+  -e GMAIL_USER_EMAIL="retr0gmr9@gmail.com" \
+  -e GMAIL_USER_PASSWORD="qwertyuiopP@" \
+  -e GOOGLE_API_KEY="AIzaSyCdOl7vPoQGghstD2Q1jGKwiA3g03PupMY" \
+  -e SERVER_API="http://host.docker.internal:5000" \
+  -e MAX_WAIT_TIME_IN_MINUTES="1" \
+  -v "$(pwd)/storage:/app/storage" \
+  gmeet
+```
