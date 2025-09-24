@@ -930,7 +930,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
 
                       return (
                         <li
-                          key={idx}
+                          key={`user-access-${username}-${idx}`}
                           className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex items-center">
@@ -1198,7 +1198,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                         <ul className="divide-y divide-gray-200 max-h-80 overflow-y-auto">
                           {selectedGroup.users.map((username, idx) => (
                             <li
-                              key={idx}
+                              key={`group-user-${username}-${idx}`}
                               className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                             >
                               <div className="flex items-center">

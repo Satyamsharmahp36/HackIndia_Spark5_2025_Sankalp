@@ -67,47 +67,47 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
 
   if (success && meetingDetails) {
     return (
-      <div className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md border border-gray-800 mx-auto transition-all duration-300 animate-fadeIn">
+      <div className="bg-white rounded-lg shadow-sm p-6 max-w-md border border-gray-200 mx-auto">
         <div className="flex items-center mb-6">
           <div className="bg-green-100 p-3 rounded-full">
-            <CheckCircle className="text-green-400 w-7 h-7" />
+            <CheckCircle className="text-green-600 w-7 h-7" />
           </div>
-          <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-green-400 to-teal-300 bg-clip-text ">Added to Calendar</h3>
+          <h3 className="text-xl font-bold ml-4 text-gray-900">Added to Calendar</h3>
         </div>
         
-        <div className="bg-gradient-to-br from-gray-800 to-gray-700 p-5 rounded-xl mb-6 border border-gray-700 shadow-md">
-          <p className="font-semibold text-gray-100 text-xl mb-4">{title}</p>
+        <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+          <p className="font-semibold text-gray-900 text-lg mb-4">{title}</p>
           
-          <div className="flex items-start mb-4 group">
-            <div className="bg-gray-900 p-2 rounded-lg shadow-md mr-4 group-hover:shadow-lg transition-shadow duration-300 border border-gray-700">
-              <Clock className="w-5 h-5 text-blue-400" />
+          <div className="flex items-start mb-4">
+            <div className="bg-white p-2 rounded border border-gray-200 mr-4">
+              <Clock className="w-5 h-5 text-purple-600" />
             </div>
-            <div className="text-gray-300">
-              <p className="font-medium text-blue-300">Time</p>
+            <div className="text-gray-700">
+              <p className="font-medium text-purple-600">Time</p>
               <p>{formatDateTime(startTime)}</p>
               <p>to {formatDateTime(endTime)}</p>
             </div>
           </div>
           
-          <div className="flex items-start group">
-            <div className="bg-gray-900 p-2 rounded-lg shadow-md mr-4 group-hover:shadow-lg transition-shadow duration-300 border border-gray-700">
-              <Users className="w-5 h-5 text-blue-400" />
+          <div className="flex items-start">
+            <div className="bg-white p-2 rounded border border-gray-200 mr-4">
+              <Users className="w-5 h-5 text-purple-600" />
             </div>
-            <div className="text-gray-300">
-              <p className="font-medium text-blue-300">Participants</p>
+            <div className="text-gray-700">
+              <p className="font-medium text-purple-600">Participants</p>
               <p>{userEmails.length} attendee{userEmails.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-3">
           <a 
             href={meetingDetails.meetLink} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 px-4 rounded-xl transition-all duration-300 font-medium text-base shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            className="flex items-center justify-center w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg transition-colors font-medium"
           >
-            <Link className="w-5 h-5 mr-3" />
+            <Link className="w-4 h-4 mr-2" />
             Join Meeting Now
           </a>
           
@@ -115,9 +115,9 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
             href={meetingDetails.eventLink} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center justify-center w-full bg-gray-800 hover:bg-gray-700 text-gray-200 py-4 px-4 rounded-xl  font-medium text-base shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 border border-gray-700"
+            className="flex items-center justify-center w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
           >
-            <Calendar className="w-5 h-5 mr-3 text-blue-400" />
+            <Calendar className="w-4 h-4 mr-2" />
             Open in Google Calendar
           </a>
         </div>
@@ -128,17 +128,17 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
   return (
     <div className="w-full max-w-md mx-auto">
       {showError && (
-        <div className="bg-gray-900 rounded-xl shadow-lg p-4 mb-6 border-l-4 border-red-500 flex items-start animate-slideIn">
-          <div className="bg-red-900 p-2 rounded-full mr-3">
-            <AlertCircle className="h-5 w-5 text-red-400" />
+        <div className="bg-red-50 rounded-lg shadow-sm p-4 mb-6 border-l-4 border-red-500 flex items-start">
+          <div className="bg-red-100 p-2 rounded-full mr-3">
+            <AlertCircle className="h-5 w-5 text-red-600" />
           </div>
           <div className="flex-grow">
-            <p className="text-base font-medium text-gray-200">Unable to add event</p>
-            <p className="text-sm text-gray-400 mt-1">{error}</p>
+            <p className="text-base font-medium text-red-800">Unable to add event</p>
+            <p className="text-sm text-red-600 mt-1">{error}</p>
           </div>
           <button 
             onClick={dismissError}
-            className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors duration-200 p-1 hover:bg-gray-800 rounded-full"
+            className="flex-shrink-0 text-red-500 hover:text-red-700 transition-colors duration-200 p-1 hover:bg-red-100 rounded-full"
             aria-label="Dismiss error"
           >
             <X className="h-5 w-5" />
@@ -146,38 +146,38 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
         </div>
       )}
       
-      <div className="bg-gray-900 rounded-xl shadow-lg p-8 border border-gray-800 transform transition-all duration-300 hover:shadow-xl">
+      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
         <div className="flex items-center mb-6">
-          <div className="bg-blue-100 p-3 rounded-full">
-            <Calendar className="w-7 h-7 text-blue-400" />
+          <div className="bg-purple-100 p-3 rounded-full">
+            <Calendar className="w-7 h-7 text-purple-600" />
           </div>
-          <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text ">Schedule Meeting</h3>
+          <h3 className="text-xl font-bold ml-4 text-gray-900">Schedule Meeting</h3>
         </div>
         
-        <div className="bg-gradient-to-br from-gray-800 to-gray-700 p-6 rounded-xl mb-6 border border-gray-700 shadow-md">
-          <h4 className="font-semibold text-lg text-gray-100 mb-3 pb-2 border-b border-gray-700">{title}</h4>
+        <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+          <h4 className="font-semibold text-lg text-gray-900 mb-3 pb-2 border-b border-gray-200">{title}</h4>
           
           {description && (
-            <p className="text-gray-300 mb-5 italic text-sm bg-gray-800 bg-opacity-50 p-3 rounded-lg">{description}</p>
+            <p className="text-gray-600 mb-4 italic text-sm bg-white p-3 rounded border border-gray-200">{description}</p>
           )}
           
-          <div className="flex items-start mb-4 group">
-            <div className="bg-gray-900 p-2 rounded-lg shadow-md mr-4 group-hover:shadow-lg transition-shadow duration-300 border border-gray-700">
-              <Clock className="w-5 h-5 text-blue-400" />
+          <div className="flex items-start mb-4">
+            <div className="bg-white p-2 rounded border border-gray-200 mr-4">
+              <Clock className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-200">Time</p>
-              <p className="text-sm text-gray-400">{formatDateTime(startTime)} - {formatDateTime(endTime)}</p>
+              <p className="text-sm font-medium text-gray-700">Time</p>
+              <p className="text-sm text-gray-600">{formatDateTime(startTime)} - {formatDateTime(endTime)}</p>
             </div>
           </div>
           
-          <div className="flex items-start group">
-            <div className="bg-gray-900 p-2 rounded-lg shadow-md mr-4 group-hover:shadow-lg transition-shadow duration-300 border border-gray-700">
-              <Users className="w-5 h-5 text-blue-400" />
+          <div className="flex items-start">
+            <div className="bg-white p-2 rounded border border-gray-200 mr-4">
+              <Users className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-200">Participants</p>
-              <p className="text-sm text-gray-400">{userEmails.length} attendee{userEmails.length !== 1 ? 's' : ''}</p>
+              <p className="text-sm font-medium text-gray-700">Participants</p>
+              <p className="text-sm text-gray-600">{userEmails.length} attendee{userEmails.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>
@@ -185,7 +185,7 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
         <button
           onClick={scheduleMeeting}
           disabled={isLoading}
-          className="flex items-center justify-center w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-medium disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-md"
+          className="flex items-center justify-center w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg transition-colors font-medium disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>

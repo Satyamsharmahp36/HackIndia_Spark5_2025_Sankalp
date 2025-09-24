@@ -6,13 +6,13 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
   const { userData } = useAppContext();
 
   return (
-    <div className="flex border-b border-gray-700 bg-gray-800 px-4">
+    <div className="flex border-b border-gray-200 bg-gray-50 px-4">
       <button
         onClick={() => setActiveTab('prompt')}
         className={`px-6 py-4 text-sm font-medium transition-all ${
           activeTab === 'prompt'
-            ? 'border-b-2 border-blue-500 text-blue-400 bg-gray-900 bg-opacity-30'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700 hover:bg-opacity-30'
+            ? 'border-b-2 border-purple-600 text-purple-700 bg-purple-50'
+            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
         } rounded-t-lg`}
       >
         <div className="flex items-center space-x-2">
@@ -24,8 +24,8 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
         onClick={() => setActiveTab('responseStyle')}
         className={`px-6 py-4 text-sm font-medium transition-all ${
           activeTab === 'responseStyle'
-            ? 'border-b-2 border-blue-500 text-blue-400 bg-gray-900 bg-opacity-30'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700 hover:bg-opacity-30'
+            ? 'border-b-2 border-purple-600 text-purple-700 bg-purple-50'
+            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
         } rounded-t-lg`}
       >
         <div className="flex items-center space-x-2">
@@ -37,8 +37,8 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
         onClick={() => setActiveTab('contributions')}
         className={`px-6 py-4 text-sm font-medium transition-all ${
           activeTab === 'contributions'
-            ? 'border-b-2 border-blue-500 text-blue-400 bg-gray-900 bg-opacity-30'
-            : 'text-gray-400 hover:text-white hover:bg-gray-700 hover:bg-opacity-30'
+            ? 'border-b-2 border-purple-600 text-purple-700 bg-purple-50'
+            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
         } rounded-t-lg`}
       >
         <div className="flex items-center space-x-2">

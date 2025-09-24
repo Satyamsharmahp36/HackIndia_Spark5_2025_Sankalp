@@ -21,7 +21,8 @@ import {
   X,
   ChevronDown,
   Shield,
-  BarChart3
+  BarChart3,
+  Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,10 +45,12 @@ import TaskControls from "./AdminComponents/TaskControls";
 import DailyWorkflow from "./DailyWorkflow";
 import AccessManagement from "./AdminComponents/AccessManagement";
 import VisitorAnalytics from "./AdminComponents/VisitorAnalytics";
+import Memory from "./AdminComponents/Memory";
 import IntegrationDashboard from "./AdminComponents/IntegrationDashboard";
 import EmailDashboard from "./AdminComponents/EmailDashboard";
 import SelfTaskForm from "./AdminComponents/SelfTaskForm";
 import MeetingDetailsPopup from "./AdminComponents/MeetingDetailsPopup";
+import CalendarScheduler from "./AdminComponents/CalendarScheduler";
 import useAdminPanelTasks from "./AdminComponents/useAdminPanelTasks";
 
 const AdminChatLayout = ({ onLogout }) => {
@@ -77,6 +80,7 @@ const AdminChatLayout = ({ onLogout }) => {
   const [showEmailDashboard, setShowEmailDashboard] = useState(false);
   const [showMeetingDetails, setShowMeetingDetails] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
+  const [calendarData, setCalendarData] = useState(null);
 
   // Admin state - declare these before using them in the hook
   const [searchTerm, setSearchTerm] = useState("");
@@ -127,9 +131,23 @@ const AdminChatLayout = ({ onLogout }) => {
   }, []);
 
   const handleScheduleMeeting = useCallback((task) => {
-    console.log("Schedule meeting for task:", task);
-    // TODO: Implement meeting scheduling
-  }, []);
+    if (task.isMeeting && task.isMeeting.title) {
+      const meetingData = {
+        taskId: task.uniqueTaskId || task._id,
+        title: task.isMeeting.title,
+        description: task.isMeeting.description || task.taskDescription || "",
+        startTime: task.isMeeting.date ? `${task.isMeeting.date}T${task.isMeeting.time}` : new Date().toISOString(),
+        endTime: task.isMeeting.date ? `${task.isMeeting.date}T${task.isMeeting.time}` : new Date(Date.now() + 30 * 60000).toISOString(),
+        userEmails: [
+          currentUserData?.user?.email,
+          task.presentUserData?.email || "",
+        ].filter((email) => email),
+      };
+
+      setCalendarData(meetingData);
+      setShowCalendarScheduler(true);
+    }
+  }, [currentUserData]);
 
   const handleCreateBotAssistant = useCallback((task) => {
     console.log("Create bot assistant for task:", task);
@@ -280,6 +298,7 @@ const AdminChatLayout = ({ onLogout }) => {
     { id: "calendar", label: "Calendar", icon: Calendar, active: activeView === "calendar" },
     { id: "access", label: "Access Management", icon: Shield, active: activeView === "access" },
     { id: "analytics", label: "Visitor Analytics", icon: BarChart3, active: activeView === "analytics" },
+    { id: "memory", label: "Memory", icon: Brain, active: activeView === "memory" },
     { id: "slack", label: "Slack", icon: Slack, active: activeView === "slack" },
     { id: "email", label: "Email", icon: Mail, active: activeView === "email" },
   ], [activeView]);
@@ -566,6 +585,12 @@ const AdminChatLayout = ({ onLogout }) => {
             />
           )}
 
+          {activeView === "memory" && (
+            <Memory
+              onClose={() => setActiveView("chat")}
+            />
+          )}
+
           {activeView === "email" && (
             <EmailDashboard
               isOpen={true}
@@ -784,6 +809,41 @@ const AdminChatLayout = ({ onLogout }) => {
               setSelectedMeeting(null);
             }}
           />
+        )}
+
+        {showCalendarScheduler && calendarData && (
+          <div className="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 w-full max-w-2xl max-h-[90vh] overflow-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Schedule Meeting
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowCalendarScheduler(false);
+                    setCalendarData(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <CalendarScheduler
+                taskId={calendarData.taskId}
+                username={currentUserData?.user?.username}
+                title={calendarData.title}
+                description={calendarData.description}
+                startTime={calendarData.startTime}
+                endTime={calendarData.endTime}
+                userEmails={calendarData.userEmails}
+                onSuccess={() => {
+                  setShowCalendarScheduler(false);
+                  setCalendarData(null);
+                  refreshUserData();
+                }}
+              />
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </div>
