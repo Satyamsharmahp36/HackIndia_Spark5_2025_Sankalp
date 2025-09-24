@@ -135,24 +135,18 @@ const VisitorAnalytics = ({ onClose }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto text-white"
+      className="w-full"
     >
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-xl border border-gray-200 w-full overflow-hidden flex flex-col shadow-lg"
       >
-        <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900 text-white">
+        <div className="p-4 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center gap-2">
-            <Users className="text-blue-400" />
-            <h2 className="text-xl font-bold">Visitor Analytics</h2>
+            <Users className="text-blue-600" />
+            <h2 className="text-xl font-bold text-gray-900">Visitor Analytics</h2>
           </div>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700 transition-colors"
-          >
-            <X />
-          </button>
         </div>
         
         <div className="overflow-y-auto flex-grow">
@@ -165,7 +159,7 @@ const VisitorAnalytics = ({ onClose }) => {
               />
             </div>
           ) : error ? (
-            <div className="p-6 text-center text-red-400">
+            <div className="p-6 text-center text-red-600">
               <ShieldAlert className="w-10 h-10 mx-auto mb-2" />
               <p>{error}</p>
             </div>
@@ -175,60 +169,60 @@ const VisitorAnalytics = ({ onClose }) => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <motion.div 
                   whileHover={{ y: -5 }}
-                  className="bg-gray-700 p-4 rounded-lg text-center"
+                  className="bg-gray-100 p-4 rounded-lg text-center border border-gray-200"
                 >
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <Eye className="text-blue-400 w-5 h-5" />
-                    <h3 className="font-medium text-gray-300">Total Visits</h3>
+                    <Eye className="text-blue-600 w-5 h-5" />
+                    <h3 className="font-medium text-gray-700">Total Visits</h3>
                   </div>
-                  <p className="text-2xl font-bold text-white">{analytics.totalVisits}</p>
+                  <p className="text-2xl font-bold text-gray-900">{analytics.totalVisits}</p>
                 </motion.div>
                 
                 <motion.div 
                   whileHover={{ y: -5 }}
-                  className="bg-gray-700 p-4 rounded-lg text-center"
+                  className="bg-gray-100 p-4 rounded-lg text-center border border-gray-200"
                 >
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <Users className="text-purple-400 w-5 h-5" />
-                    <h3 className="font-medium text-gray-300">Unique Visitors</h3>
+                    <Users className="text-purple-600 w-5 h-5" />
+                    <h3 className="font-medium text-gray-700">Unique Visitors</h3>
                   </div>
-                  <p className="text-2xl font-bold text-white">{analytics.uniqueVisitors}</p>
+                  <p className="text-2xl font-bold text-gray-900">{analytics.uniqueVisitors}</p>
                 </motion.div>
                 
                 <motion.div 
                   whileHover={{ y: -5 }}
-                  className="bg-gray-700 p-4 rounded-lg text-center"
+                  className="bg-gray-100 p-4 rounded-lg text-center border border-gray-200"
                 >
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <Shield className="text-green-400 w-5 h-5" />
-                    <h3 className="font-medium text-gray-300">Verified</h3>
+                    <Shield className="text-green-600 w-5 h-5" />
+                    <h3 className="font-medium text-gray-700">Verified</h3>
                   </div>
-                  <p className="text-2xl font-bold text-white">{analytics.verifiedVisitors}</p>
+                  <p className="text-2xl font-bold text-gray-900">{analytics.verifiedVisitors}</p>
                 </motion.div>
                 
                 <motion.div 
                   whileHover={{ y: -5 }}
-                  className="bg-gray-700 p-4 rounded-lg text-center"
+                  className="bg-gray-100 p-4 rounded-lg text-center border border-gray-200"
                 >
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <ShieldAlert className="text-yellow-400 w-5 h-5" />
-                    <h3 className="font-medium text-gray-300">Guests</h3>
+                    <ShieldAlert className="text-yellow-600 w-5 h-5" />
+                    <h3 className="font-medium text-gray-700">Guests</h3>
                   </div>
-                  <p className="text-2xl font-bold text-white">{analytics.unverifiedVisitors}</p>
+                  <p className="text-2xl font-bold text-gray-900">{analytics.unverifiedVisitors}</p>
                 </motion.div>
               </div>
               
               {/* Chart Placeholder - Could be replaced with a real chart */}
-              <div className="bg-gray-900 rounded-lg p-4 mb-6 h-48 flex items-center justify-center">
+              <div className="bg-gray-100 rounded-lg p-4 mb-6 h-48 flex items-center justify-center border border-gray-200">
                 <BarChart2 className="w-12 h-12 text-gray-600" />
-                <span className="ml-2 text-gray-500">Visitor activity visualization could go here</span>
+                <span className="ml-2 text-gray-600">Visitor activity visualization could go here</span>
               </div>
               
               {/* Visitors List */}
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <User className="text-blue-400 w-5 h-5" />
+                  <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+                    <User className="text-blue-600 w-5 h-5" />
                     Recent Visitors
                   </h3>
                   
@@ -239,23 +233,23 @@ const VisitorAnalytics = ({ onClose }) => {
                       placeholder="Search visitors..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="bg-gray-700 border border-gray-600 rounded-full py-1 pl-9 pr-3 text-sm w-48 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="bg-white border border-gray-300 rounded-full py-1 pl-9 pr-3 text-sm w-48 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
                 
                 {visitors.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
+                  <div className="text-center py-8 text-gray-600">
                     <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p>No visitors yet</p>
                   </div>
                 ) : (
-                  <div className="bg-gray-900 rounded-lg overflow-hidden">
+                  <div className="bg-white rounded-lg overflow-hidden border border-gray-200">
                     <table className="w-full">
                       <thead>
-                        <tr className="bg-gray-800">
+                        <tr className="bg-gray-50">
                           <th 
-                            className="p-3 text-left cursor-pointer hover:bg-gray-700"
+                            className="p-3 text-left cursor-pointer hover:bg-gray-100 text-gray-700"
                             onClick={() => handleSort('username')}
                           >
                             <div className="flex items-center gap-1">
@@ -266,7 +260,7 @@ const VisitorAnalytics = ({ onClose }) => {
                             </div>
                           </th>
                           <th 
-                            className="p-3 text-left cursor-pointer hover:bg-gray-700"
+                            className="p-3 text-left cursor-pointer hover:bg-gray-100 text-gray-700"
                             onClick={() => handleSort('visitCount')}
                           >
                             <div className="flex items-center gap-1">
@@ -277,7 +271,7 @@ const VisitorAnalytics = ({ onClose }) => {
                             </div>
                           </th>
                           <th 
-                            className="p-3 text-left cursor-pointer hover:bg-gray-700 hidden md:table-cell"
+                            className="p-3 text-left cursor-pointer hover:bg-gray-100 text-gray-700 hidden md:table-cell"
                             onClick={() => handleSort('firstVisit')}
                           >
                             <div className="flex items-center gap-1">
@@ -288,7 +282,7 @@ const VisitorAnalytics = ({ onClose }) => {
                             </div>
                           </th>
                           <th 
-                            className="p-3 text-left cursor-pointer hover:bg-gray-700"
+                            className="p-3 text-left cursor-pointer hover:bg-gray-100 text-gray-700"
                             onClick={() => handleSort('lastVisit')}
                           >
                             <div className="flex items-center gap-1">
@@ -298,7 +292,7 @@ const VisitorAnalytics = ({ onClose }) => {
                               )}
                             </div>
                           </th>
-                          <th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-center text-gray-700">Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -308,7 +302,7 @@ const VisitorAnalytics = ({ onClose }) => {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            className="border-t border-gray-800 hover:bg-gray-800 transition-colors"
+                            className="border-t border-gray-200 hover:bg-gray-50 transition-colors"
                           >
                             <td className="p-3">
                               <div className="flex items-center">
@@ -316,37 +310,37 @@ const VisitorAnalytics = ({ onClose }) => {
                                   {visitor.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <p className="font-medium">{visitor.name}</p>
-                                  <p className="text-xs text-gray-400">{visitor.username}</p>
+                                  <p className="font-medium text-gray-900">{visitor.name}</p>
+                                  <p className="text-xs text-gray-500">{visitor.username}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="p-3">
                               <div className="flex items-center gap-1">
-                                <Eye className="w-4 h-4 text-gray-400" />
-                                {visitor.visitCount}
+                                <Eye className="w-4 h-4 text-gray-500" />
+                                <span className="text-gray-900">{visitor.visitCount}</span>
                               </div>
                             </td>
                             <td className="p-3 hidden md:table-cell">
                               <div className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm">{formatDate(visitor.firstVisit)}</span>
+                                <Calendar className="w-4 h-4 text-gray-500" />
+                                <span className="text-sm text-gray-700">{formatDate(visitor.firstVisit)}</span>
                               </div>
                             </td>
                             <td className="p-3">
                               <div className="flex items-center gap-1">
-                                <Clock className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm">{formatDate(visitor.lastVisit)}</span>
+                                <Clock className="w-4 h-4 text-gray-500" />
+                                <span className="text-sm text-gray-700">{formatDate(visitor.lastVisit)}</span>
                               </div>
                             </td>
                             <td className="p-3 text-center">
                               {visitor.isVerified ? (
-                                <span className="bg-green-900 text-green-300 text-xs py-1 px-2 rounded-full flex items-center justify-center w-20 mx-auto">
+                                <span className="bg-green-100 text-green-700 text-xs py-1 px-2 rounded-full flex items-center justify-center w-20 mx-auto border border-green-200">
                                   <Shield className="w-3 h-3 mr-1" />
                                   Verified
                                 </span>
                               ) : (
-                                <span className="bg-yellow-900 text-yellow-300 text-xs py-1 px-2 rounded-full flex items-center justify-center w-20 mx-auto">
+                                <span className="bg-yellow-100 text-yellow-700 text-xs py-1 px-2 rounded-full flex items-center justify-center w-20 mx-auto border border-yellow-200">
                                   <User className="w-3 h-3 mr-1" />
                                   Guest
                                 </span>
@@ -361,7 +355,7 @@ const VisitorAnalytics = ({ onClose }) => {
                       <div className="p-3 text-center">
                         <button
                           onClick={() => setShowAllVisitors(!showAllVisitors)}
-                          className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1 mx-auto"
+                          className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1 mx-auto"
                         >
                           {showAllVisitors ? (
                             <>
@@ -383,22 +377,13 @@ const VisitorAnalytics = ({ onClose }) => {
             </div>
           )}
         </div>
-        
-        <div className="border-t border-gray-700 p-4 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
-          >
-            Close
-          </button>
-        </div>
       </motion.div>
     </motion.div>
   );
 };
 
 VisitorAnalytics.propTypes = {
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func
 };
 
 export default VisitorAnalytics;

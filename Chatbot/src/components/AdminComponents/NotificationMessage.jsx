@@ -12,7 +12,7 @@ const NotificationMessage = ({ type, title, message }) => {
       exit={{ opacity: 0, y: -20 }}
       className={`mb-4 p-4 rounded-lg flex items-start gap-3 ${
         isSuccess 
-          ? 'bg-green-900 bg-opacity-20 border border-green-500'
+          ? 'bg-green-100 bg-opacity-20 border border-green-500'
           : 'bg-red-900 bg-opacity-20 border border-red-500'
       }`}
     >

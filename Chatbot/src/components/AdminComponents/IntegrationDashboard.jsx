@@ -213,28 +213,30 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4"
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 w-full max-w-7xl h-[90vh] overflow-hidden flex"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          transition={{ duration: 0.2 }}
+          className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-7xl h-[90vh] overflow-hidden flex"
         >
           {/* Left Sidebar */}
-          <div className="w-80 bg-gray-900 border-r border-gray-700 flex flex-col">
+          <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col">
             {/* Header */}
-            <div className="p-6 border-b border-gray-700">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-600 rounded-lg">
+                  <div className="p-2 bg-purple-600 rounded-lg">
                     <Link className="w-5 h-5 text-white" />
                   </div>
-                  <h2 className="text-lg font-bold text-white">Integrations</h2>
+                  <h2 className="text-lg font-bold text-gray-900">Integrations</h2>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -242,80 +244,74 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
             </div>
 
             {/* Quick Actions */}
-            <div className="p-4 border-b border-gray-700">
-              <h3 className="text-sm font-medium text-gray-400 mb-3">Quick Actions</h3>
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-sm font-medium text-gray-600 mb-3">Quick Actions</h3>
               <div className="space-y-2">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={handleAddChat}
-                  className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-3 transition-colors text-sm"
+                  className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-3 transition-all duration-200 text-sm"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add New Chat</span>
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                </button>
+                <button
                   onClick={handleConnectWorkspace}
-                  className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-3 transition-colors text-sm"
+                  className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-3 transition-all duration-200 text-sm"
                 >
                   <Users className="w-4 h-4" />
                   <span>Connect Workspace</span>
-                </motion.button>
+                </button>
               </div>
             </div>
 
             {/* Connected Workspaces */}
             <div className="flex-1 overflow-auto p-4">
-              <h3 className="text-sm font-medium text-gray-400 mb-3">Connected Workspaces</h3>
+              <h3 className="text-sm font-medium text-gray-600 mb-3">Connected Workspaces</h3>
               
               {loadingWorkspaces ? (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <RefreshCw className="w-6 h-6 text-gray-400 animate-spin" />
+                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <RefreshCw className="w-6 h-6 text-gray-600 animate-spin" />
                   </div>
-                  <p className="text-gray-400 text-sm">Loading workspaces...</p>
+                  <p className="text-gray-600 text-sm">Loading workspaces...</p>
                 </div>
               ) : error ? (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-red-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <AlertCircle className="w-6 h-6 text-red-400" />
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
                   </div>
-                  <p className="text-red-400 text-sm mb-2">Error loading workspaces</p>
-                  <p className="text-gray-400 text-xs">{error}</p>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                  <p className="text-red-600 text-sm mb-2">Error loading workspaces</p>
+                  <p className="text-gray-600 text-xs">{error}</p>
+                  <button
                     onClick={fetchIntegrationData}
-                    className="mt-3 px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded text-xs"
+                    className="mt-3 px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs transition-all duration-200"
                   >
                     Retry
-                  </motion.button>
+                  </button>
                 </div>
               ) : connectedWorkspaces.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Globe className="w-6 h-6 text-gray-400" />
+                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Globe className="w-6 h-6 text-gray-600" />
                   </div>
-                  <p className="text-gray-400 text-sm">No workspaces connected</p>
+                  <p className="text-gray-600 text-sm">No workspaces connected</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {connectedWorkspaces.map((workspace) => (
-                    <motion.button
+                    <button
                       key={workspace.id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
                       onClick={() => setSelectedWorkspace(workspace)}
-                      className={`w-full p-3 rounded-lg text-left transition-colors ${
+                      className={`w-full p-3 rounded-lg text-left transition-all duration-200 ${
                         selectedWorkspace?.id === workspace.id
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                          ? "bg-purple-600 text-white"
+                          : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gray-600 rounded-lg">
+                        <div className={`p-2 rounded-lg ${
+                          selectedWorkspace?.id === workspace.id ? "bg-purple-500" : "bg-gray-200"
+                        }`}>
                           {getPlatformIcon(workspace.platform)}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -328,20 +324,22 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                          <div
                             onClick={(e) => {
                               e.stopPropagation();
                               window.open(workspace.workspacelink, "_blank");
                             }}
-                            className="p-1 text-gray-400 hover:text-white transition-colors"
+                            className={`p-1 transition-all duration-200 cursor-pointer hover:scale-105 ${
+                              selectedWorkspace?.id === workspace.id 
+                                ? "text-white hover:text-gray-200" 
+                                : "text-gray-500 hover:text-gray-700"
+                            }`}
                           >
                             <ExternalLink className="w-3 h-3" />
-                          </motion.button>
+                          </div>
                         </div>
                       </div>
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               )}
@@ -353,60 +351,56 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
             {selectedWorkspace ? (
               <>
                 {/* Workspace Header */}
-                <div className="p-6 border-b border-gray-700">
+                <div className="p-6 border-b border-gray-200 bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-gray-700 rounded-lg">
+                      <div className="p-3 bg-gray-200 rounded-lg">
                         {getPlatformIcon(selectedWorkspace.platform)}
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold text-white">{selectedWorkspace.name}</h2>
-                        <p className="text-gray-400 text-sm">
+                        <h2 className="text-xl font-bold text-gray-900">{selectedWorkspace.name}</h2>
+                        <p className="text-gray-600 text-sm">
                           {selectedWorkspace.channels.length} channels • Last sync: {selectedWorkspace.lastSync}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="p-2 text-gray-400 hover:text-white transition-colors"
+                      <button
+                        className="p-2 text-gray-500 hover:text-gray-700 transition-all duration-200"
                       >
                         <RefreshCw className="w-4 h-4" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="p-2 text-gray-400 hover:text-white transition-colors"
+                      </button>
+                      <button
+                        className="p-2 text-gray-500 hover:text-gray-700 transition-all duration-200"
                       >
                         <Settings className="w-4 h-4" />
-                      </motion.button>
+                      </button>
                     </div>
                   </div>
                 </div>
 
                 {/* Channels List */}
-                <div className="flex-1 overflow-auto p-6">
+                <div className="flex-1 overflow-auto p-6 bg-white">
                   <div className="grid gap-4">
                     {selectedWorkspace.channels.map((channel) => (
-                      <div key={channel.id} className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer">
+                      <div key={channel.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="p-2 bg-gray-600 rounded-lg">
+                            <div className="p-2 bg-gray-200 rounded-lg">
                               {getChannelIcon(channel.type)}
                             </div>
                             <div className="flex-1">
-                              <h4 className="font-medium text-white">{channel.name}</h4>
-                              <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+                              <h4 className="font-medium text-gray-900">{channel.name}</h4>
+                              <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
                                 <span className={`px-2 py-1 rounded-full text-xs ${
                                   channel.is_private 
-                                    ? 'bg-purple-900/20 text-purple-400' 
-                                    : 'bg-green-900/20 text-green-400'
+                                    ? 'bg-purple-100 text-purple-700 border border-purple-200' 
+                                    : 'bg-green-100 text-green-700 border border-green-200'
                                 }`}>
                                   {channel.is_private ? 'private' : 'public'}
                                 </span>
                                 {channel.is_archived && (
-                                  <span className="px-2 py-1 rounded-full text-xs bg-gray-900/20 text-gray-400">
+                                  <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600 border border-gray-200">
                                     archived
                                   </span>
                                 )}
@@ -415,7 +409,7 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
                                 </span>
                               </div>
                               {channel.purpose?.value && (
-                                <p className="text-gray-400 text-sm mt-2 line-clamp-2">
+                                <p className="text-gray-600 text-sm mt-2 line-clamp-2">
                                   {channel.purpose.value}
                                 </p>
                               )}
@@ -435,7 +429,7 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
                               <Bot className="w-4 h-4" />
                               {creatingBot ? "Creating..." : "Bot"}
                             </motion.button>
-                            <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                            <MoreHorizontal className="w-4 h-4 text-gray-500" />
                           </div>
                         </div>
                       </div>
@@ -445,44 +439,44 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
               </>
             ) : (
               /* Empty State */
-              <div className="flex-1 flex items-center justify-center p-6">
+              <div className="flex-1 flex items-center justify-center p-6 bg-white">
                 <div className="text-center max-w-md">
-                  <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Globe className="w-12 h-12 text-gray-400" />
+                  <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Globe className="w-12 h-12 text-gray-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">No Workspace Selected</h3>
-                  <p className="text-gray-400 mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">No Workspace Selected</h3>
+                  <p className="text-gray-600 mb-8">
                     Choose a workspace from the sidebar to view its channels, or connect a new workspace to get started.
                   </p>
                   
                   {loadingWorkspaces ? (
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <RefreshCw className="w-8 h-8 text-gray-600 animate-spin" />
                       </div>
-                      <p className="text-gray-400">Loading workspaces...</p>
+                      <p className="text-gray-600">Loading workspaces...</p>
                     </div>
                   ) : error ? (
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-red-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <AlertCircle className="w-8 h-8 text-red-400" />
+                      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <AlertCircle className="w-8 h-8 text-red-600" />
                       </div>
-                      <p className="text-red-400 mb-2">Error loading workspaces</p>
-                      <p className="text-gray-400 text-sm mb-4">{error}</p>
+                      <p className="text-red-600 mb-2">Error loading workspaces</p>
+                      <p className="text-gray-600 text-sm mb-4">{error}</p>
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={fetchIntegrationData}
-                        className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded"
+                        className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
                       >
                         Retry
                       </motion.button>
                     </div>
                   ) : connectedWorkspaces.length === 0 ? (
                     <div className="space-y-4">
-                      <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
-                        <h4 className="text-lg font-semibold text-white mb-2">Get Started</h4>
-                        <p className="text-gray-400 text-sm mb-4">
+                      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">Get Started</h4>
+                        <p className="text-gray-600 text-sm mb-4">
                           Connect your first workspace to start managing channels and integrations.
                         </p>
                         <div className="grid gap-3">
@@ -508,7 +502,7 @@ const IntegrationDashboard = ({ isOpen, onClose, userData }) => {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-600 text-sm">
                       Select a workspace from the sidebar to view its channels and manage integrations.
                     </p>
                   )}

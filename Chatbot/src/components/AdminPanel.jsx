@@ -30,6 +30,11 @@ import {
   List,
   Mail,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from "react-toastify";
 import DailyWorkflow from "./DailyWorkflow";
@@ -50,11 +55,11 @@ import IntegrationDashboard from "./AdminComponents/IntegrationDashboard";
 import EmailDashboard from "./AdminComponents/EmailDashboard";
 import ReminderPanel from "./AdminComponents/ReminderPanel";
 
-const AdminPanel = ({ onClose }) => {
+const AdminPanel = ({ onClose, showOnlyView = null }) => {
   const { userData, refreshUserData } = useAppContext();
 
   // Original state management
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true); // Start as authenticated since user is already logged in
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,7 +87,7 @@ const AdminPanel = ({ onClose }) => {
   const [reminders, setReminders] = useState([]);
 
   // New state for UI improvements
-  const [activeView, setActiveView] = useState("tasks"); // 'tasks', 'workflow', 'analytics'
+  const [activeView, setActiveView] = useState("access"); // 'access', 'analytics', 'reminders'
   const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
   const [taskCategories, setTaskCategories] = useState({
     all: true,
@@ -135,7 +140,14 @@ const AdminPanel = ({ onClose }) => {
     setUserDescriptions,
     handleViewUserDetails,
     handleExpandTask,
-  } = useAdminPanelTasks(userData);
+    sortedTasks,
+    filteredTasks,
+    formatDate,
+    getStatusColor,
+    getStatusIcon,
+    getMeetingCardStyle,
+    renderDescription,
+  } = useAdminPanelTasks(userData, searchTerm, statusFilter, sortOrder, taskCategories);
 
   useEffect(() => {
     setIsAuthenticated(false);
@@ -146,12 +158,10 @@ const AdminPanel = ({ onClose }) => {
     setPasswordError("");
   }, []);
 
-  // Add effect to keep tasks in sync with userData
-  useEffect(() => {
-    if (userData?.user?.tasks) {
-      setTasks(userData.user.tasks);
-    }
-  }, [userData?.user?.tasks]);
+  // Tasks are now managed by useAdminPanelTasks hook
+  // Removed duplicate task setting to avoid conflicts
+  
+  // Debug logging removed - tasks should now display properly
 
   const handleLogin = () => {
     if (password === userData.user.password) {
@@ -363,8 +373,9 @@ const AdminPanel = ({ onClose }) => {
       setCreatingBot(true);
       toast.info("Creating bot assistant for meeting...");
 
-      // Ensure geminiApiKey exists
-      if (!userData.user.geminiApiKey) {
+      // Ensure geminiApiKey exists (use environment variable as fallback)
+      const apiKey = userData.user.geminiApiKey || import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+      if (!apiKey) {
         toast.error("API key is required but not found");
         setCreatingBot(false);
         return;
@@ -377,7 +388,7 @@ const AdminPanel = ({ onClose }) => {
         mobileNo: userData.user.mobileNo || "0000000000",
         username: task.uniqueTaskId,
         password: userData.user.password || "defaultpassword", // Make sure this exists
-        geminiApiKey: userData.user.geminiApiKey,
+        geminiApiKey: apiKey,
         plan: "meeting",
         prompt:
           task.isMeeting.meetingRawData ||
@@ -472,138 +483,8 @@ const AdminPanel = ({ onClose }) => {
     }
   };
 
-  // Task filtering with new category filters
-  const filteredTasks = tasks.filter((task) => {
-    // Text search filter
-    const matchesSearchTerm =
-      task.taskQuestion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (task.presentUserData &&
-        task.presentUserData.name &&
-        task.presentUserData.name
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())) ||
-      (task.taskDescription &&
-        task.taskDescription.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    // Status filter (from dropdown)
-    const matchesStatusDropdown =
-      statusFilter === "all" || task.status === statusFilter;
-
-    // Category filters (from pills)
-    let matchesCategories = true;
-
-    if (!taskCategories.all) {
-      const categoryMatches = [];
-
-      if (taskCategories.meetings && task.isMeeting.title) {
-        categoryMatches.push(true);
-      }
-
-      if (taskCategories.selfTasks && task.isSelfTask) {
-        categoryMatches.push(true);
-      }
-
-      if (taskCategories.completed && task.status === "completed") {
-        categoryMatches.push(true);
-      }
-
-      if (
-        taskCategories.pending &&
-        (task.status === "pending" || task.status === "inprogress")
-      ) {
-        categoryMatches.push(true);
-      }
-
-      // If any category is selected but none match this task
-      if (
-        Object.values(taskCategories).some((value) => value) &&
-        categoryMatches.length === 0
-      ) {
-        matchesCategories = false;
-      }
-    }
-
-    return matchesSearchTerm && matchesStatusDropdown && matchesCategories;
-  });
-
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    const dateA = new Date(a.createdAt);
-    const dateB = new Date(b.createdAt);
-
-    if (sortOrder === "newest") {
-      return dateB - dateA;
-    } else {
-      return dateA - dateB;
-    }
-  });
-
-  const renderDescription = (text) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.split(urlRegex).map((part, i) => {
-      if (part.match(urlRegex)) {
-        return (
-          <a
-            key={i}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:underline"
-          >
-            {part}
-          </a>
-        );
-      }
-      return part;
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-500";
-      case "inprogress":
-        return "bg-yellow-500";
-      case "pending":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle className="w-4 h-4" />;
-      case "inprogress":
-        return <ClockIcon className="w-4 h-4" />;
-      case "pending":
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return null;
-    }
-  };
-
-  const getMeetingCardStyle = (meetingStatus) => {
-    switch (meetingStatus) {
-      case "scheduled":
-        return "border-blue-600 bg-blue-900/20";
-      case "completed":
-        return "border-green-600 bg-green-900/20";
-      default: // pending
-        return "border-gray-700 bg-gray-700";
-    }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date);
-  };
+  // Task filtering and sorting is now handled in the useAdminPanelTasks hook
+  // Utility functions are also provided by the hook
 
   // Login form
   if (!isAuthenticated) {
@@ -612,28 +493,32 @@ const AdminPanel = ({ onClose }) => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       >
-        <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full shadow-xl border border-gray-700">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-white">Admin Panel</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl font-bold">Admin Panel</CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </Button>
+            </div>
+          </CardHeader>
 
-          <div className="space-y-4">
+          <CardContent className="space-y-4">
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-300 mb-1"
+                className="block text-sm font-medium text-gray-700 mb-1"
               >
                 Enter Admin Password
               </label>
-              <input
+              <Input
                 type="password"
                 id="password"
                 value={password}
@@ -641,7 +526,6 @@ const AdminPanel = ({ onClose }) => {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleLogin();
                 }}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter password"
               />
               {passwordError && (
@@ -650,18 +534,16 @@ const AdminPanel = ({ onClose }) => {
             </div>
 
             <div className="flex justify-end">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <Button
                 onClick={handleLogin}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                className="flex items-center gap-2"
               >
                 <LogIn className="w-4 h-4" />
                 Login
-              </motion.button>
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </motion.div>
     );
   }
@@ -671,10 +553,10 @@ const AdminPanel = ({ onClose }) => {
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
     >
       <style>{scrollbarStyles}</style>
-      <div className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 w-full max-w-6xl max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-6xl max-h-[90vh] flex flex-col">
         {/* Admin Panel Header */}
         <AdminPanelHeader
           username={userData.user.username}
@@ -698,7 +580,7 @@ const AdminPanel = ({ onClose }) => {
           />
 
           {/* Content Area */}
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto p-6 bg-gray-50">
             {error && (
               <NotificationMessage type="error" title="Error" message={error} />
             )}
@@ -711,87 +593,23 @@ const AdminPanel = ({ onClose }) => {
               />
             )}
 
-            {activeView === "tasks" && (
-              <>
-                {/* Search and Filter Controls */}
-                <TaskControls
-                  searchTerm={searchTerm}
-                  setSearchTerm={setSearchTerm}
-                  statusFilter={statusFilter}
-                  setStatusFilter={setStatusFilter}
-                  sortOrder={sortOrder}
-                  setSortOrder={setSortOrder}
-                  viewMode={viewMode}
-                  handleViewModeToggle={handleViewModeToggle}
-                  taskCategories={taskCategories}
-                  handleCategoryToggle={handleCategoryToggle}
-                />
-
-                {/* Task List */}
-                <TaskList
-                  tasks={tasks}
-                  loading={loading}
-                  error={error}
-                  sortedTasks={sortedTasks}
-                  expandedTask={expandedTask}
-                  expandedUser={expandedUser}
-                  userDescriptions={userDescriptions}
-                  viewMode={viewMode}
-                  searchTerm={searchTerm}
-                  statusFilter={statusFilter}
-                  sortOrder={sortOrder}
-                  taskCategories={taskCategories}
-                  handleExpandTask={handleExpandTask}
-                  handleViewUserDetails={handleViewUserDetails}
-                  handleOpenMeetingLink={handleOpenMeetingLink}
-                  handleViewMeetingDetails={handleViewMeetingDetails}
-                  handleScheduleMeeting={handleScheduleMeeting}
-                  handleCreateBotAssistant={handleCreateBotAssistant}
-                  toggleTaskStatus={toggleTaskStatus}
-                  creatingBot={creatingBot}
-                  formatDate={formatDate}
-                  getStatusColor={getStatusColor}
-                  getStatusIcon={getStatusIcon}
-                  getMeetingCardStyle={getMeetingCardStyle}
-                  renderDescription={renderDescription}
-                  setExpandedTask={setExpandedTask}
-                  setExpandedUser={setExpandedUser}
-                  setUserDescriptions={setUserDescriptions}
-                  userData={userData}
-                />
-              </>
-            )}
-
-            {activeView === "workflow" && (
-              <DailyWorkflow
+            {activeView === "access" && (
+              <AccessManagement
                 userData={userData}
-                onRefresh={handleRefreshUserData}
+                onUpdate={handleAccessManagementUpdate}
+                onClose={() => {
+                  // No need to close since it's integrated
+                }}
               />
             )}
 
-            {activeView === "access" && showAccessManagement && (
-              <div>
-                <AccessManagement
-                  userData={userData}
-                  onUpdate={handleAccessManagementUpdate}
-                  onClose={() => {
-                    setActiveView("tasks");
-                    setShowAccessManagement(false);
-                  }}
-                />
-              </div>
-            )}
-
-            {activeView === "analytics" && showVisitorAnalytics && (
-              <div>
-                <VisitorAnalytics
-                  userData={userData}
-                  onClose={() => {
-                    setShowVisitorAnalytics(false);
-                    setActiveView("tasks");
-                  }}
-                />
-              </div>
+            {activeView === "analytics" && (
+              <VisitorAnalytics
+                userData={userData}
+                onClose={() => {
+                  // No need to close since it's integrated
+                }}
+              />
             )}
 
             {activeView === "reminders" && (

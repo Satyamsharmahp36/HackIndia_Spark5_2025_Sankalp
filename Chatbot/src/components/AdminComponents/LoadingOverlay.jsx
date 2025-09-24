@@ -7,7 +7,7 @@ const LoadingOverlay = () => (
     <motion.div
       animate={{ rotate: 360 }}
       transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-      className="p-3 rounded-full bg-blue-900 bg-opacity-50"
+      className="p-3 rounded-full bg-blue-100 bg-opacity-50"
     >
       <Loader2 className="w-10 h-10 text-blue-400" />
     </motion.div>

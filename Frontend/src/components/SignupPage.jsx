@@ -349,7 +349,7 @@ const SignupPage = () => {
             onFocus={() => setUiState(prev => ({...prev, activeField: field}))}
             onBlur={() => setUiState(prev => ({...prev, activeField: null}))}
             className={`w-full p-3 rounded-lg 
-              ${field === 'email' && uiState.emailVerified ? 'bg-green-900/30 border-green-500/50' : ''}
+              ${field === 'email' && uiState.emailVerified ? 'bg-green-100/30 border-green-500/50' : ''}
               ${uiState.activeField === field 
                 ? 'ring-2 ring-purple-500/70 bg-gray-700/70' 
                 : 'bg-gray-700/50'}

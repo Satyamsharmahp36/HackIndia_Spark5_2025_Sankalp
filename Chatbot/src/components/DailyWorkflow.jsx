@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, Save, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAppContext } from '../Appcontext';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Textarea } from './ui/textarea';
 
 const DailyWorkflow = ({ onRefresh }) => {
   const { userData, refreshUserData } = useAppContext();
@@ -12,8 +15,10 @@ const DailyWorkflow = ({ onRefresh }) => {
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    fetchDailyTasks();
-  }, [userData]);
+    if (userData?.user?.username) {
+      fetchDailyTasks();
+    }
+  }, [userData?.user?.username]); // Only depend on username, not the entire userData object
 
   const fetchDailyTasks = async () => {
     if (!userData || !userData.user || !userData.user.username) return;
@@ -88,56 +93,61 @@ const DailyWorkflow = ({ onRefresh }) => {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg mb-6"
+      className="mb-6"
     >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-medium text-white flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-blue-400" />
-          Daily Workflow
-        </h3>
-        
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
-          <Clock className="w-4 h-4" />
-          <span>Last updated: {loading ? 'Loading...' : formatDate(lastUpdated)}</span>
-        </div>
-      </div>
-      
-      {loading ? (
-        <div className="flex justify-center items-center py-8">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : (
-        <>
-          <textarea
-            value={dailyTasks}
-            onChange={(e) => setDailyTasks(e.target.value)}
-            className="w-full h-40 bg-gray-900 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            placeholder="Enter today's workflow, meetings, or tasks here..."
-          />
-          
-          <div className="flex justify-end mt-3">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={updateDailyTasks}
-              disabled={updating}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all font-medium flex items-center gap-2"
-            >
-              {updating ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Update Daily Workflow
-                </>
-              )}
-            </motion.button>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-xl font-medium text-gray-900 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              Daily Workflow
+            </CardTitle>
+            
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Clock className="w-4 h-4" />
+              <span>Last updated: {loading ? 'Loading...' : formatDate(lastUpdated)}</span>
+            </div>
           </div>
-        </>
-      )}
+        </CardHeader>
+        
+        <CardContent>
+      
+          {loading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <>
+              <Textarea
+                value={dailyTasks}
+                onChange={(e) => setDailyTasks(e.target.value)}
+                className="w-full h-40 resize-none"
+                placeholder="Enter today's workflow, meetings, or tasks here..."
+              />
+              
+              <div className="flex justify-end mt-4">
+                <Button
+                  onClick={updateDailyTasks}
+                  disabled={updating}
+                  className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg hover:shadow-blue-500/30 transition-all font-medium flex items-center gap-2"
+                >
+                  {updating ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Update Daily Workflow
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </motion.div>
   );
 };

@@ -90,7 +90,7 @@ const ContributionsTab = ({
             >
               <div className="flex justify-between items-center p-4 border-b border-gray-700">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-blue-900 bg-opacity-30 rounded-full p-2">
+                  <div className="bg-blue-100 bg-opacity-30 rounded-full p-2">
                     <User className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
@@ -107,10 +107,10 @@ const ContributionsTab = ({
                   <span 
                     className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       contribution.status === 'approved'
-                        ? 'bg-green-900 bg-opacity-30 text-green-300 border border-green-600' 
+                        ? 'bg-green-100 bg-opacity-30 text-green-300 border border-green-600' 
                         : contribution.status === 'rejected'
                           ? 'bg-red-900 bg-opacity-30 text-red-300 border border-red-600'
-                          : 'bg-yellow-900 bg-opacity-30 text-yellow-300 border border-yellow-600'
+                          : 'bg-yellow-100 bg-opacity-30 text-yellow-300 border border-yellow-600'
                     }`}
                   >
                     {contribution.status === 'approved' ? '✓ Approved' : 

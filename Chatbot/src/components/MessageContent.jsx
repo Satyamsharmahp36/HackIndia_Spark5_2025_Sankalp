@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
 
-const MessageContent = ({ content }) => {
+const MessageContent = ({ content, text }) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Use either content or text prop, with fallback
+    const messageText = content || text || '';
   
     const convertUrlsToLinks = (text) => {
+      // Check if text is defined and is a string
+      if (!text || typeof text !== 'string') {
+        return text || '';
+      }
+      
       return text.split(urlRegex).map((part, index) => {
         if (part.match(urlRegex)) {
           const linkText = part.includes('linkedin.com') 
@@ -26,7 +34,7 @@ const MessageContent = ({ content }) => {
       });
     };
   
-    return <div>{convertUrlsToLinks(content)}</div>;
+    return <div>{convertUrlsToLinks(messageText)}</div>;
   };
 
   export default MessageContent;

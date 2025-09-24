@@ -48,7 +48,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
       fetchAccessData(userData.user._id);
       fetchRestrictionStatus(userData.user._id);
     }
-  }, [userData]);
+  }, [userData?.user?._id]); // Only depend on user ID, not entire userData object
 
   const fetchAccessData = async (userId) => {
     setIsLoading(true);
@@ -644,9 +644,9 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
 
   // Group badge component to show in access list
   const GroupBadge = ({ groupName }) => (
-    <div className="flex items-center bg-indigo-900/50 px-2 py-1 rounded-md text-xs">
-      <Users className="w-3 h-3 mr-1 text-indigo-400" />
-      <span className="text-indigo-300">{groupName}</span>
+    <div className="flex items-center bg-indigo-100 px-2 py-1 rounded-md text-xs border border-indigo-200">
+      <Users className="w-3 h-3 mr-1 text-indigo-600" />
+      <span className="text-indigo-700">{groupName}</span>
     </div>
   );
 
@@ -655,58 +655,52 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="text-white fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+      className="w-full"
     >
       {showConfirmDialog && <ConfirmDialog />}
 
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-gray-800 rounded-xl w-full max-w-4xl mx-4 border border-gray-700 shadow-xl overflow-hidden"
+        className="bg-white rounded-xl w-full border border-gray-200 shadow-lg overflow-hidden"
       >
         {/* Header */}
-        <div className="bg-gray-900 px-6 py-4 flex items-center justify-between border-b border-gray-700">
-          <h2 className="text-xl font-bold flex items-center">
-            <Users className="w-5 h-5 mr-2 text-blue-500" />
+        <div className="bg-gray-50 px-8 py-6 border-b border-gray-200">
+          <h2 className="text-2xl font-bold flex items-center text-gray-900">
+            <Users className="w-6 h-6 mr-3 text-purple-600" />
             Access Management
           </h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-700"
-            disabled={isLoading || isActionLoading}
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <p className="text-gray-600 mt-2">Manage user access and group permissions</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-700">
+        <div className="flex border-b border-gray-200">
           <button
             onClick={() => setActiveTab("user-access")}
-            className={`flex-1 py-3 px-4 text-center transition-colors ${
+            className={`flex-1 py-4 px-6 text-center transition-colors ${
               activeTab === "user-access"
-                ? "border-b-2 border-blue-500 text-blue-500"
-                : "text-gray-400 hover:text-gray-200"
+                ? "border-b-2 border-purple-600 text-purple-600 bg-purple-50"
+                : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
             }`}
             disabled={isLoading}
           >
             <div className="flex items-center justify-center">
-              <UserCheck className="w-4 h-4 mr-2" />
-              User Access
+              <UserCheck className="w-5 h-5 mr-2" />
+              <span className="font-medium">User Access</span>
             </div>
           </button>
           <button
             onClick={() => setActiveTab("groups")}
-            className={`flex-1 py-3 px-4 text-center transition-colors ${
+            className={`flex-1 py-4 px-6 text-center transition-colors ${
               activeTab === "groups"
-                ? "border-b-2 border-blue-500 text-blue-500"
-                : "text-gray-400 hover:text-gray-200"
+                ? "border-b-2 border-purple-600 text-purple-600 bg-purple-50"
+                : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
             }`}
             disabled={isLoading}
           >
             <div className="flex items-center justify-center">
-              <Users className="w-4 h-4 mr-2" />
-              Groups
+              <Users className="w-5 h-5 mr-2" />
+              <span className="font-medium">Groups</span>
             </div>
           </button>
         </div>
@@ -718,8 +712,8 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
             animate={{ opacity: 1, y: 0 }}
             className={`mx-6 mt-4 p-3 rounded-lg flex items-center ${
               message.type === "error"
-                ? "bg-red-900/50 text-red-300"
-                : "bg-green-900/50 text-green-300"
+                ? "bg-red-50 text-red-700 border border-red-200"
+                : "bg-green-50 text-green-700 border border-green-200"
             }`}
           >
             {message.type === "error" ? (
@@ -731,17 +725,17 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
           </motion.div>
         )}
 
-        <div className="mx-4 mt-4 p-4 bg-gray-900/60 rounded-lg border border-gray-700">
+        <div className="mx-6 mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               {accessRestricted ? (
-                <Lock className="w-5 h-5 mr-2 text-blue-400" />
+                <Lock className="w-6 h-6 mr-3 text-purple-600" />
               ) : (
-                <Globe className="w-5 h-5 mr-2 text-green-400" />
+                <Globe className="w-6 h-6 mr-3 text-green-600" />
               )}
               <div>
-                <h3 className="font-medium">Access Restriction</h3>
-                <p className="text-sm text-gray-400">
+                <h3 className="text-lg font-semibold text-gray-900">Access Restriction</h3>
+                <p className="text-gray-600 mt-1">
                   {accessRestricted
                     ? "Access is restricted to specified users/groups"
                     : "Access is open to everyone"}
@@ -751,12 +745,12 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
             <button
               onClick={toggleRestriction}
               disabled={isTogglingRestriction}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                accessRestricted ? "bg-blue-600" : "bg-gray-600"
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                accessRestricted ? "bg-purple-600" : "bg-gray-300"
               }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm ${
                   accessRestricted ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -770,14 +764,14 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
         </div>
 
         {/* Main content with loading state */}
-        <div className="p-6 relative">
+        <div className="p-8 relative">
           {isLoading && <LoadingOverlay />}
 
           {activeTab === "user-access" && (
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row gap-3">
+            <div className="space-y-8">
+              <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1 relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
                     value={newUsername}
@@ -785,16 +779,16 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                       setNewUsername(e.target.value);
                       searchUsers(e.target.value);
                     }}
-                    className="w-full bg-gray-900 border border-gray-600 rounded-lg py-2 px-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full bg-white border border-gray-300 rounded-lg py-3 px-12 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-base"
                     placeholder="Enter username to add access"
                     disabled={isActionLoading}
                   />
 
                   {/* User search results dropdown */}
                   {newUsername.trim() && searchResults.length > 0 && (
-                    <div className="absolute z-10 mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                       {isSearching ? (
-                        <div className="p-2 text-center">
+                        <div className="p-2 text-center text-gray-600">
                           <Loader className="w-4 h-4 animate-spin mx-auto mb-2" />
                           Searching...
                         </div>
@@ -802,7 +796,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                         searchResults.map((user) => (
                           <div
                             key={user._id}
-                            className="p-2 hover:bg-gray-700 cursor-pointer flex items-center"
+                            className="p-2 hover:bg-gray-50 cursor-pointer flex items-center"
                             onClick={() => {
                               setNewUsername(user.username);
                               setSearchResults([]);
@@ -812,8 +806,8 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                               <User className="w-4 h-4 text-white" />
                             </div>
                             <div>
-                              <div className="font-medium">{user.username}</div>
-                              <div className="text-xs text-gray-400">
+                              <div className="font-medium text-gray-900">{user.username}</div>
+                              <div className="text-xs text-gray-500">
                                 {user.email}
                               </div>
                             </div>
@@ -828,44 +822,44 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                   whileTap={{ scale: 0.97 }}
                   onClick={addUserAccess}
                   disabled={isActionLoading || !newUsername.trim()}
-                  className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="py-3 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
                 >
                   {isActionLoading ? (
-                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader className="w-5 h-5 mr-2 animate-spin" />
                   ) : (
-                    <UserPlus className="w-4 h-4 mr-1" />
+                    <UserPlus className="w-5 h-5 mr-2" />
                   )}
                   <span>Add User</span>
                 </motion.button>
               </div>
 
               {/* Group Access Section */}
-              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                <div className="flex items-center mb-3">
-                  <Shield className="w-5 h-5 text-indigo-400 mr-2" />
-                  <h3 className="font-medium text-lg">Group Access</h3>
+              <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                <div className="flex items-center mb-4">
+                  <Shield className="w-6 h-6 text-purple-600 mr-3" />
+                  <h3 className="font-semibold text-lg text-gray-900">Group Access</h3>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-3 mb-4">
                   {groupsWithAccess.length > 0 ? (
                     groupsWithAccess.map((groupName) => (
                       <div
                         key={groupName}
-                        className="flex items-center bg-indigo-900/50 px-3 py-2 rounded-lg text-sm text-indigo-100"
+                        className="flex items-center bg-purple-100 px-4 py-2 rounded-lg text-sm text-purple-700 border border-purple-200"
                       >
-                        <Users className="w-4 h-4 mr-2 text-indigo-400" />
-                        <span>{groupName}</span>
+                        <Users className="w-4 h-4 mr-2 text-purple-600" />
+                        <span className="font-medium">{groupName}</span>
                         <button
                           onClick={() => removeGroupAccess(groupName)}
                           disabled={isActionLoading}
-                          className="ml-2 text-indigo-300 hover:text-red-300 p-1 rounded-full hover:bg-indigo-800 transition-colors"
+                          className="ml-3 text-purple-600 hover:text-red-600 p-1 rounded-full hover:bg-purple-200 transition-colors"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-gray-600">
                       No groups have been added to access list yet.
                     </p>
                   )}
@@ -873,7 +867,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
 
                 <div className="flex items-center gap-2">
                   <select
-                    className="bg-gray-800 border border-gray-700 rounded-lg py-2 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all flex-1"
+                    className="bg-white border border-gray-300 rounded-lg py-2 px-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all flex-1"
                     onChange={(e) => addGroupAccess(e.target.value)}
                     value=""
                     disabled={isAddingGroup || groups.length === 0}
@@ -898,24 +892,23 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                 </div>
 
                 <div className="mt-2 flex items-center">
-                  <Info className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
-                  <p className="text-sm text-gray-400">
-                    Adding a group will grant access to all members in that group .
-                    
+                  <Info className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                  <p className="text-sm text-gray-600">
+                    Adding a group will grant access to all members in that group.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden relative">
-                <div className="p-4 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
-                  <h3 className="font-medium text-lg">User Access List</h3>
-                  <div className="text-sm text-gray-400">
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden relative">
+                <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                  <h3 className="font-medium text-lg text-gray-900">User Access List</h3>
+                  <div className="text-sm text-gray-600">
                     {userAccess.length} user{userAccess.length !== 1 ? "s" : ""}
                   </div>
                 </div>
 
                 {userAccess.length === 0 ? (
-                  <div className="p-8 text-center text-gray-400">
+                  <div className="p-8 text-center text-gray-600">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>No users have been granted access yet.</p>
                     <p className="text-sm mt-1">
@@ -924,7 +917,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                     </p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-gray-700 max-h-60 overflow-y-auto">
+                  <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
                     {userAccess.map((username, idx) => {
                       // Find which groups this user belongs to (from groups with access)
                       const userGroups = groups
@@ -938,14 +931,14 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                       return (
                         <li
                           key={idx}
-                          className="flex items-center justify-between p-4 hover:bg-gray-800 transition-colors"
+                          className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex items-center">
                             <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-violet-600 flex items-center justify-center mr-3">
                               <User className="w-4 h-4 text-white" />
                             </div>
                             <div>
-                              <div className="font-medium">{username}</div>
+                              <div className="font-medium text-gray-900">{username}</div>
                               {userGroups.length > 0 && (
                                 <div className="flex gap-1 mt-1">
                                   {userGroups.map((groupName) => (
@@ -961,7 +954,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                           <button
                             onClick={() => removeUserAccess(username)}
                             disabled={isActionLoading}
-                            className="p-2 text-gray-400 hover:text-red-400 rounded-full hover:bg-gray-700 transition-colors"
+                            className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-gray-100 transition-colors"
                           >
                             <UserMinus className="w-4 h-4" />
                           </button>
@@ -972,7 +965,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                 )}
               </div>
 
-              <div className="flex items-center mt-2 text-sm text-gray-400">
+              <div className="flex items-center mt-2 text-sm text-gray-600">
                 <Info className="w-4 h-4 mr-2" />
                 <p>
                   Users with access can view and interact with your assistant.
@@ -982,40 +975,40 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
           )}
 
           {activeTab === "groups" && (
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row gap-3">
+            <div className="space-y-8">
+              <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
                     }}
-                    className="w-full bg-gray-900 border border-gray-600 rounded-lg py-2 px-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full bg-white border border-gray-300 rounded-lg py-3 px-12 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-base"
                     placeholder="Search groups..."
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col lg:flex-row gap-6">
                 {/* Groups List */}
-                <div className="md:w-1/3 bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
-                  <div className="p-4 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
-                    <h3 className="font-medium text-lg">Your Groups</h3>
-                    <div className="text-sm text-gray-400">
+                <div className="lg:w-1/3 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                  <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h3 className="font-semibold text-lg text-gray-900">Your Groups</h3>
+                    <div className="text-sm text-gray-600">
                       {filteredGroups.length} group
                       {filteredGroups.length !== 1 ? "s" : ""}
                     </div>
                   </div>
 
-                  <div className="p-3 border-b border-gray-700 bg-gray-800/50">
-                    <div className="flex gap-2">
+                  <div className="p-4 border-b border-gray-200 bg-gray-50">
+                    <div className="flex gap-3">
                       <input
                         type="text"
                         value={newGroupName}
                         onChange={(e) => setNewGroupName(e.target.value)}
-                        className="flex-1 bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                        className="flex-1 bg-white border border-gray-300 rounded-lg py-3 px-4 text-gray-900 placeholder-gray-500 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                         placeholder="New group name..."
                         disabled={isActionLoading}
                       />
@@ -1024,54 +1017,54 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                         whileTap={{ scale: 0.97 }}
                         onClick={createGroup}
                         disabled={isActionLoading || !newGroupName.trim()}
-                        className="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors text-sm font-medium flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium flex items-center disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
                       >
                         {isActionLoading ? (
-                          <Loader className="w-4 h-4 animate-spin" />
+                          <Loader className="w-5 h-5 animate-spin" />
                         ) : (
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-5 h-5" />
                         )}
                       </motion.button>
                     </div>
                   </div>
 
                   {filteredGroups.length === 0 ? (
-                    <div className="p-8 text-center text-gray-400">
+                    <div className="p-8 text-center text-gray-600">
                       <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                       <p>No groups found</p>
                       <p className="text-sm mt-1">Create a new group above</p>
                     </div>
                   ) : (
-                    <ul className="divide-y divide-gray-700 max-h-96 overflow-y-auto">
+                    <ul className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
                       {filteredGroups.map((group) => (
                         <li
                           key={group.groupName}
                           onClick={() => setSelectedGroup(group)}
-                          className={`flex items-center justify-between p-3 hover:bg-gray-800 transition-colors cursor-pointer ${
+                          className={`flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
                             selectedGroup?.groupName === group.groupName
-                              ? "bg-gray-700"
+                              ? "bg-purple-50 border-r-4 border-purple-600"
                               : ""
                           }`}
                         >
                           <div className="flex items-center">
                             <div
-                              className={`w-8 h-8 rounded-full ${
+                              className={`w-10 h-10 rounded-full ${
                                 groupsWithAccess.includes(group.groupName)
-                                  ? "bg-gradient-to-r from-green-600 to-teal-600"
-                                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                                  ? "bg-gradient-to-r from-green-500 to-teal-500"
+                                  : "bg-gradient-to-r from-purple-500 to-indigo-500"
                               } flex items-center justify-center mr-3`}
                             >
-                              <Users className="w-4 h-4 text-white" />
+                              <Users className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                              <div className="font-medium">
+                              <div className="font-semibold text-gray-900">
                                 {group.groupName}
                               </div>
-                              <div className="text-xs text-gray-400">
+                              <div className="text-sm text-gray-600">
                                 {group.users?.length || 0} member
                                 {group.users?.length !== 1 ? "s" : ""}
                                 {groupsWithAccess.includes(group.groupName) && (
-                                  <span className="ml-2 text-green-400 flex items-center">
+                                  <span className="ml-2 text-green-600 flex items-center">
                                     <CheckCircle className="w-3 h-3 mr-1" />
                                     Has Access
                                   </span>
@@ -1085,7 +1078,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                               deleteGroup(group.groupName);
                             }}
                             disabled={isActionLoading}
-                            className="p-2 text-gray-400 hover:text-red-400 rounded-full hover:bg-gray-700 transition-colors"
+                            className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-gray-100 transition-colors"
                           >
                             <Trash className="w-4 h-4" />
                           </button>
@@ -1096,18 +1089,18 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                 </div>
 
                 {/* Group Details */}
-                <div className="md:w-2/3 bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+                <div className="lg:w-2/3 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                   {selectedGroup ? (
                     <>
-                      <div className="p-4 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
+                      <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                         <div className="flex items-center">
-                          <h3 className="font-medium text-lg">
+                          <h3 className="font-semibold text-xl text-gray-900">
                             {selectedGroup.groupName}
                           </h3>
                           {groupsWithAccess.includes(
                             selectedGroup.groupName
                           ) && (
-                            <span className="ml-3 bg-green-900/40 text-green-400 text-xs px-2 py-1 rounded-full flex items-center">
+                            <span className="ml-3 bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full flex items-center border border-green-200">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Has Access
                             </span>
@@ -1120,9 +1113,9 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                               removeGroupAccess(selectedGroup.groupName)
                             }
                             disabled={isActionLoading}
-                            className="py-1 px-3 bg-red-600/30 hover:bg-red-600/50 text-red-300 rounded-lg transition-colors text-sm font-medium flex items-center disabled:opacity-70"
+                            className="py-2 px-4 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium flex items-center disabled:opacity-70 border border-red-200"
                           >
-                            <Shield className="w-3 h-3 mr-1" />
+                            <Shield className="w-4 h-4 mr-2" />
                             Remove Access
                           </button>
                         ) : (
@@ -1131,16 +1124,16 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                               addGroupAccess(selectedGroup.groupName)
                             }
                             disabled={isActionLoading}
-                            className="py-1 px-3 bg-green-600/30 hover:bg-green-600/50 text-green-300 rounded-lg transition-colors text-sm font-medium flex items-center disabled:opacity-70"
+                            className="py-2 px-4 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors text-sm font-medium flex items-center disabled:opacity-70 border border-green-200"
                           >
-                            <Shield className="w-3 h-3 mr-1" />
+                            <Shield className="w-4 h-4 mr-2" />
                             Grant Access
                           </button>
                         )}
                       </div>
 
-                      <div className="p-3 border-b border-gray-700 bg-gray-800/50">
-                        <div className="flex gap-2">
+                      <div className="p-4 border-b border-gray-200 bg-gray-50">
+                        <div className="flex gap-3">
                           <input
                             type="text"
                             value={groupUsername}
@@ -1148,14 +1141,14 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                               setGroupUsername(e.target.value);
                               searchUsers(e.target.value);
                             }}
-                            className="flex-1 bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                            className="flex-1 bg-white border border-gray-300 rounded-lg py-3 px-4 text-gray-900 placeholder-gray-500 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                             placeholder="Add user to group..."
                             disabled={isActionLoading}
                           />
                           {groupUsername.trim() && searchResults.length > 0 && (
-                            <div className="absolute top-52 z-10 mt-1 w-120 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            <div className="absolute top-52 z-10 mt-1 w-120 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                               {isSearching ? (
-                                <div className="p-2 text-center">
+                                <div className="p-2 text-center text-gray-600">
                                   <Loader className="w-4 h-4 animate-spin mx-auto mb-2" />
                                   Searching...
                                 </div>
@@ -1163,20 +1156,20 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                                 searchResults.map((user) => (
                                   <div
                                     key={user._id}
-                                    className="p-2 hover:bg-gray-700 cursor-pointer flex items-center"
+                                    className="p-2 hover:bg-gray-50 cursor-pointer flex items-center"
                                     onClick={() => {
                                       setGroupUsername(user.username);
                                       setSearchResults([]);
                                     }}
                                   >
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center mr-3">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center mr-3">
                                       <User className="w-4 h-4 text-white" />
                                     </div>
                                     <div>
-                                      <div className="font-medium">
+                                      <div className="font-medium text-gray-900">
                                         {user.username}
                                       </div>
-                                      <div className="text-xs text-gray-400">
+                                      <div className="text-xs text-gray-600">
                                         {user.email}
                                       </div>
                                     </div>
@@ -1190,34 +1183,34 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                             whileTap={{ scale: 0.97 }}
                             onClick={addUserToGroup}
                             disabled={isActionLoading || !groupUsername.trim()}
-                            className="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors text-sm font-medium flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium flex items-center disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
                           >
                             {isActionLoading ? (
-                              <Loader className="w-4 h-4 animate-spin" />
+                              <Loader className="w-5 h-5 animate-spin" />
                             ) : (
-                              <UserPlus className="w-4 h-4" />
+                              <UserPlus className="w-5 h-5" />
                             )}
                           </motion.button>
                         </div>
                       </div>
 
                       {selectedGroup.users?.length > 0 ? (
-                        <ul className="divide-y divide-gray-700 max-h-80 overflow-y-auto">
+                        <ul className="divide-y divide-gray-200 max-h-80 overflow-y-auto">
                           {selectedGroup.users.map((username, idx) => (
                             <li
                               key={idx}
-                              className="flex items-center justify-between p-3 hover:bg-gray-800 transition-colors"
+                              className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                             >
                               <div className="flex items-center">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center mr-3">
-                                  <User className="w-4 h-4 text-white" />
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center mr-3">
+                                  <User className="w-5 h-5 text-white" />
                                 </div>
-                                <div className="font-medium">{username}</div>
+                                <div className="font-semibold text-gray-900">{username}</div>
                               </div>
                               <button
                                 onClick={() => removeUserFromGroup(username)}
                                 disabled={isActionLoading}
-                                className="p-2 text-gray-400 hover:text-red-400 rounded-full hover:bg-gray-700 transition-colors"
+                                className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-gray-100 transition-colors"
                               >
                                 <UserMinus className="w-4 h-4" />
                               </button>
@@ -1225,7 +1218,7 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                           ))}
                         </ul>
                       ) : (
-                        <div className="p-8 text-center text-gray-400">
+                        <div className="p-8 text-center text-gray-600">
                           <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
                           <p>No users in this group</p>
                           <p className="text-sm mt-1">
@@ -1235,12 +1228,12 @@ const AccessManagement = ({ onClose, userData, onUpdate }) => {
                       )}
                     </>
                   ) : (
-                    <div className="p-8 text-center text-gray-400 h-full flex flex-col items-center justify-center">
+                    <div className="p-8 text-center text-gray-600 h-full flex flex-col items-center justify-center">
                       <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p className="font-medium">
+                      <p className="font-semibold text-lg">
                         Select a group to view details
                       </p>
-                      <p className="text-sm mt-1 max-w-md">
+                      <p className="text-sm mt-2 max-w-md">
                         Create a new group or select an existing one to manage
                         members and access permissions
                       </p>

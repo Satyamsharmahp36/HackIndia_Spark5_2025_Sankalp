@@ -13,7 +13,7 @@ const AuthenticationScreen = ({ passwordInput, setPasswordInput, checkPassword, 
           boxShadow: ["0 0 0 rgba(59, 130, 246, 0)", "0 0 15px rgba(59, 130, 246, 0.5)", "0 0 0 rgba(59, 130, 246, 0)"] 
         }}
         transition={{ duration: 2, repeat: Infinity }}
-        className="border-2 border-blue-500 p-6 rounded-xl bg-blue-900 bg-opacity-20 max-w-md w-full"
+        className="border-2 border-blue-500 p-6 rounded-xl bg-blue-100 bg-opacity-20 max-w-md w-full"
       >
         <motion.div className="flex justify-center mb-6">
           <Lock className="w-16 h-16 text-blue-400" />

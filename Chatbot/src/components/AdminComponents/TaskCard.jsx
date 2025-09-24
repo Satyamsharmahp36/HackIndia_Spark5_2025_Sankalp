@@ -17,6 +17,10 @@ import {
   User,
   Bot,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const TaskCard = ({
   task,
@@ -66,9 +70,9 @@ const TaskCard = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden shadow-lg hover:border-gray-600 transition-all"
     >
-      <div className="p-4">
+      <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all">
+        <CardContent className="p-4">
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center gap-2">
             {task.isSelfTask ? (
@@ -77,28 +81,28 @@ const TaskCard = ({
               <UserIcon className="w-5 h-5 text-blue-400" />
             )}
 
-            <span className="text-white font-medium">
+            <span className="text-gray-900 font-medium">
               {task.isSelfTask
                 ? "Self Task"
                 : task.presentUserData?.name || "Unknown User"}
             </span>
 
-            <span className="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded-full">
+            <Badge variant="outline" className="text-xs">
               ID: {task.uniqueTaskId || "N/A"}
-            </span>
+            </Badge>
 
             {task.isSelfTask && (
-              <span className="text-xs text-purple-300 bg-purple-900 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 hover:bg-purple-200">
                 <ListChecks className="w-3 h-3" />
                 Self Task
-              </span>
+              </Badge>
             )}
 
             {task.isMeeting && task.isMeeting.title && (
-              <span className="text-xs text-blue-300 bg-blue-900 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Badge variant="secondary" className="text-xs bg-blue-100  text-blue-800 hover:bg-blue-200">
                 <Calendar className="w-3 h-3" />
                 Meeting
-              </span>
+              </Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -112,37 +116,40 @@ const TaskCard = ({
               <RefreshCw className="w-4 h-4" />
             </motion.button>
 
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`px-2 py-1 rounded-full text-xs text-white flex items-center gap-1 ${getStatusColor(
-                task.status
-              )}`}
+            <Badge 
+              variant={task.status === "completed" ? "default" : "secondary"}
+              className={cn(
+                "flex items-center gap-1",
+                task.status === "completed" && "bg-green-100 text-green-800 hover:bg-green-200",
+                task.status === "inprogress" && "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+                task.status === "pending" && "bg-blue-100  text-blue-800 hover:bg-blue-200",
+                task.status === "cancelled" && "bg-red-100 text-red-800 hover:bg-red-200"
+              )}
             >
               {getStatusIcon(task.status)}
               <span>
                 {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
               </span>
-            </motion.button>
+            </Badge>
           </div>
         </div>
 
         {task.topicContext && (
-          <p className="text-gray-400 text-sm mb-2">
-            <span className="text-gray-300 font-bold">Context:</span>{" "}
+          <p className="text-gray-600 text-sm mb-2">
+            <span className="text-gray-900 font-bold">Context:</span>{" "}
             {renderDescription(task.topicContext)}
           </p>
         )}
 
         {task.taskDescription && (
-          <p className="text-gray-400 text-sm mb-2">
-            <span className="text-gray-300 font-bold">Description:</span>{" "}
+          <p className="text-gray-600 text-sm mb-2">
+            <span className="text-gray-900 font-bold">Description:</span>{" "}
             {renderDescription(task.taskDescription)}
           </p>
         )}
 
-        <p className="text-gray-400 text-sm mb-4">
-          <span className="text-gray-300 font-bold">
+        <p className="text-gray-600 text-sm mb-4">
+          <span className="text-gray-900 font-bold">
             {task.isSelfTask ? "Task Message:" : "User Message:"}
           </span>{" "}
           {task.taskQuestion}
@@ -156,10 +163,10 @@ const TaskCard = ({
           >
             <div className="flex justify-between items-start">
               <div>
-                <h4 className="text-white font-medium mb-1">
+                <h4 className="font-medium mb-1">
                   {task.isMeeting.title}
                 </h4>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
+                <div className="flex flex-wrap items-center gap-4 text-sm opacity-80">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" /> {task.isMeeting.date}
                   </span>
@@ -172,65 +179,63 @@ const TaskCard = ({
                   </span>
                 </div>
                 {task.isMeeting.description && (
-                  <p className="text-gray-400 text-sm mt-2">
+                  <p className="text-sm mt-2 opacity-75">
                     {task.isMeeting.description}
                   </p>
                 )}
                 {task.isMeeting.status && (
-                  <span
-                    className={`mt-2 inline-block text-xs px-2 py-0.5 rounded-full 
-                    ${
-                      task.isMeeting.status === "pending"
-                        ? "bg-yellow-900 text-yellow-300"
-                        : task.isMeeting.status === "scheduled"
-                        ? "bg-blue-900 text-blue-300"
-                        : "bg-green-900 text-green-300"
-                    }`}
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "mt-2 text-xs",
+                      task.isMeeting.status === "pending" && "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+                      task.isMeeting.status === "scheduled" && "bg-blue-100  text-blue-800 hover:bg-blue-200",
+                      task.isMeeting.status === "completed" && "bg-green-100 text-green-800 hover:bg-green-200",
+                      task.isMeeting.status === "cancelled" && "bg-red-100 text-red-800 hover:bg-red-200"
+                    )}
                   >
                     {task.isMeeting.status.charAt(0).toUpperCase() +
                       task.isMeeting.status.slice(1)}
-                  </span>
+                  </Badge>
                 )}
               </div>
 
               {/* Different buttons based on meeting status */}
               {task.isMeeting.status === "pending" && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <Button
                   onClick={() => handleScheduleMeeting(task)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1"
+                  size="sm"
                 >
                   <Calendar className="w-4 h-4" />
                   Schedule
-                </motion.button>
+                </Button>
               )}
 
               {task.isMeeting.status === "scheduled" &&
                 task.isMeeting.meetingLink && (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                  <Button
                     onClick={() =>
                       handleOpenMeetingLink(task.isMeeting.meetingLink)
                     }
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                    className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                    size="sm"
                   >
                     <ExternalLink className="w-4 h-4" />
                     Join Meeting
-                  </motion.button>
+                  </Button>
                 )}
 
               {task.isMeeting.status === "completed" && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <Button
                   onClick={() => handleViewMeetingDetails(task.isMeeting)}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1 ml-2"
+                  variant="outline"
+                  className="flex items-center gap-1 ml-2"
+                  size="sm"
                 >
                   <FileText className="w-4 h-4" />
                   Details
-                </motion.button>
+                </Button>
               )}
             </div>
           </div>
@@ -238,11 +243,11 @@ const TaskCard = ({
 
         <div className="flex justify-between items-center flex-wrap gap-2 mt-4">
           <div className="flex items-center gap-2">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => handleExpandTask(task._id)}
-              className="bg-gray-700 hover:bg-gray-600 transition-colors px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"
+              className="flex items-center gap-1"
             >
               {expandedTask === task._id ? (
                 <>
@@ -253,23 +258,21 @@ const TaskCard = ({
                   <ChevronDown className="w-4 h-4" /> More
                 </>
               )}
-            </motion.button>
+            </Button>
 
             {!task.isSelfTask && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleUserInfoClick}
-                className="bg-gray-700 hover:bg-gray-600 transition-colors px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"
+                className="flex items-center gap-1"
               >
                 <User className="w-4 h-4" /> User Info
-              </motion.button>
+              </Button>
             )}
            {task.isMeeting.status === "completed" &&(
              task.isMeeting.botActivated ? (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <Button
                 onClick={() =>
                   window.open(
                     `${import.meta.env.VITE_FRONTEND}/home/${
@@ -278,22 +281,22 @@ const TaskCard = ({
                     "_blank"
                   )
                 }
-                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1"
+                size="sm"
               >
                 <Bot className="w-4 h-4" />
                 Assist Bot
-              </motion.button>
+              </Button>
             ) : (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <Button
                 onClick={() => handleCreateBotAssistant(task)}
                 disabled={creatingBot}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1"
+                size="sm"
               >
                 <Bot className="w-4 h-4" />
                 {creatingBot ? "Creating..." : "Get Bot"}
-              </motion.button>
+              </Button>
               )
             )}
           </div>
@@ -312,24 +315,24 @@ const TaskCard = ({
               transition={{ duration: 0.3 }}
               className="mt-4 overflow-hidden"
             >
-              <div className="border-t border-gray-700 pt-4">
-                <h4 className="text-gray-300 font-medium mb-2">Full Details</h4>
-                <div className="bg-gray-900 p-3 rounded-lg text-sm">
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-gray-900 font-medium mb-2">Full Details</h4>
+                <div className="bg-gray-50 p-3 rounded-lg text-sm">
                   {task.taskQuestion && (
                     <div className="mb-3">
-                      <span className="text-gray-400 font-medium">
+                      <span className="text-gray-600 font-medium">
                         Message:
                       </span>{" "}
-                      <span className="text-gray-300">{task.taskQuestion}</span>
+                      <span className="text-gray-900">{task.taskQuestion}</span>
                     </div>
                   )}
 
                   {task.taskDescription && (
                     <div className="mb-3">
-                      <span className="text-gray-400 font-medium">
+                      <span className="text-gray-600 font-medium">
                         Description:
                       </span>{" "}
-                      <span className="text-gray-300">
+                      <span className="text-gray-900">
                         {task.taskDescription}
                       </span>
                     </div>
@@ -337,19 +340,19 @@ const TaskCard = ({
 
                   {task.topicContext && (
                     <div className="mb-3">
-                      <span className="text-gray-400 font-medium">
+                      <span className="text-gray-600 font-medium">
                         Context:
                       </span>{" "}
-                      <span className="text-gray-300">{task.topicContext}</span>
+                      <span className="text-gray-900">{task.topicContext}</span>
                     </div>
                   )}
 
                   {task.createdAt && (
                     <div className="mb-3">
-                      <span className="text-gray-400 font-medium">
+                      <span className="text-gray-600 font-medium">
                         Created:
                       </span>{" "}
-                      <span className="text-gray-300">
+                      <span className="text-gray-900">
                         {formatDate(task.createdAt)}
                       </span>
                     </div>
@@ -357,10 +360,10 @@ const TaskCard = ({
 
                   {task.updatedAt && (
                     <div className="mb-3">
-                      <span className="text-gray-400 font-medium">
+                      <span className="text-gray-600 font-medium">
                         Updated:
                       </span>{" "}
-                      <span className="text-gray-300">
+                      <span className="text-gray-900">
                         {formatDate(task.updatedAt)}
                       </span>
                     </div>
@@ -368,10 +371,10 @@ const TaskCard = ({
 
                   {task.uniqueTaskId && (
                     <div className="mb-3">
-                      <span className="text-gray-400 font-medium">
+                      <span className="text-gray-600 font-medium">
                         Task ID:
                       </span>{" "}
-                      <span className="text-gray-300">{task.uniqueTaskId}</span>
+                      <span className="text-gray-900">{task.uniqueTaskId}</span>
                     </div>
                   )}
 
@@ -462,7 +465,8 @@ const TaskCard = ({
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 };

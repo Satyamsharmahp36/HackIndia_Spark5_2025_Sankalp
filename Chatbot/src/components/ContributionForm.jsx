@@ -75,7 +75,7 @@ const ContributionForm = ({
             </motion.button>
           </div>
           
-          <div className="bg-blue-900 bg-opacity-30 border-b border-blue-500 px-6 py-3 flex items-start">
+          <div className="bg-blue-100 bg-opacity-30 border-b border-blue-500 px-6 py-3 flex items-start">
             <Info className="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
             <p className="text-blue-200 text-sm">
               Help improve this AI by contributing your knowledge. Your submissions will be reviewed before being added to the assistant's knowledge base.
@@ -90,7 +90,7 @@ const ContributionForm = ({
                   animate={{ opacity: 1, y: 0 }}
                   className={`${
                     submitStatus === 'success' 
-                      ? 'bg-green-900 bg-opacity-20 border border-green-500 text-green-300' 
+                      ? 'bg-green-100 bg-opacity-20 border border-green-500 text-green-300' 
                       : 'bg-red-900 bg-opacity-20 border border-red-500 text-red-300'
                   } rounded-lg p-3 flex items-center shadow-lg`}
                 >

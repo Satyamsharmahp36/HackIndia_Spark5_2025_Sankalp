@@ -67,7 +67,7 @@ const TaskListItem = ({
               )}
 
               {task.isMeeting && task.isMeeting.title && (
-                <span className="text-xs text-blue-300 bg-blue-900 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-xs text-blue-300 bg-blue-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   Meeting
                 </span>

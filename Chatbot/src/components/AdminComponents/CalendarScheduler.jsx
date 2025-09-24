@@ -69,7 +69,7 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
     return (
       <div className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md border border-gray-800 mx-auto transition-all duration-300 animate-fadeIn">
         <div className="flex items-center mb-6">
-          <div className="bg-green-900 p-3 rounded-full">
+          <div className="bg-green-100 p-3 rounded-full">
             <CheckCircle className="text-green-400 w-7 h-7" />
           </div>
           <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-green-400 to-teal-300 bg-clip-text ">Added to Calendar</h3>
@@ -148,7 +148,7 @@ function CalendarScheduler({ taskId, username, title, description, startTime, en
       
       <div className="bg-gray-900 rounded-xl shadow-lg p-8 border border-gray-800 transform transition-all duration-300 hover:shadow-xl">
         <div className="flex items-center mb-6">
-          <div className="bg-blue-900 p-3 rounded-full">
+          <div className="bg-blue-100 p-3 rounded-full">
             <Calendar className="w-7 h-7 text-blue-400" />
           </div>
           <h3 className="text-2xl font-bold ml-4 text-gray-100 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text ">Schedule Meeting</h3>

@@ -3,12 +3,16 @@ import { toast } from 'react-toastify';
 
 async function detectTaskRequest(question, userData, conversationContext = "") {
   try {
-    if (!userData || !userData.geminiApiKey) {
+    // Use user's API key if available, otherwise fall back to environment variable
+    const apiKey = userData?.geminiApiKey || import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    // console.log("apiKey", apiKey);
+    
+    if (!apiKey) {
       return { isTask: false, error: "No Gemini API key available" };
     }
 
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const detectionPrompt = `
     Analyze the following text and determine if it contains a request for a future task, follow-up, or reminder.
@@ -102,8 +106,8 @@ async function extractMeetingDetails(message, userData) {
       return null;
     }
 
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
@@ -281,8 +285,8 @@ async function extractConversationTopic(messages, question, userData) {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     
     const recentMessages = messages.slice(-5);
     const formattedHistory = recentMessages.map(msg => 
@@ -377,8 +381,8 @@ async function parseMeetingDetailsResponse(response, userData) {
   try {
     if (!userData || !userData.geminiApiKey) return null;
     
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     
     // Get current date and time information
     const now = new Date();
@@ -548,7 +552,9 @@ let pendingMeetingDetails = {};
 
 export async function getAnswer(question, userData, presentData, conversationHistory = []) {
   try {
-    if (!userData || !userData.geminiApiKey) {
+    // Use user's API key if available, otherwise fall back to environment variable
+    const apiKey = userData?.geminiApiKey || import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    if (!apiKey) {
       return "No Gemini API key available for this user.";
     }
 
@@ -840,7 +846,7 @@ if (missingDetails.length === 0) {
       }
     }
 
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
+    const genAI = new GoogleGenerativeAI(apiKey);
     
     const approvedContributions = userData.contributions?.filter(contribution => 
      contribution.status === "approved") || [];
@@ -859,7 +865,7 @@ data not by the AI's knowledge .
 Here's ${userData.name}'s latest data:
 ${userData.prompt || 'No specific context provided'}
 
-And this is daily task of user ${userData.dailyTasks.content}
+And this is daily task of user ${userData.dailyTasks?.content || 'No daily tasks available'}
 
 ${conversationHistory.length > 0 ? 'RECENT CONVERSATION HISTORY:\n' + formattedHistory + '\n\n' : ''}
 
@@ -877,7 +883,7 @@ IMPORTANT: Maintain context from the conversation history when answering follow-
 `;
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       generationConfig: {
         maxOutputTokens: 512,
         temperature: 0.8,

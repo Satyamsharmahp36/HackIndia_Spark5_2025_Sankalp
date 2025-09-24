@@ -158,23 +158,37 @@ const useAdminPanelTasks = (userData, searchTerm = "", statusFilter = "all", sor
   const getMeetingCardStyle = (meetingStatus) => {
     switch (meetingStatus) {
       case "scheduled":
-        return "bg-blue-100 border-blue-700";
+        return "bg-blue-50 border-blue-200 text-blue-900";
       case "completed":
-        return "bg-green-100 border-green-700";
+        return "bg-green-50 border-green-200 text-green-900";
       case "cancelled":
-        return "bg-red-900 border-red-700";
+        return "bg-red-50 border-red-200 text-red-900";
       case "pending":
-        return "bg-yellow-100 border-yellow-700";
+        return "bg-yellow-50 border-yellow-200 text-yellow-900";
       default:
-        return "bg-gray-900 border-gray-700";
+        return "bg-gray-50 border-gray-200 text-gray-900";
     }
   };
 
   const renderDescription = (text) => {
     if (!text) return "N/A";
-    // For now, return the text as-is since we can't use JSX in a .js file
-    // The actual JSX rendering will be handled by the components that use this function
-    return text;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.split(urlRegex).map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
   };
 
   // Task filtering with new category filters
