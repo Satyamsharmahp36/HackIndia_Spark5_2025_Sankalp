@@ -19,7 +19,9 @@ import {
   Slack,
   Mail,
   X,
-  ChevronDown
+  ChevronDown,
+  Shield,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -276,6 +278,8 @@ const AdminChatLayout = ({ onLogout }) => {
     { id: "tasks", label: "Task Management", icon: ListChecks, active: activeView === "tasks" },
     { id: "workflow", label: "Daily Workflow", icon: Activity, active: activeView === "workflow" },
     { id: "calendar", label: "Calendar", icon: Calendar, active: activeView === "calendar" },
+    { id: "access", label: "Access Management", icon: Shield, active: activeView === "access" },
+    { id: "analytics", label: "Visitor Analytics", icon: BarChart3, active: activeView === "analytics" },
     { id: "slack", label: "Slack", icon: Slack, active: activeView === "slack" },
     { id: "email", label: "Email", icon: Mail, active: activeView === "email" },
   ], [activeView]);
@@ -548,6 +552,20 @@ const AdminChatLayout = ({ onLogout }) => {
             />
           )}
 
+          {activeView === "access" && (
+            <AccessManagement
+              onClose={() => setActiveView("chat")}
+              userData={currentUserData}
+              onUpdate={() => refreshUserData()}
+            />
+          )}
+
+          {activeView === "analytics" && (
+            <VisitorAnalytics
+              onClose={() => setActiveView("chat")}
+            />
+          )}
+
           {activeView === "email" && (
             <EmailDashboard
               isOpen={true}
@@ -690,7 +708,7 @@ const AdminChatLayout = ({ onLogout }) => {
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-gray-200">
           <div className="space-y-2">
-            <Button
+            {/* <Button
               variant="ghost"
               onClick={() => setShowAdminPanel(true)}
               className="w-full justify-start text-gray-600 hover:bg-gray-100"
@@ -699,7 +717,7 @@ const AdminChatLayout = ({ onLogout }) => {
               {!sidebarCollapsed && (
                 <span className="ml-3 text-sm font-medium">Settings</span>
               )}
-            </Button>
+            </Button> */}
             <Button
               variant="ghost"
               onClick={onLogout}

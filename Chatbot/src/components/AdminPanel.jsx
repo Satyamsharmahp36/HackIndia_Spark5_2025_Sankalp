@@ -87,7 +87,7 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
   const [reminders, setReminders] = useState([]);
 
   // New state for UI improvements
-  const [activeView, setActiveView] = useState("access"); // 'access', 'analytics', 'reminders'
+  const [activeView, setActiveView] = useState("reminders"); // 'reminders' (access and analytics moved to main sidebar)
   const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
   const [taskCategories, setTaskCategories] = useState({
     all: true,
@@ -593,24 +593,7 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
               />
             )}
 
-            {activeView === "access" && (
-              <AccessManagement
-                userData={userData}
-                onUpdate={handleAccessManagementUpdate}
-                onClose={() => {
-                  // No need to close since it's integrated
-                }}
-              />
-            )}
-
-            {activeView === "analytics" && (
-              <VisitorAnalytics
-                userData={userData}
-                onClose={() => {
-                  // No need to close since it's integrated
-                }}
-              />
-            )}
+            {/* Access Management and Visitor Analytics moved to main sidebar */}
 
             {activeView === "reminders" && (
               <ReminderPanel
