@@ -88,6 +88,7 @@ const ChatBot = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [showMicPermissionPrompt, setShowMicPermissionPrompt] = useState(false);
+  const [isRefreshingContext, setIsRefreshingContext] = useState(false);
 
   const {
     transcript,
@@ -502,6 +503,12 @@ const ChatBot = () => {
     inputRef.current?.focus();
 
     try {
+      // Refresh user data to ensure we have the latest context
+      setIsRefreshingContext(true);
+      const freshUserData = await refreshUserData();
+      const currentUserDataToUse = freshUserData || userData;
+      setIsRefreshingContext(false);
+
       const detectedLangCode = await detectLanguage(originalText);
       const userMessage = {
         type: "user",
@@ -537,7 +544,7 @@ const ChatBot = () => {
 
       const englishResponse = await getAnswer(
         textForAI,
-        userData.user,
+        currentUserDataToUse.user,
         presentUserData ? presentUserData.user : null,
         updatedMessages
       );
@@ -576,6 +583,7 @@ const ChatBot = () => {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setIsRefreshingContext(false);
     }
   };
 
@@ -879,6 +887,25 @@ const ChatBot = () => {
                       <CheckCircle className="w-5 h-5 mr-2" />
                       Knowledge base updated successfully! I'm now equipped with
                       the latest information.
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {isRefreshingContext && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 flex items-center"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <Loader2 className="w-5 h-5 mr-2" />
+                      </motion.div>
+                      Refreshing context with latest data...
                     </motion.div>
                   )}
                 </AnimatePresence>
