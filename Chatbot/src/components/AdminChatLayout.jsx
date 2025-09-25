@@ -51,6 +51,7 @@ import EmailDashboard from "./AdminComponents/EmailDashboard";
 import SelfTaskForm from "./AdminComponents/SelfTaskForm";
 import MeetingDetailsPopup from "./AdminComponents/MeetingDetailsPopup";
 import CalendarScheduler from "./AdminComponents/CalendarScheduler";
+import AccessibleChatbots from "./AdminComponents/AccessibleChatbots";
 import useAdminPanelTasks from "./AdminComponents/useAdminPanelTasks";
 
 const AdminChatLayout = ({ onLogout, adminUserData }) => {
@@ -208,7 +209,15 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
           `${presentUserName || "anonymous"}_${dataToUse.user.name}`
         );
         if (savedMessages) {
-          setMessages(JSON.parse(savedMessages));
+          const parsedMessages = JSON.parse(savedMessages);
+          // Ensure all messages have the correct structure
+          const validatedMessages = parsedMessages.map(msg => ({
+            id: msg.id || Date.now() + Math.random(),
+            text: msg.text || msg.content || '',
+            isUser: msg.isUser !== undefined ? msg.isUser : (msg.type === 'user'),
+            timestamp: msg.timestamp || new Date().toISOString()
+          }));
+          setMessages(validatedMessages);
         } else {
           const welcomeMessage = {
             id: Date.now(),
@@ -265,6 +274,14 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
       timestamp: new Date().toISOString(),
     };
 
+    // Convert messages to conversation history format BEFORE adding current user message
+    console.log("Messages before conversion:", messages);
+    const conversationHistory = messages.map(msg => ({
+      type: msg.isUser ? 'user' : 'bot',
+      content: msg.text
+    }));
+    console.log("Conversation history after conversion:", conversationHistory);
+
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -283,7 +300,7 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
         return;
       }
 
-      const response = await getAnswer(input.trim(), currentUserData);
+      const response = await getAnswer(input.trim(), currentUserData, currentUserData, conversationHistory);
       const botMessage = {
         id: Date.now() + 1,
         text: response,
@@ -317,6 +334,14 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     if (chatHistoryKey) {
       localStorage.removeItem(chatHistoryKey);
     }
+    // Add a welcome message after clearing
+    const welcomeMessage = {
+      id: Date.now(),
+      text: `Hello! I'm ${currentUserData?.user?.name || 'the user'}'s AI assistant. How can I help you today?`,
+      isUser: false,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages([welcomeMessage]);
   };
 
   const toggleVoice = () => {
@@ -330,6 +355,7 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
 
   const sidebarItems = useMemo(() => [
     { id: "chat", label: "Chat", icon: MessageCircle, active: activeView === "chat" },
+    { id: "accessible-chatbots", label: "Accessible Chatbots", icon: Users, active: activeView === "accessible-chatbots" },
     { id: "tasks", label: "Task Management", icon: ListChecks, active: activeView === "tasks" },
     { id: "workflow", label: "Daily Workflow", icon: Activity, active: activeView === "workflow" },
     { id: "calendar", label: "Calendar", icon: Calendar, active: activeView === "calendar" },
@@ -613,6 +639,13 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
               onClose={() => setActiveView("chat")}
               userData={currentUserData}
               onUpdate={() => refreshUserData()}
+            />
+          )}
+
+          {activeView === "accessible-chatbots" && (
+            <AccessibleChatbots
+              onClose={() => setActiveView("chat")}
+              currentUserData={currentUserData}
             />
           )}
 

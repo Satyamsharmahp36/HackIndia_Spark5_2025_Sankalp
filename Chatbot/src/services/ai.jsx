@@ -3,8 +3,8 @@ import { toast } from 'react-toastify';
 
 async function detectTaskRequest(question, userData, conversationContext = "") {
   try {
-    // Use user's API key if available, otherwise fall back to environment variable
-    const apiKey = userData?.geminiApiKey || import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    // Use environment variable for Gemini API key
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
     // console.log("apiKey", apiKey);
     
     if (!apiKey) {
@@ -102,10 +102,10 @@ function isTimeInPast(dateStr, timeStr) {
 
 async function extractMeetingDetails(message, userData) {
   try {
-    if (!userData || !userData.geminiApiKey) {
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    if (!apiKey) {
       return null;
     }
-
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
@@ -235,7 +235,6 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
       description: meetingDetails.description || enhancedDescription
     } : null;
 
-    console.log("rfgnkifniuenfiu wefn", topicContext);
 
     const response = await fetch(`${import.meta.env.VITE_BACKEND}/create-task`, {
       method: 'POST',
@@ -243,7 +242,7 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userId: userData.username,
+        userId: userData.username || userData.user?.username,
         taskQuestion: taskQuestion,
         taskDescription: enhancedDescription,
         uniqueTaskId: uniqueTaskId,
@@ -259,7 +258,8 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
     }
     const result = await response.json();
     
-    toast.success(`Task added to ${userData.name}'s to-do list!`, {
+    const userName = userData.name || userData.user?.name || 'the user';
+    toast.success(`Task added to ${userName}'s to-do list!`, {
       position: "top-right",
       autoClose: 3000,
       hideProgressBar: false,
@@ -280,11 +280,14 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
 }
 
 async function extractConversationTopic(messages, question, userData) {
-  if (!messages || messages.length < 2 || !userData.geminiApiKey) {
+  if (!messages || messages.length < 2) {
     return null;
   }
 
   try {
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    if (!apiKey) return null;
+    
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     
@@ -324,7 +327,6 @@ async function extractConversationTopic(messages, question, userData) {
 }
 
 // Function to handle meeting confirmations or requesting additional meeting details
-// Function to handle meeting confirmations or requesting additional meeting details
 function processMeetingState(currentMessage, messages) {
   if (messages.length < 2) return { type: "none" };
   
@@ -338,15 +340,24 @@ function processMeetingState(currentMessage, messages) {
     currentMessageLower.endsWith(' ' + keyword)
   );
   
-  const previousBotMessage = messages[messages.length - 2];
+  // Find the last bot message in the conversation
+  let previousBotMessage = null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].type === 'bot') {
+      previousBotMessage = messages[i];
+      break;
+    }
+  }
 
   // Log for debugging purposes
   console.log("Previous bot message:", previousBotMessage?.content);
   console.log("Current user message:", currentMessage);
+  console.log("Previous bot message type:", previousBotMessage?.type);
+  
+  if (!previousBotMessage) return { type: "none" };
   
   // Check if previous message was requesting meeting details
-  if (previousBotMessage.type === 'bot' && 
-      previousBotMessage.content.includes('Please provide the following details for your meeting')) {
+  if (previousBotMessage.content.includes('Please provide the following details for your meeting')) {
     console.log("Detected meeting details being provided");
     return { 
       type: "meetingDetailsProvided",
@@ -355,10 +366,11 @@ function processMeetingState(currentMessage, messages) {
   }
   
   // Check if previous message was a meeting confirmation request
-  if (isConfirmation && previousBotMessage.type === 'bot' && 
+  if (isConfirmation && 
       (previousBotMessage.content.includes('want to have a meeting') || 
        previousBotMessage.content.includes('want to schedule a meeting') ||
-       previousBotMessage.content.includes('do you want to confirm this'))) {
+       previousBotMessage.content.includes('do you want to confirm this') ||
+       previousBotMessage.content.includes('Please respond with "yes" to confirm'))) {
     console.log("Detected meeting confirmation");
     return { 
       type: "meetingConfirmed" 
@@ -366,7 +378,7 @@ function processMeetingState(currentMessage, messages) {
   }
   
   // Check if this is a final confirmation after all details are provided
-  if (isConfirmation && previousBotMessage.type === 'bot' && 
+  if (isConfirmation && 
       previousBotMessage.content.includes('I will be scheduling a')) {
     console.log("Detected final confirmation");
     return { 
@@ -379,8 +391,8 @@ function processMeetingState(currentMessage, messages) {
 
 async function parseMeetingDetailsResponse(response, userData) {
   try {
-    if (!userData || !userData.geminiApiKey) return null;
-    
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    if (!apiKey) return null;
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     
@@ -552,16 +564,10 @@ let pendingMeetingDetails = {};
 
 export async function getAnswer(question, userData, presentData, conversationHistory = []) {
   try {
-    // Validate userData exists
-    if (!userData) {
-      console.error("No userData provided to getAnswer");
-      return "I'm sorry, there was an issue loading your profile information. Please try refreshing the page.";
-    }
-
-    // Use user's API key if available, otherwise fall back to environment variable
-    const apiKey = userData?.geminiApiKey || userData?.user?.geminiApiKey || import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    // Use environment variable for Gemini API key
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
-      return "No Gemini API key available for this user.";
+      return "No Gemini API key available.";
     }
 
     const urlPattern = /(https?:\/\/[^\s]+)/g;
@@ -854,113 +860,42 @@ if (missingDetails.length === 0) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    const contributions = userData?.contributions || userData?.user?.contributions || [];
-    const approvedContributions = contributions.filter(contribution => 
-     contribution?.status === "approved") || [];
+    const approvedContributions = userData.contributions?.filter(contribution => 
+     contribution.status === "approved") || [];
     const contributionsKnowledgeBase = approvedContributions.length > 0 ? 
      `This is my personal knowledge base of verified information. you can use this to answer the questions
 ${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question}\nAnswer: ${c.answer}`).join('\n\n')}` : 
      'No specific approved contributions yet.';
    
-    // Enhanced context building with better structure and validation
-    const buildUserContext = () => {
-      try {
-        // Safe name extraction with fallback
-        const userName = userData?.name || userData?.user?.name || 'User';
-        let context = `PERSONAL CONTEXT FOR ${userName.toUpperCase()}:\n`;
-        context += `===============================\n\n`;
-        
-        // Main user data/prompt with validation
-        const userPrompt = userData?.prompt || userData?.user?.prompt;
-        if (userPrompt && userPrompt.trim()) {
-          const cleanPrompt = userPrompt.trim();
-          // Basic validation to ensure prompt is not just whitespace or too short
-          if (cleanPrompt.length > 10) {
-            context += `CORE INFORMATION:\n${cleanPrompt}\n\n`;
-          } else {
-            context += `CORE INFORMATION: Limited context available (${cleanPrompt.length} characters)\n\n`;
-          }
-        } else {
-          context += `CORE INFORMATION: No specific context provided\n\n`;
-        }
-        
-        // Daily tasks with validation
-        const dailyTasks = userData?.dailyTasks?.content || userData?.user?.dailyTasks?.content;
-        if (dailyTasks && dailyTasks.trim()) {
-          context += `CURRENT DAILY TASKS:\n${dailyTasks.trim()}\n\n`;
-        }
-        
-        // Additional user profile information with validation
-        const userEmail = userData?.email || userData?.user?.email;
-        const userMobile = userData?.mobileNo || userData?.user?.mobileNo;
-        const userUsername = userData?.username || userData?.user?.username;
-        
-        if (userEmail && userEmail.trim()) {
-          context += `CONTACT: ${userEmail.trim()}\n`;
-        }
-        if (userMobile && userMobile.trim()) {
-          context += `PHONE: ${userMobile.trim()}\n`;
-        }
-        if (userUsername && userUsername.trim()) {
-          context += `USERNAME: ${userUsername.trim()}\n`;
-        }
-        
-        // Add context timestamp for debugging
-        context += `\nCONTEXT UPDATED: ${new Date().toISOString()}\n`;
-        context += `===============================\n`;
-        
-        return context;
-      } catch (error) {
-        console.error("Error building user context:", error);
-        const fallbackName = userData?.name || userData?.user?.name || 'User';
-        return `PERSONAL CONTEXT FOR ${fallbackName.toUpperCase()}:\n===============================\n\nCORE INFORMATION: Error loading context data\n\n===============================\n`;
-      }
-    };
-
-    const userContext = buildUserContext();
-    
-    // Debug logging for context tracking
-    const userName = userData?.name || userData?.user?.name || 'User';
-    console.log(`[AI Context] Building context for ${userName}:`, {
-      hasPrompt: !!(userData?.prompt || userData?.user?.prompt),
-      promptLength: (userData?.prompt || userData?.user?.prompt)?.length || 0,
-      hasDailyTasks: !!(userData?.dailyTasks?.content || userData?.user?.dailyTasks?.content),
-      contextLength: userContext.length,
-      timestamp: new Date().toISOString()
-    });
-
     const prompt = `
-You are ${userName}'s personal AI assistant. You should respond as if you ARE ${userName} speaking directly, not as an AI assistant. Use first person ("I", "my", "me") when referring to ${userName}'s experiences, skills, and information.
+You are ${userData.name}'s personal AI assistant. Answer based on the following details. Also answer the question's in person like instead of AI the ${userData.name} is answering questions.
+If a you don't have data for any information say "I don't have that information. If you have answers to this, please contribute."
+Answer questions in a bit elaborate manner and can also add funny things if needed.
+Also note if question is like :- Do you know abotu this cors issue in deployment , then it mean's this question is asked from ${userData.name} , not from AI , so answers on the bases of ${userData.name}
+data not by the AI's knowledge . 
 
-CORE INSTRUCTIONS:
-- Answer questions as ${userName} would, using their personal context and experiences
-- If you don't have specific information about something, say "I don't have that information. If you have answers to this, please contribute."
-- Be elaborate and engaging in your responses, adding personality and humor when appropriate
-- When technical questions are asked (like "Do you know about this CORS issue in deployment"), respond based on ${userName}'s technical background and experience, not general AI knowledge
-- Always maintain the context of ${userName}'s personal and professional background
+Here's ${userData.name}'s latest data:
+${userData.prompt || 'No specific context provided'}
 
-${userContext}
+And this is daily task of user ${userData.dailyTasks.content}
 
 ${conversationHistory.length > 0 ? 'RECENT CONVERSATION HISTORY:\n' + formattedHistory + '\n\n' : ''}
 
-${conversationTopic ? `CURRENT CONVERSATION TOPIC: ${conversationTopic}\n\n` : ''}
+${conversationTopic ? `Current conversation topic: ${conversationTopic}\n\n` : ''}
 
-CURRENT QUESTION: ${question}
+Current question: ${question}
 
 ${contributionsKnowledgeBase}
 
-RESPONSE STYLE GUIDELINES:
-- When providing links, give plain URLs like https://github.com/xxxx/
-- ${userData?.userPrompt || userData?.user?.userPrompt || 'Respond in a professional yet friendly manner'}
+When providing links, give plain URLs like https://github.com/xxxx/
 
-IMPORTANT: 
-- Always maintain context from the conversation history when answering follow-up questions
-- If the question seems like a follow-up to previous messages, make sure your response builds on the earlier conversation
-- Remember: You are speaking AS ${userName}, not ABOUT ${userName}
+This is the way I want the responses to be ${userData.userPrompt}
+
+IMPORTANT: Maintain context from the conversation history when answering follow-up questions. If the question seems like a follow-up to previous messages, make sure your response builds on the earlier conversation.
 `;
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       generationConfig: {
         maxOutputTokens: 512,
         temperature: 0.8,
