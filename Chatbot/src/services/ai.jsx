@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from 'react-toastify';
 
-async function detectTaskRequest(question, userData, conversationContext = "") {
+export async function detectTaskRequest(question, userData, conversationContext = "") {
   try {
     // Use environment variable for Gemini API key
     const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
@@ -210,7 +210,7 @@ function generateUniqueTaskId() {
   return `${seconds}${minutes}${hours}${day}${month}${year}`;
 }
 
-async function createTask(taskQuestion, taskDescription, userData, presentData, topicContext = null, meetingDetails = null) {
+export async function createTask(taskQuestion, taskDescription, userData, presentData, topicContext = null, meetingDetails = null) {
   try {
     const uniqueTaskId = generateUniqueTaskId();
     
@@ -279,7 +279,7 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
   }
 }
 
-async function extractConversationTopic(messages, question, userData) {
+export async function extractConversationTopic(messages, question, userData) {
   if (!messages || messages.length < 2) {
     return null;
   }
@@ -327,7 +327,7 @@ async function extractConversationTopic(messages, question, userData) {
 }
 
 // Function to handle meeting confirmations or requesting additional meeting details
-function processMeetingState(currentMessage, messages) {
+export function processMeetingState(currentMessage, messages) {
   if (messages.length < 2) return { type: "none" };
   
   const currentMessageLower = currentMessage.toLowerCase().trim();
@@ -389,7 +389,7 @@ function processMeetingState(currentMessage, messages) {
   return { type: "none" };
 }
 
-async function parseMeetingDetailsResponse(response, userData) {
+export async function parseMeetingDetailsResponse(response, userData) {
   try {
     const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
     if (!apiKey) return null;
@@ -563,6 +563,7 @@ function extractDurationFromMessage(message) {
 let pendingMeetingDetails = {};
 
 export async function getAnswer(question, userData, presentData, conversationHistory = []) {
+  console.log("getAnswer called with:", { question, userData, presentData, conversationHistory });
   try {
     // Use environment variable for Gemini API key
     const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
@@ -884,7 +885,7 @@ data not by the AI's knowledge .
 Here's ${userName}'s latest data:
 ${userData.prompt || 'No specific context provided'}
 
-And this is daily task of user ${userData.dailyTasks.content}
+And this is daily task of user ${userData.dailyTasks?.content || 'No daily tasks'}
 
 ${conversationHistory.length > 0 ? 'RECENT CONVERSATION HISTORY:\n' + formattedHistory + '\n\n' : ''}
 
@@ -896,13 +897,13 @@ ${contributionsKnowledgeBase}
 
 When providing links, give plain URLs like https://github.com/xxxx/
 
-This is the way I want the responses to be ${userData.userPrompt}
+This is the way I want the responses to be ${userData.userPrompt || 'Professional and helpful'}
 
 IMPORTANT: Maintain context from the conversation history when answering follow-up questions. If the question seems like a follow-up to previous messages, make sure your response builds on the earlier conversation.
 `;
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       generationConfig: {
         maxOutputTokens: 512,
         temperature: 0.8,
