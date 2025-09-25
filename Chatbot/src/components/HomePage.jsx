@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Cookies from 'js-cookie';
 import { useAppContext } from '../Appcontext';
-import AuthenticationFlow from './AuthenticationFlow';
 import WelcomeScreen from './WelcomeScreen';
 import AdminChatLayout from './AdminChatLayout';
 import PublicChatLayout from './PublicChatLayout';
@@ -26,7 +25,6 @@ const HomePage = ({ onLogout, isOwner = false }) => {
   // Authentication state
   const [isVisitorAuthenticated, setIsVisitorAuthenticated] = useState(false);
   const [visitorName, setVisitorName] = useState('');
-  const [showAuthFlow, setShowAuthFlow] = useState(false);
   const [isOwnerAuthenticated, setIsOwnerAuthenticated] = useState(false);
   
   // UI state
@@ -103,6 +101,18 @@ const HomePage = ({ onLogout, isOwner = false }) => {
     }
   }, [username, isOwner]);
 
+  // Initialize visitor as authenticated automatically and start chat
+  useEffect(() => {
+    if (profileOwnerData?.user && !isVisitorAuthenticated && !isOwnerAuthenticated) {
+      setVisitorName('Guest');
+      setIsVisitorAuthenticated(true);
+      // Automatically start the chat
+      setShowChatInterface(true);
+      setShowWelcomeScreen(false);
+      trackVisitor();
+    }
+  }, [profileOwnerData, isVisitorAuthenticated, isOwnerAuthenticated]);
+
   // Track visitor analytics
   const trackVisitor = async () => {
     try {
@@ -129,21 +139,15 @@ const HomePage = ({ onLogout, isOwner = false }) => {
   };
 
   // Event handlers
-  const handleShowAuth = () => {
-    setShowAuthFlow(true);
-  };
-
   const handleUserAuthenticated = (username) => {
     setVisitorName(username);
     setIsVisitorAuthenticated(true);
-    setShowAuthFlow(false);
     refreshPresentUserData();
   };
 
   const handleGuestAccess = () => {
     setVisitorName('Guest');
     setIsVisitorAuthenticated(true);
-    setShowAuthFlow(false);
   };
 
   const handleStartChat = () => {
@@ -155,18 +159,29 @@ const HomePage = ({ onLogout, isOwner = false }) => {
   const handleBackToWelcome = () => {
     setShowChatInterface(false);
     setShowWelcomeScreen(true);
+    navigate('/');
   };
 
   const handleLogout = async () => {
+    // Clear all cookies
     Cookies.remove('presentUserName');
     Cookies.remove('userName');
+    
+    // Clear context state
     await refreshPresentUserData();
     
+    // Clear local state
     setIsVisitorAuthenticated(false);
     setIsOwnerAuthenticated(false);
     setVisitorName('');
     setShowChatInterface(false);
     setShowWelcomeScreen(true);
+    
+    // Clear local storage
+    localStorage.clear();
+    
+    // Navigate to home page
+    navigate('/');
     
     if (onLogout) {
       onLogout();
@@ -229,18 +244,7 @@ const HomePage = ({ onLogout, isOwner = false }) => {
         isAuthenticated={isVisitorAuthenticated}
         visitorName={visitorName}
         onStartChat={handleStartChat}
-        onShowAuth={handleShowAuth}
       />
-
-      {/* Authentication Flow Modal */}
-      {showAuthFlow && (
-        <AuthenticationFlow
-          profileOwnerData={profileOwnerData}
-          onUserAuthenticated={handleUserAuthenticated}
-          onGuestAccess={handleGuestAccess}
-          onClose={() => setShowAuthFlow(false)}
-        />
-      )}
     </>
   );
 };

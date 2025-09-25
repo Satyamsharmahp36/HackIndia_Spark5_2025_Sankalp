@@ -3,7 +3,9 @@ import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-
 import { motion, AnimatePresence } from 'framer-motion';
 import Cookies from 'js-cookie';
 import HomePage from './components/HomePage';
-import UserVerificationPage from './components/UserVerificationPage';
+import LandingPage from './components/LandingPage';
+import AdminAuthPage from './components/AdminAuthPage';
+import AdminChatRoute from './components/AdminChatRoute';
 import { useAppContext } from './Appcontext';
 
 const UserChatRoute = ({ onUserVerified }) => {
@@ -160,15 +162,12 @@ const AppContent = () => {
               path="/" 
               element={
                 <motion.div
-                  key="home-verification"
+                  key="landing-page"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <UserVerificationPage 
-                    onUserVerified={handleUserVerified}
-                    onGetStarted={handleGetStarted}
-                  />
+                  <LandingPage />
                 </motion.div>
               } 
             />
@@ -176,6 +175,25 @@ const AppContent = () => {
             <Route 
               path="home/:username" 
               element={<UserChatRoute onUserVerified={handleUserVerified} />} 
+            />
+            
+            <Route 
+              path="admin" 
+              element={
+                <motion.div
+                  key="admin-auth"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <AdminAuthPage />
+                </motion.div>
+              } 
+            />
+            
+            <Route 
+              path="admin/chat/:username" 
+              element={<AdminChatRoute />} 
             />
           </Routes>
         )}

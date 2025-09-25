@@ -88,6 +88,7 @@ const ChatBot = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [showMicPermissionPrompt, setShowMicPermissionPrompt] = useState(false);
+  const [isRefreshingContext, setIsRefreshingContext] = useState(false);
 
   const {
     transcript,
@@ -196,6 +197,18 @@ const ChatBot = () => {
   useEffect(() => {
     const initializeChat = async () => {
       if (userData?.user) {
+        // Check if this is a different user than the current one
+        const isDifferentUser = currentUserData?.user?.name !== userData.user.name;
+        
+        if (isDifferentUser) {
+          console.log(`[User Switch] Switching from ${currentUserData?.user?.name || 'none'} to ${userData.user.name}`);
+          // Clear previous user's data
+          setCurrentUserData(null);
+          setMessages([]);
+          setInput("");
+          setIsInitialized(false);
+        }
+        
         setCurrentUserData(userData);
         setIsInitialized(true);
 
@@ -221,11 +234,17 @@ const ChatBot = () => {
             ];
 
         setMessages(userChatHistory);
+      } else {
+        // No user data, clear everything
+        setCurrentUserData(null);
+        setMessages([]);
+        setInput("");
+        setIsInitialized(false);
       }
     };
 
     initializeChat();
-  }, [userData, presentUserName]);
+  }, [userData, presentUserName, currentUserData?.user?.name]);
 
   useEffect(() => {
     if (!chatHistoryKey || messages.length === 0) return;
@@ -316,7 +335,7 @@ const ChatBot = () => {
     await refreshPresentUserData(); // Wait for context to update
 
     // Navigate back to the home page
-    window.location.href = "/";
+    navigate('/');
   };
 
   const handleDeleteHistory = () => {
@@ -502,6 +521,20 @@ const ChatBot = () => {
     inputRef.current?.focus();
 
     try {
+      // Refresh user data to ensure we have the latest context
+      setIsRefreshingContext(true);
+      const freshUserData = await refreshUserData();
+      const currentUserDataToUse = freshUserData || userData;
+      
+      // Validate that we have the correct user data
+      if (!currentUserDataToUse?.user) {
+        console.error("No valid user data available for AI response");
+        setIsRefreshingContext(false);
+        return;
+      }
+      
+      setIsRefreshingContext(false);
+
       const detectedLangCode = await detectLanguage(originalText);
       const userMessage = {
         type: "user",
@@ -537,7 +570,7 @@ const ChatBot = () => {
 
       const englishResponse = await getAnswer(
         textForAI,
-        userData.user,
+        currentUserDataToUse.user,
         presentUserData ? presentUserData.user : null,
         updatedMessages
       );
@@ -576,6 +609,7 @@ const ChatBot = () => {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setIsRefreshingContext(false);
     }
   };
 
@@ -879,6 +913,25 @@ const ChatBot = () => {
                       <CheckCircle className="w-5 h-5 mr-2" />
                       Knowledge base updated successfully! I'm now equipped with
                       the latest information.
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {isRefreshingContext && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 flex items-center"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <Loader2 className="w-5 h-5 mr-2" />
+                      </motion.div>
+                      Refreshing context with latest data...
                     </motion.div>
                   )}
                 </AnimatePresence>

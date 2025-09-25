@@ -17,8 +17,11 @@ import {
 import { useAppContext } from '../../Appcontext';
 import PropTypes from 'prop-types';
 
-const VisitorAnalytics = ({ onClose }) => {
-  const { userData } = useAppContext();
+const VisitorAnalytics = ({ onClose, userData: propUserData }) => {
+  const { userData: contextUserData } = useAppContext();
+  
+  // Use prop userData if provided, otherwise fall back to context
+  const userData = propUserData || contextUserData;
   
   const [visitors, setVisitors] = useState([]);
   const [analytics, setAnalytics] = useState({
@@ -37,8 +40,16 @@ const VisitorAnalytics = ({ onClose }) => {
   useEffect(() => {
     let isMounted = true;
     
+    console.log('[VisitorAnalytics] userData:', userData);
+    console.log('[VisitorAnalytics] userData?.user:', userData?.user);
+    console.log('[VisitorAnalytics] userData?.user?.username:', userData?.user?.username);
+    
     const fetchVisitors = async () => {
-      if (!userData?.user?.username) return;
+      if (!userData?.user?.username) {
+        console.log('[VisitorAnalytics] No username found, skipping fetch');
+        setIsLoading(false);
+        return;
+      }
       
       try {
         setIsLoading(true);

@@ -552,8 +552,14 @@ let pendingMeetingDetails = {};
 
 export async function getAnswer(question, userData, presentData, conversationHistory = []) {
   try {
+    // Validate userData exists
+    if (!userData) {
+      console.error("No userData provided to getAnswer");
+      return "I'm sorry, there was an issue loading your profile information. Please try refreshing the page.";
+    }
+
     // Use user's API key if available, otherwise fall back to environment variable
-    const apiKey = userData?.geminiApiKey || import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    const apiKey = userData?.geminiApiKey || userData?.user?.geminiApiKey || import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
       return "No Gemini API key available for this user.";
     }
@@ -848,38 +854,109 @@ if (missingDetails.length === 0) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    const approvedContributions = userData.contributions?.filter(contribution => 
-     contribution.status === "approved") || [];
+    const contributions = userData?.contributions || userData?.user?.contributions || [];
+    const approvedContributions = contributions.filter(contribution => 
+     contribution?.status === "approved") || [];
     const contributionsKnowledgeBase = approvedContributions.length > 0 ? 
      `This is my personal knowledge base of verified information. you can use this to answer the questions
 ${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question}\nAnswer: ${c.answer}`).join('\n\n')}` : 
      'No specific approved contributions yet.';
    
+    // Enhanced context building with better structure and validation
+    const buildUserContext = () => {
+      try {
+        // Safe name extraction with fallback
+        const userName = userData?.name || userData?.user?.name || 'User';
+        let context = `PERSONAL CONTEXT FOR ${userName.toUpperCase()}:\n`;
+        context += `===============================\n\n`;
+        
+        // Main user data/prompt with validation
+        const userPrompt = userData?.prompt || userData?.user?.prompt;
+        if (userPrompt && userPrompt.trim()) {
+          const cleanPrompt = userPrompt.trim();
+          // Basic validation to ensure prompt is not just whitespace or too short
+          if (cleanPrompt.length > 10) {
+            context += `CORE INFORMATION:\n${cleanPrompt}\n\n`;
+          } else {
+            context += `CORE INFORMATION: Limited context available (${cleanPrompt.length} characters)\n\n`;
+          }
+        } else {
+          context += `CORE INFORMATION: No specific context provided\n\n`;
+        }
+        
+        // Daily tasks with validation
+        const dailyTasks = userData?.dailyTasks?.content || userData?.user?.dailyTasks?.content;
+        if (dailyTasks && dailyTasks.trim()) {
+          context += `CURRENT DAILY TASKS:\n${dailyTasks.trim()}\n\n`;
+        }
+        
+        // Additional user profile information with validation
+        const userEmail = userData?.email || userData?.user?.email;
+        const userMobile = userData?.mobileNo || userData?.user?.mobileNo;
+        const userUsername = userData?.username || userData?.user?.username;
+        
+        if (userEmail && userEmail.trim()) {
+          context += `CONTACT: ${userEmail.trim()}\n`;
+        }
+        if (userMobile && userMobile.trim()) {
+          context += `PHONE: ${userMobile.trim()}\n`;
+        }
+        if (userUsername && userUsername.trim()) {
+          context += `USERNAME: ${userUsername.trim()}\n`;
+        }
+        
+        // Add context timestamp for debugging
+        context += `\nCONTEXT UPDATED: ${new Date().toISOString()}\n`;
+        context += `===============================\n`;
+        
+        return context;
+      } catch (error) {
+        console.error("Error building user context:", error);
+        const fallbackName = userData?.name || userData?.user?.name || 'User';
+        return `PERSONAL CONTEXT FOR ${fallbackName.toUpperCase()}:\n===============================\n\nCORE INFORMATION: Error loading context data\n\n===============================\n`;
+      }
+    };
+
+    const userContext = buildUserContext();
+    
+    // Debug logging for context tracking
+    const userName = userData?.name || userData?.user?.name || 'User';
+    console.log(`[AI Context] Building context for ${userName}:`, {
+      hasPrompt: !!(userData?.prompt || userData?.user?.prompt),
+      promptLength: (userData?.prompt || userData?.user?.prompt)?.length || 0,
+      hasDailyTasks: !!(userData?.dailyTasks?.content || userData?.user?.dailyTasks?.content),
+      contextLength: userContext.length,
+      timestamp: new Date().toISOString()
+    });
+
     const prompt = `
-You are ${userData.name}'s personal AI assistant. Answer based on the following details. Also answer the question's in person like instead of AI the ${userData.name} is answering questions.
-If a you don't have data for any information say "I don't have that information. If you have answers to this, please contribute."
-Answer questions in a bit elaborate manner and can also add funny things if needed.
-Also note if question is like :- Do you know abotu this cors issue in deployment , then it mean's this question is asked from ${userData.name} , not from AI , so answers on the bases of ${userData.name}
-data not by the AI's knowledge . 
+You are ${userName}'s personal AI assistant. You should respond as if you ARE ${userName} speaking directly, not as an AI assistant. Use first person ("I", "my", "me") when referring to ${userName}'s experiences, skills, and information.
 
-Here's ${userData.name}'s latest data:
-${userData.prompt || 'No specific context provided'}
+CORE INSTRUCTIONS:
+- Answer questions as ${userName} would, using their personal context and experiences
+- If you don't have specific information about something, say "I don't have that information. If you have answers to this, please contribute."
+- Be elaborate and engaging in your responses, adding personality and humor when appropriate
+- When technical questions are asked (like "Do you know about this CORS issue in deployment"), respond based on ${userName}'s technical background and experience, not general AI knowledge
+- Always maintain the context of ${userName}'s personal and professional background
 
-And this is daily task of user ${userData.dailyTasks?.content || 'No daily tasks available'}
+${userContext}
 
 ${conversationHistory.length > 0 ? 'RECENT CONVERSATION HISTORY:\n' + formattedHistory + '\n\n' : ''}
 
-${conversationTopic ? `Current conversation topic: ${conversationTopic}\n\n` : ''}
+${conversationTopic ? `CURRENT CONVERSATION TOPIC: ${conversationTopic}\n\n` : ''}
 
-Current question: ${question}
+CURRENT QUESTION: ${question}
 
 ${contributionsKnowledgeBase}
 
-When providing links, give plain URLs like https://github.com/xxxx/
+RESPONSE STYLE GUIDELINES:
+- When providing links, give plain URLs like https://github.com/xxxx/
+- ${userData?.userPrompt || userData?.user?.userPrompt || 'Respond in a professional yet friendly manner'}
 
-This is the way I want the responses to be ${userData.userPrompt}
-
-IMPORTANT: Maintain context from the conversation history when answering follow-up questions. If the question seems like a follow-up to previous messages, make sure your response builds on the earlier conversation.
+IMPORTANT: 
+- Always maintain context from the conversation history when answering follow-up questions
+- If the question seems like a follow-up to previous messages, make sure your response builds on the earlier conversation
+- Remember: You are speaking AS ${userName}, not ABOUT ${userName}
 `;
 
     const model = genAI.getGenerativeModel({ 

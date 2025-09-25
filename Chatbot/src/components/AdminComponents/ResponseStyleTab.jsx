@@ -7,10 +7,14 @@ const ResponseStyleTab = ({
   responseStyleContent, 
   setResponseStyleContent, 
   updateResponseStyle, 
-  clearResponseStyle,
-  isLoading 
+  clearResponseStyle, 
+  isLoading,
+  userData: propUserData
 }) => {
-  const { userData, refreshUserData } = useAppContext();
+  const { userData: contextUserData, refreshUserData } = useAppContext();
+  
+  // Use prop userData if provided, otherwise fall back to context
+  const userData = propUserData || contextUserData;
 
   const styleTemplates = [
     { name: "Professional", desc: "Formal, precise responses with authoritative tone" },
