@@ -52,136 +52,142 @@ const ContributionForm = ({
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 overflow-y-auto backdrop-blur-sm flex items-center justify-center z-40 p-4">
-      <div className="min-h-screen py-8 flex items-center justify-center w-full">
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl shadow-2xl border border-blue-500 w-full max-w-md overflow-hidden flex flex-col"
-        >
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-white flex items-center">
-              <Plus className="w-5 h-5 mr-2 text-white" />
-              Knowledge Contribution
-            </h2>
-            <motion.button 
-              whileHover={{ scale: 1.1, rotate: 90 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors bg-blue-700 rounded-full p-2"
-            >
-              <X className="w-5 h-5" />
-            </motion.button>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Plus className="w-4 h-4 text-purple-600" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">Knowledge Contribution</h2>
           </div>
-          
-          <div className="bg-blue-100 bg-opacity-30 border-b border-blue-500 px-6 py-3 flex items-start">
-            <Info className="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-            <p className="text-blue-200 text-sm">
+          <button 
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+
+        {/* Info Banner */}
+        <div className="px-6 py-3 bg-blue-50 border-b border-blue-100">
+          <div className="flex items-start gap-3">
+            <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-800 leading-relaxed">
               Help improve this AI by contributing your knowledge. Your submissions will be reviewed before being added to the assistant's knowledge base.
             </p>
           </div>
-          
-          <div className="overflow-y-auto max-h-[calc(100vh-250px)]" style={{ scrollbarWidth: 'thin', scrollbarColor: '#4B5563 #111827' }}>
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              {submitMessage && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`${
-                    submitStatus === 'success' 
-                      ? 'bg-green-100 bg-opacity-20 border border-green-500 text-green-300' 
-                      : 'bg-red-900 bg-opacity-20 border border-red-500 text-red-300'
-                  } rounded-lg p-3 flex items-center shadow-lg`}
-                >
-                  {submitStatus === 'success' ? (
-                    <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
-                  ) : (
-                    <AlertTriangle className="w-5 h-5 mr-2 text-red-400" />
-                  )}
-                  {submitMessage}
-                </motion.div>
-              )}
-              
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Your Name</label>
-                <div className="relative">
-                  <User className="w-5 h-5 text-gray-500 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-white shadow-inner"
-                    placeholder="Enter your name"
-                    disabled={presentUserData?.user?.username}
-                  />
-                </div>
-                {presentUserData?.user?.username && (
-                  <p className="text-xs text-gray-400 mt-1 ml-2">Name auto-filled from your homepage entry</p>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-1">Question</label>
-                <div className="relative">
-                  <HelpCircle className="w-5 h-5 text-gray-500 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    className="w-full pl-10 pr-4 text-lg py-3 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-white shadow-inner"
-                    placeholder="What question would you like to answer ?"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-1">Your Contribution</label>
-                <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden shadow-inner">
-                  <textarea
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    className="w-full text-lg p-4 bg-transparent focus:outline-none text-white h-32 resize-none"
-                    placeholder="Share correct information or additional details that would improve the AI's knowledge..."
-                  />
-                  <div className="bg-gray-800 border-t border-gray-700 px-4 py-1 flex justify-between text-xs text-gray-400">
-                    <span>Be clear, concise, and accurate</span>
-                    <span>{answer.length} characters</span>
-                  </div>
-                </div>
-              </div>
-            </form>
-          </div>
-  
-          <div className="p-6 pt-2 bg-gray-900 border-t border-gray-800">
-            <motion.button
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all font-medium flex items-center justify-center space-x-2 disabled:opacity-50"
+        </div>
+
+        {/* Form */}
+        <div className="p-6 space-y-5">
+          {submitMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`rounded-lg p-3 flex items-center gap-2 ${
+                submitStatus === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}
             >
-              {isSubmitting ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                >
-                  <Loader2 className="w-5 h-5 text-white" />
-                </motion.div>
+              {submitStatus === 'success' ? (
+                <CheckCircle className="w-4 h-4 text-green-600" />
               ) : (
-                <Send className="w-5 h-5 text-white" />
+                <AlertTriangle className="w-4 h-4 text-red-600" />
               )}
-              <span>Submit Contribution</span>
-            </motion.button>
-            
-            <div className="pt-2 flex justify-center">
-              <p className="text-xs text-gray-500 text-center max-w-sm">
-                By submitting, you agree that your contribution may be used to improve the AI assistant's responses.
-              </p>
+              <span className="text-sm font-medium">{submitMessage}</span>
+            </motion.div>
+          )}
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+              <div className="relative">
+                <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                  placeholder="Enter your name"
+                  disabled={presentUserData?.user?.username}
+                />
+              </div>
+              {presentUserData?.user?.username && (
+                <p className="text-xs text-gray-500 mt-1">Name auto-filled from your profile</p>
+              )}
             </div>
-          </div>
-        </motion.div>
-      </div>
+            
+            {/* Question Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Question</label>
+              <div className="relative">
+                <HelpCircle className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                  placeholder="What question would you like to answer?"
+                />
+              </div>
+            </div>
+            
+            {/* Contribution Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Your Contribution</label>
+              <div className="relative">
+                <textarea
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500 resize-none h-24"
+                  placeholder="Share correct information or additional details that would improve the AI's knowledge..."
+                />
+                <div className="absolute bottom-2 right-2 text-xs text-gray-400">
+                  {answer.length} characters
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Be clear, concise, and accurate</p>
+            </div>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              >
+                <Loader2 className="w-4 h-4" />
+              </motion.div>
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+            <span>{isSubmitting ? 'Submitting...' : 'Submit Contribution'}</span>
+          </motion.button>
+          
+          <p className="text-xs text-gray-500 text-center mt-3 leading-relaxed">
+            By submitting, you agree that your contribution may be used to improve the AI assistant's responses.
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 };

@@ -22,7 +22,9 @@ import {
   ChevronDown,
   Shield,
   BarChart3,
-  Brain
+  Brain,
+  MessageSquare,
+  Linkedin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,10 +49,13 @@ import AccessManagement from "./AdminComponents/AccessManagement";
 import VisitorAnalytics from "./AdminComponents/VisitorAnalytics";
 import Memory from "./AdminComponents/Memory";
 import IntegrationDashboard from "./AdminComponents/IntegrationDashboard";
-import EmailDashboard from "./AdminComponents/EmailDashboard";
+import EmailManagement from "./AdminComponents/EmailManagement";
+import WhatsAppManagement from "./AdminComponents/WhatsAppManagement";
+import LinkedInManagement from "./AdminComponents/LinkedInManagement";
 import SelfTaskForm from "./AdminComponents/SelfTaskForm";
 import MeetingDetailsPopup from "./AdminComponents/MeetingDetailsPopup";
 import CalendarScheduler from "./AdminComponents/CalendarScheduler";
+import AccessibleChatbots from "./AdminComponents/AccessibleChatbots";
 import useAdminPanelTasks from "./AdminComponents/useAdminPanelTasks";
 
 const AdminChatLayout = ({ onLogout, adminUserData }) => {
@@ -100,6 +105,10 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     tasks,
     loading,
     error,
+    refreshTasks,
+    manualRefresh,
+    isRefreshing,
+    lastRefreshTime,
     sortedTasks,
     expandedTask,
     expandedUser,
@@ -115,7 +124,7 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     setExpandedTask,
     setExpandedUser,
     setUserDescriptions,
-  } = useAdminPanelTasks(currentUserData, searchTerm, statusFilter, sortOrder, taskCategories);
+  } = useAdminPanelTasks(currentUserData, searchTerm, statusFilter, sortOrder, taskCategories, 30000);
 
   // Placeholder functions for task actions
   const handleOpenMeetingLink = useCallback((meetingLink) => {
@@ -208,7 +217,15 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
           `${presentUserName || "anonymous"}_${dataToUse.user.name}`
         );
         if (savedMessages) {
-          setMessages(JSON.parse(savedMessages));
+          const parsedMessages = JSON.parse(savedMessages);
+          // Ensure all messages have the correct structure
+          const validatedMessages = parsedMessages.map(msg => ({
+            id: msg.id || Date.now() + Math.random(),
+            text: msg.text || msg.content || '',
+            isUser: msg.isUser !== undefined ? msg.isUser : (msg.type === 'user'),
+            timestamp: msg.timestamp || new Date().toISOString()
+          }));
+          setMessages(validatedMessages);
         } else {
           const welcomeMessage = {
             id: Date.now(),
@@ -265,6 +282,14 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
       timestamp: new Date().toISOString(),
     };
 
+    // Convert messages to conversation history format BEFORE adding current user message
+    console.log("Messages before conversion:", messages);
+    const conversationHistory = messages.map(msg => ({
+      type: msg.isUser ? 'user' : 'bot',
+      content: msg.text
+    }));
+    console.log("Conversation history after conversion:", conversationHistory);
+
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -283,7 +308,7 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
         return;
       }
 
-      const response = await getAnswer(input.trim(), currentUserData);
+      const response = await getAnswer(input.trim(), currentUserData, currentUserData, conversationHistory);
       const botMessage = {
         id: Date.now() + 1,
         text: response,
@@ -317,6 +342,14 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     if (chatHistoryKey) {
       localStorage.removeItem(chatHistoryKey);
     }
+    // Add a welcome message after clearing
+    const welcomeMessage = {
+      id: Date.now(),
+      text: `Hello! I'm ${currentUserData?.user?.name || 'the user'}'s AI assistant. How can I help you today?`,
+      isUser: false,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages([welcomeMessage]);
   };
 
   const toggleVoice = () => {
@@ -330,6 +363,7 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
 
   const sidebarItems = useMemo(() => [
     { id: "chat", label: "Chat", icon: MessageCircle, active: activeView === "chat" },
+    { id: "accessible-chatbots", label: "Accessible Chatbots", icon: Users, active: activeView === "accessible-chatbots" },
     { id: "tasks", label: "Task Management", icon: ListChecks, active: activeView === "tasks" },
     { id: "workflow", label: "Daily Workflow", icon: Activity, active: activeView === "workflow" },
     { id: "calendar", label: "Calendar", icon: Calendar, active: activeView === "calendar" },
@@ -338,6 +372,8 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     { id: "memory", label: "Memory", icon: Brain, active: activeView === "memory" },
     { id: "slack", label: "Slack", icon: Slack, active: activeView === "slack" },
     { id: "email", label: "Email", icon: Mail, active: activeView === "email" },
+    { id: "whatsapp", label: "WhatsApp", icon: MessageSquare, active: activeView === "whatsapp" },
+    { id: "linkedin", label: "LinkedIn", icon: Linkedin, active: activeView === "linkedin" },
   ], [activeView]);
 
   const handleTabChange = useCallback((tabId) => {
@@ -535,6 +571,9 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
                 handleViewModeToggle={handleViewModeToggle}
                 taskCategories={taskCategories}
                 handleCategoryToggle={handleCategoryToggle}
+                onRefresh={manualRefresh}
+                isRefreshing={isRefreshing}
+                lastRefreshTime={lastRefreshTime}
               />
 
               {/* Task List */}
@@ -616,6 +655,13 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
             />
           )}
 
+          {activeView === "accessible-chatbots" && (
+            <AccessibleChatbots
+              onClose={() => setActiveView("chat")}
+              currentUserData={currentUserData}
+            />
+          )}
+
           {activeView === "analytics" && (
             <VisitorAnalytics
               onClose={() => setActiveView("chat")}
@@ -631,11 +677,15 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
           )}
 
           {activeView === "email" && (
-            <EmailDashboard
-              isOpen={true}
-              onClose={() => setActiveView("chat")}
-              userData={currentUserData}
-            />
+            <EmailManagement userData={currentUserData} />
+          )}
+
+          {activeView === "whatsapp" && (
+            <WhatsAppManagement userData={currentUserData} />
+          )}
+
+          {activeView === "linkedin" && (
+            <LinkedInManagement userData={currentUserData} />
           )}
         </div>
       </div>
@@ -832,13 +882,6 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
           />
         )}
 
-        {showEmailDashboard && (
-          <EmailDashboard
-            isOpen={showEmailDashboard}
-            onClose={() => setShowEmailDashboard(false)}
-            userData={currentUserData}
-          />
-        )}
 
         {showMeetingDetails && selectedMeeting && (
           <MeetingDetailsPopup

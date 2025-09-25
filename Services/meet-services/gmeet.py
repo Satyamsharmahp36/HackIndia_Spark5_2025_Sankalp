@@ -132,11 +132,137 @@ class MeetRecorder:
             sleep(5)
             
             self._take_screenshot("signed_in.png")
+            
+            # Handle post-signin screens (like home address setup)
+            self._handle_post_signin_screens()
+            
             return True
         except Exception as e:
             print(f"Google sign-in failed: {e}")
             self._take_screenshot("signin_error.png")
             return False
+    
+    def _handle_post_signin_screens(self):
+        """Handle various screens that appear after Google sign-in"""
+        try:
+            # Wait a bit for any redirects
+            sleep(3)
+            
+            # Set a timeout for handling post-signin screens
+            max_wait_time = 30  # seconds
+            start_time = time.time()
+            
+            # Check for home address setup screen
+            while time.time() - start_time < max_wait_time:
+                try:
+                    # Look for "Set a home address" or similar text
+                    page_text = self.driver.find_element(By.TAG_NAME, "body").text.lower()
+                    if "home address" in page_text or "set a home address" in page_text:
+                        print("Detected home address setup screen, attempting to skip...")
+                        self._take_screenshot("home_address_screen.png")
+                        
+                        # Try to find and click "Skip" button with more specific selectors
+                        skip_selectors = [
+                            "//button[contains(text(), 'Skip')]",
+                            "//button[contains(text(), 'Not now')]",
+                            "//button[contains(text(), 'Maybe later')]",
+                            "//button[contains(@aria-label, 'Skip')]",
+                            "//span[contains(text(), 'Skip')]/parent::button",
+                            "//div[contains(text(), 'Skip')]/parent::button",
+                            "//button[contains(@class, 'skip')]",
+                            "//button[contains(@class, 'VfPpkd-LgbsSe') and contains(text(), 'Skip')]",
+                            "//button[@jsname='Cuz2Ue' and contains(text(), 'Skip')]"
+                        ]
+                        
+                        skip_clicked = False
+                        for selector in skip_selectors:
+                            try:
+                                skip_button = self.driver.find_element(By.XPATH, selector)
+                                if skip_button.is_displayed() and skip_button.is_enabled():
+                                    skip_button.click()
+                                    print("Successfully clicked Skip button")
+                                    sleep(3)
+                                    skip_clicked = True
+                                    break
+                            except:
+                                continue
+                        
+                        # If no skip button found, try pressing Escape or Tab+Enter
+                        if not skip_clicked:
+                            try:
+                                from selenium.webdriver.common.keys import Keys
+                                self.driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+                                sleep(2)
+                                print("Pressed Escape key to dismiss dialog")
+                            except:
+                                pass
+                            
+                            # Try Tab + Enter as alternative
+                            try:
+                                self.driver.find_element(By.TAG_NAME, "body").send_keys(Keys.TAB)
+                                sleep(0.5)
+                                self.driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ENTER)
+                                sleep(2)
+                                print("Tried Tab + Enter to dismiss dialog")
+                            except:
+                                pass
+                        
+                        # Break out of the loop after handling
+                        break
+                    else:
+                        # No home address screen detected, check if we can proceed
+                        current_url = self.driver.current_url
+                        if "accounts.google.com" not in current_url or "myaccount.google.com" in current_url:
+                            print("Successfully navigated away from sign-in screens")
+                            break
+                        
+                        sleep(2)  # Wait a bit before checking again
+                        
+                except Exception as e:
+                    print(f"Error handling home address screen: {e}")
+                    break
+            
+            # If we've been stuck for too long, just proceed
+            if time.time() - start_time >= max_wait_time:
+                print("Timeout reached while handling post-signin screens, proceeding anyway...")
+                self._take_screenshot("post_signin_timeout.png")
+            
+            # Check for other common post-signin screens
+            try:
+                # Look for "Turn on 2-Step Verification" or similar
+                page_text = self.driver.find_element(By.TAG_NAME, "body").text.lower()
+                if "2-step verification" in page_text or "two-step verification" in page_text:
+                    print("Detected 2-step verification screen, attempting to skip...")
+                    self._take_screenshot("2step_verification_screen.png")
+                    
+                    # Try to find and click "Skip" or "Not now" button
+                    skip_selectors = [
+                        "//button[contains(text(), 'Skip')]",
+                        "//button[contains(text(), 'Not now')]",
+                        "//button[contains(text(), 'Maybe later')]",
+                        "//span[contains(text(), 'Skip')]/parent::button"
+                    ]
+                    
+                    for selector in skip_selectors:
+                        try:
+                            skip_button = self.driver.find_element(By.XPATH, selector)
+                            if skip_button.is_displayed() and skip_button.is_enabled():
+                                skip_button.click()
+                                print("Successfully clicked Skip button for 2-step verification")
+                                sleep(3)
+                                break
+                        except:
+                            continue
+                            
+            except Exception as e:
+                print(f"Error handling 2-step verification screen: {e}")
+            
+            # Final screenshot after handling post-signin screens
+            self._take_screenshot("after_post_signin_handling.png")
+            
+        except Exception as e:
+            print(f"Error in post-signin screen handling: {e}")
+            self._take_screenshot("post_signin_error.png")
     
     def _take_screenshot(self, filename):
         """Take screenshot and save to screenshots directory"""
@@ -151,7 +277,6 @@ class MeetRecorder:
         try:
             self._take_screenshot(f"meeting_check_{int(time.time())}.png")
             
-
             current_url = self.driver.current_url
             if "meet.google.com" not in current_url:
                 return False
@@ -162,17 +287,109 @@ class MeetRecorder:
                 "rejoin", 
                 "the meeting has ended",
                 "return to home screen",
-                "meeting has been ended by host"
+                "meeting has been ended by host",
+                "meeting has ended",
+                "everyone left",
+                "you're the only one here",
+                "waiting for others to join"
             ]
             
             if any(phrase in page_text for phrase in end_phrases):
+                print(f"Meeting end detected: {[phrase for phrase in end_phrases if phrase in page_text]}")
                 return False
+            
+            # Check for "alone in meeting" indicators
+            try:
+                # Look for participant count indicators
+                participant_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), '1') or contains(text(), 'participant') or contains(text(), 'person')]")
+                for element in participant_elements:
+                    element_text = element.text.lower()
+                    if any(indicator in element_text for indicator in ["1 participant", "1 person", "you're the only one", "waiting for others"]):
+                        print("Detected: Bot is alone in the meeting")
+                        return False
+                
+                # Check for "waiting for others" or similar messages
+                waiting_indicators = [
+                    "waiting for others to join",
+                    "you're the only one here",
+                    "invite others",
+                    "share the meeting link"
+                ]
+                
+                if any(indicator in page_text for indicator in waiting_indicators):
+                    print(f"Detected waiting state: {[indicator for indicator in waiting_indicators if indicator in page_text]}")
+                    return False
+                    
+            except Exception as e:
+                print(f"Error checking participant count: {e}")
+            
+            # Check if we're in a "lobby" or "waiting room" state
+            try:
+                # Look for lobby/waiting room indicators
+                lobby_indicators = [
+                    "waiting for the host to let you in",
+                    "you're in the waiting room",
+                    "host will let you in soon",
+                    "knock to join"
+                ]
+                
+                if any(indicator in page_text for indicator in lobby_indicators):
+                    print(f"Detected lobby/waiting room: {[indicator for indicator in lobby_indicators if indicator in page_text]}")
+                    return False
+                    
+            except Exception as e:
+                print(f"Error checking lobby state: {e}")
                 
             return True
         except Exception as e:
             print(f"Meeting check error: {e}")
             # Default to True 
             return True
+    
+    def _is_bot_alone_in_meeting(self):
+        """Check if the bot is alone in the meeting (no other participants)"""
+        try:
+            page_text = self.driver.find_element(By.TAG_NAME, "body").text.lower()
+            
+            # Check for indicators that bot is alone
+            alone_indicators = [
+                "you're the only one here",
+                "waiting for others to join",
+                "invite others to join",
+                "share the meeting link",
+                "1 participant",
+                "1 person"
+            ]
+            
+            # Check for specific UI elements that indicate being alone
+            try:
+                # Look for participant count in the UI
+                participant_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), '1') or contains(text(), 'participant') or contains(text(), 'person')]")
+                for element in participant_elements:
+                    element_text = element.text.lower()
+                    if any(indicator in element_text for indicator in ["1 participant", "1 person"]):
+                        return True
+            except:
+                pass
+            
+            # Check page text for alone indicators
+            if any(indicator in page_text for indicator in alone_indicators):
+                return True
+                
+            # Check for empty meeting room indicators
+            try:
+                # Look for the large avatar in center (indicates only one person)
+                avatar_elements = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'avatar') or contains(@class, 'participant')]")
+                if len(avatar_elements) == 1:
+                    # Check if there's only one large avatar (the bot itself)
+                    return True
+            except:
+                pass
+                
+            return False
+        except Exception as e:
+            print(f"Error checking if bot is alone: {e}")
+            return False
     
     def _start_recording(self):
         """Start FFmpeg recording process"""
@@ -339,14 +556,27 @@ class MeetRecorder:
                             button.click()
                             sleep(5)
                             self._take_screenshot(f"join_attempt_{attempt}.png")
-                            return True
+                            break
                 except:
                     pass
                 
+                # Check if we're already in the meeting
+                current_url = self.driver.current_url
+                if "meet.google.com" in current_url and ("/" in current_url.split("meet.google.com/")[-1]):
+                    print("Successfully in meeting room")
+                    self._take_screenshot("successfully_in_meeting.png")
+                    return True
+                
                 sleep(5)
             
-            # If we couldn't find join button, assume we're already in
-            return True
+            # Final check - if we're on a meet.google.com URL, consider it successful
+            current_url = self.driver.current_url
+            if "meet.google.com" in current_url:
+                print("Successfully reached meeting URL")
+                self._take_screenshot("final_meeting_check.png")
+                return True
+            
+            return False
         except Exception as e:
             print(f"Meeting join failed: {e}")
             self._take_screenshot("join_error.png")
@@ -364,19 +594,25 @@ class MeetRecorder:
         if not self._init_browser():
             return False
             
-        # Google sign in
+        # Google sign in (optional - continue even if it fails)
         email = os.getenv("GMAIL_USER_EMAIL", "")
         password = os.getenv("GMAIL_USER_PASSWORD", "")
         
+        signin_success = True
         if email and password:
-            if not await self._google_sign_in(email, password):
-                print("Failed to sign in to Google account")
-                return False
+            signin_success = await self._google_sign_in(email, password)
+            if not signin_success:
+                print("Google sign-in failed, but continuing to attempt meeting join...")
         
-        # Join meeting
-        if not await self._join_meeting():
+        # Join meeting (this is the critical step)
+        meeting_join_success = await self._join_meeting()
+        if not meeting_join_success:
             print("Failed to join meeting")
             return False
+        
+        # If we successfully joined the meeting, consider it a success even if sign-in had issues
+        if meeting_join_success and not signin_success:
+            print("Successfully joined meeting despite sign-in issues - continuing with recording")
             
         # Start recording
         if not self._start_recording():
@@ -391,9 +627,25 @@ class MeetRecorder:
             max_wait_minutes = int(os.getenv("MAX_WAITING_TIME_IN_MINUTES", 60))
             end_time = time.time() + (max_wait_minutes * 60)
             
+            # Track consecutive "alone in meeting" detections
+            alone_count = 0
+            max_alone_checks = 3  # Stop after 3 consecutive checks (1.5 minutes) of being alone
+            
             while time.time() < end_time and self._is_meeting_active():
                 print(f"Meeting active, next check in {check_interval} seconds")
                 sleep(check_interval)
+                
+                # Check if bot is alone in meeting
+                if self._is_bot_alone_in_meeting():
+                    alone_count += 1
+                    print(f"Bot appears to be alone in meeting (check {alone_count}/{max_alone_checks})")
+                    
+                    if alone_count >= max_alone_checks:
+                        print("Bot has been alone in meeting for too long, ending recording")
+                        break
+                else:
+                    # Reset counter if not alone
+                    alone_count = 0
         except KeyboardInterrupt:
             print("Received keyboard interrupt, stopping...")
         except Exception as e:

@@ -69,11 +69,11 @@ RUN pip3 install \
     opencv-python \
     Pillow \
     flask \
-    gunicorn \ 
+    gunicorn \
     langchain-google-genai \
     google-generativeai \
     langchain-core \
-    deepgram-sdk \ 
+    deepgram-sdk \
     requests \
     schedule
 
@@ -82,8 +82,6 @@ RUN pip3 install \
 # RUN pip3 install -r requirements.txt
 
 RUN echo 'user ALL=(ALL:ALL) NOPASSWD:ALL' >> /etc/sudoers
-
-RUN adduser root pulse-access
 
 RUN mkdir -p /var/run/dbus
 
@@ -111,8 +109,8 @@ ENV TZ=Asia/Kolkata
 RUN touch /root/.Xauthority
 RUN chmod 600 /root/.Xauthority
 
-RUN rm /run/dbus/pid
-RUN mv pulseaudio.conf /etc/dbus-1/system.d/pulseaudio.conf
+RUN rm -f /run/dbus/pid
+RUN if [ -f pulseaudio.conf ]; then mv pulseaudio.conf /etc/dbus-1/system.d/pulseaudio.conf; fi
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Define the command to run your application

@@ -6,6 +6,7 @@ import { useAppContext } from '../Appcontext';
 import WelcomeScreen from './WelcomeScreen';
 import AdminChatLayout from './AdminChatLayout';
 import PublicChatLayout from './PublicChatLayout';
+import PrivateChatbotMessage from './PrivateChatbotMessage';
 
 const HomePage = ({ onLogout, isOwner = false }) => {
   const { username } = useParams();
@@ -30,6 +31,8 @@ const HomePage = ({ onLogout, isOwner = false }) => {
   // UI state
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
+  const [isChatbotPublic, setIsChatbotPublic] = useState(true);
+  const [checkingPublicStatus, setCheckingPublicStatus] = useState(true);
 
   // Fetch profile owner data
   const fetchProfileOwner = async (username) => {
@@ -57,12 +60,29 @@ const HomePage = ({ onLogout, isOwner = false }) => {
     }
   };
 
+  // Check if chatbot is public
+  const checkChatbotPublicStatus = async (username) => {
+    try {
+      setCheckingPublicStatus(true);
+      // For now, assume all chatbots are public since the endpoint doesn't exist
+      // In the future, this could check a user's public/private setting
+      setIsChatbotPublic(true);
+    } catch (error) {
+      console.error('Error checking chatbot public status:', error);
+      setIsChatbotPublic(true);
+    } finally {
+      setCheckingPublicStatus(false);
+    }
+  };
+
   // Initialize profile owner data with debouncing
   useEffect(() => {
     let timeoutId;
     
     const initializeProfileOwner = async () => {
       if (username) {
+        // Check if chatbot is public first
+        await checkChatbotPublicStatus(username);
         await fetchProfileOwner(username);
       } else if (userData) {
         setProfileOwnerData(userData);
@@ -204,6 +224,11 @@ const HomePage = ({ onLogout, isOwner = false }) => {
         <p className="ml-4 text-xl">Loading...</p>
       </div>
     );
+  }
+
+  // Check if chatbot is not public and show private message
+  if (!checkingPublicStatus && !isChatbotPublic && username) {
+    return <PrivateChatbotMessage username={username} />;
   }
 
   // Main render logic

@@ -19,6 +19,7 @@ import SpeechRecognition, {
 } from "react-speech-recognition";
 import { motion, AnimatePresence } from "framer-motion";
 import ContributionForm from "./ContributionForm";
+import ChatMateLoginModal from "./ChatMateLoginModal";
 import Cookies from "js-cookie";
 import MessageContent from "./MessageContent";
 import { useAppContext } from "../Appcontext";
@@ -35,6 +36,9 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showContributionForm, setShowContributionForm] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authenticatedUser, setAuthenticatedUser] = useState(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -42,6 +46,49 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
 
   const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    const presentUserName = Cookies.get('presentUserName');
+    if (presentUserName) {
+      // User is already authenticated, fetch their data
+      fetchAuthenticatedUser(presentUserName);
+    } else {
+      // Show login modal
+      setShowLoginModal(true);
+    }
+  }, []);
+
+  const fetchAuthenticatedUser = async (username) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND}/verify-user/${username}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setAuthenticatedUser(data);
+        setIsAuthenticated(true);
+        setShowLoginModal(false);
+      } else {
+        // Invalid session, show login modal
+        setShowLoginModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching authenticated user:', error);
+      setShowLoginModal(true);
+    }
+  };
+
+  const handleLogin = (userData) => {
+    setAuthenticatedUser(userData);
+    setIsAuthenticated(true);
+    setShowLoginModal(false);
+  };
 
   const chatHistoryKey = profileOwnerData?.user?.name
     ? `${visitorName || "anonymous"}_${profileOwnerData.user.name}_public`
@@ -116,7 +163,7 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !isAuthenticated) return;
 
     const userMessage = {
       id: Date.now(),
@@ -125,13 +172,30 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
       timestamp: new Date().toISOString(),
     };
 
+    // Convert messages to conversation history format BEFORE adding current user message
+    const conversationHistory = messages.map(msg => ({
+      type: msg.isUser ? 'user' : 'bot',
+      content: msg.text
+    }));
+
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
     setShowWelcome(false);
 
     try {
-      const response = await getAnswer(input.trim(), profileOwnerData);
+      // Create a combined context with both profile owner and authenticated user
+      const combinedContext = {
+        ...profileOwnerData,
+        presentUser: authenticatedUser?.user,
+        presentUserData: authenticatedUser,
+        presentData: {
+          ...authenticatedUser?.user,
+          isGuest: false // Mark as authenticated user, not guest
+        }
+      };
+
+      const response = await getAnswer(input.trim(), combinedContext, combinedContext.presentData, conversationHistory);
       const botMessage = {
         id: Date.now() + 1,
         text: response,
@@ -218,6 +282,14 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
     <div className="flex h-screen bg-white text-gray-800 overflow-hidden">
       <style>{scrollbarStyles}</style>
 
+      {/* Login Modal */}
+      <ChatMateLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLogin}
+        chatbotOwner={profileOwnerData?.user?.name || 'this user'}
+      />
+
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col w-full">
         {/* Chat Header */}
@@ -235,6 +307,38 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
           </div>
 
           <div className="flex gap-3 items-center">
+            {isAuthenticated && authenticatedUser ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg">
+                  <User className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    Logged in as {authenticatedUser.user.name}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    Cookies.remove('presentUserName');
+                    Cookies.remove('userName');
+                    setIsAuthenticated(false);
+                    setAuthenticatedUser(null);
+                    setShowLoginModal(true);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <User className="w-4 h-4" />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+              >
+                <User className="w-4 h-4" />
+                Login
+              </button>
+            )}
+            
             <button
               onClick={clearChat}
               className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -378,48 +482,65 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
         {/* Input Area */}
         <div className="border-t border-gray-100 bg-white p-6">
           <div className="max-w-4xl mx-auto">
-            <div
-              className={`relative flex items-end rounded-xl transition-all duration-200 ${
-                isFocused ? "ring-2 ring-purple-500" : "ring-1 ring-gray-200"
-              }`}
-            >
-              <div className="flex-1 p-4">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                    autoResizeTextarea(e);
-                  }}
-                  onKeyDown={handleKeyPress}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  placeholder={`Ask me anything about ${profileOwnerData.user.name}...`}
-                  className="w-full bg-transparent border-none text-gray-800 placeholder-gray-500 resize-none focus:outline-none min-h-[24px] max-h-[200px]"
-                  disabled={isLoading}
-                />
+            {!isAuthenticated ? (
+              /* Login Prompt when not authenticated */
+              <div className="flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-gray-600 mb-4">Please login to start chatting with the AI assistant</p>
+                  <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+                  >
+                    <User className="w-4 h-4" />
+                    Login to Chat
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex items-center gap-2 p-2">
-                <button
-                  onClick={toggleVoice}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                  disabled={!browserSupportsSpeechRecognition}
-                  title="Voice input"
-                >
-                  <Mic className="w-5 h-5" />
-                </button>
+            ) : (
+              /* Chat Input when authenticated */
+              <div
+                className={`relative flex items-end rounded-xl transition-all duration-200 ${
+                  isFocused ? "ring-2 ring-purple-500" : "ring-1 ring-gray-200"
+                }`}
+              >
+                <div className="flex-1 p-4">
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      autoResizeTextarea(e);
+                    }}
+                    onKeyDown={handleKeyPress}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    placeholder={`Ask me anything about ${profileOwnerData.user.name}...`}
+                    className="w-full bg-transparent border-none text-gray-800 placeholder-gray-500 resize-none focus:outline-none min-h-[24px] max-h-[200px]"
+                    disabled={isLoading}
+                  />
+                </div>
                 
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!input.trim() || isLoading}
-                  className="p-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Send message"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2 p-2">
+                  <button
+                    onClick={toggleVoice}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    disabled={!browserSupportsSpeechRecognition}
+                    title="Voice input"
+                  >
+                    <Mic className="w-5 h-5" />
+                  </button>
+                  
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!input.trim() || isLoading}
+                    className="p-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Send message"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -428,6 +549,7 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
       <AnimatePresence>
         {showContributionForm && (
           <ContributionForm
+            isOpen={showContributionForm}
             onClose={() => setShowContributionForm(false)}
             userData={profileOwnerData}
           />

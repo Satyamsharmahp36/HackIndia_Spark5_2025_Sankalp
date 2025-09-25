@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Filter, ChevronDown, List, Grid, Calendar, Clipboard, CheckCircle, Clock as ClockIcon } from "lucide-react";
+import { Search, Filter, ChevronDown, List, Grid, Calendar, Clipboard, CheckCircle, Clock as ClockIcon, RefreshCw } from "lucide-react";
 
 const TaskControls = ({
   searchTerm,
@@ -12,6 +12,9 @@ const TaskControls = ({
   handleViewModeToggle,
   taskCategories,
   handleCategoryToggle,
+  onRefresh,
+  isRefreshing,
+  lastRefreshTime,
 }) => (
   <div className="mb-4 flex flex-col gap-3">
     <div className="flex flex-wrap gap-2 items-center">
@@ -64,6 +67,15 @@ const TaskControls = ({
             <Grid className="w-5 h-5" />
           )}
         </button>
+
+        <button
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className="bg-background hover:bg-accent p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors border border-border disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Refresh Tasks"
+        >
+          <RefreshCw className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`} />
+        </button>
       </div>
     </div>
 
@@ -105,6 +117,19 @@ const TaskControls = ({
         <ClockIcon className="w-3 h-3" /> Pending
       </button>
     </div>
+
+    {/* Refresh Status Indicator */}
+    {lastRefreshTime && (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+        <span>
+          {isRefreshing 
+            ? 'Refreshing tasks...' 
+            : `Last updated: ${lastRefreshTime.toLocaleTimeString()}`
+          }
+        </span>
+      </div>
+    )}
   </div>
 );
 

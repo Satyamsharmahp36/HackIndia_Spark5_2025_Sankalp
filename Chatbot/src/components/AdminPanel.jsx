@@ -53,6 +53,7 @@ import NotificationToast from "./AdminComponents/NotificationToast";
 import useAdminPanelTasks from "./AdminComponents/useAdminPanelTasks";
 import IntegrationDashboard from "./AdminComponents/IntegrationDashboard";
 import EmailDashboard from "./AdminComponents/EmailDashboard";
+import EmailManagement from "./AdminComponents/EmailManagement";
 import ReminderPanel from "./AdminComponents/ReminderPanel";
 
 const AdminPanel = ({ onClose, showOnlyView = null }) => {
@@ -131,6 +132,10 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
     error,
     setError,
     fetchTasks,
+    refreshTasks,
+    manualRefresh,
+    isRefreshing,
+    lastRefreshTime,
     toggleTaskStatus,
     expandedTask,
     setExpandedTask,
@@ -147,7 +152,7 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
     getStatusIcon,
     getMeetingCardStyle,
     renderDescription,
-  } = useAdminPanelTasks(userData, searchTerm, statusFilter, sortOrder, taskCategories);
+  } = useAdminPanelTasks(userData, searchTerm, statusFilter, sortOrder, taskCategories, 30000);
 
   useEffect(() => {
     setIsAuthenticated(false);
@@ -177,11 +182,7 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
   const handleRefreshUserData = async () => {
     try {
       setRefreshing(true);
-      toast.info("Refreshing user data...");
-
-      await refreshUserData();
-      setTasks(userData.user.tasks || []);
-      toast.success("User data refreshed successfully");
+      await manualRefresh();
     } catch (error) {
       console.error("Error refreshing user data:", error);
       toast.error("Error refreshing user data");
@@ -457,6 +458,10 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
     if (tab === "analytics") {
       setShowVisitorAnalytics(true);
     }
+    // Close any open overlays when switching tabs
+    if (tab !== "emails") {
+      setShowEmailDashboard(false);
+    }
   };
 
   const handleViewModeToggle = () => {
@@ -563,6 +568,8 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
           renderTaskSchedulingButton={renderTaskSchedulingButton}
           handleRefreshUserData={handleRefreshUserData}
           refreshing={refreshing}
+          isRefreshing={isRefreshing}
+          lastRefreshTime={lastRefreshTime}
           onClose={onClose}
         />
 
@@ -602,6 +609,25 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
                 onAddReminder={handleAddReminder}
               />
             )}
+
+            {activeView === "emails" && (
+              <EmailManagement userData={userData} />
+            )}
+
+            {activeView === "access" && showAccessManagement && (
+              <AccessManagement
+                userData={userData}
+                onUpdate={handleAccessManagementUpdate}
+                onClose={() => setShowAccessManagement(false)}
+              />
+            )}
+
+            {activeView === "analytics" && showVisitorAnalytics && (
+              <VisitorAnalytics
+                userData={userData}
+                onClose={() => setShowVisitorAnalytics(false)}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -631,12 +657,6 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
         userData={userData}
       />
 
-      {/* Email Dashboard */}
-      <EmailDashboard
-        isOpen={showEmailDashboard}
-        onClose={() => setShowEmailDashboard(false)}
-        userData={userData}
-      />
 
       {/* Notifications */}
       <NotificationToast

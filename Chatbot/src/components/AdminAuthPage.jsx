@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, User, Lock, ArrowRight, Bot, Settings, Database, Users } from 'lucide-react';
+import { Shield, User, Lock, ArrowRight, Database, Users, Settings, Eye, EyeOff } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { useAppContext } from '../Appcontext';
 
@@ -10,6 +10,7 @@ const AdminAuthPage = () => {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { setUserName, refreshUserData } = useAppContext();
 
@@ -64,216 +65,141 @@ const AdminAuthPage = () => {
     }
   };
 
-  const BackgroundParticles = () => {
-    const particles = Array.from({ length: 25 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      delay: Math.random() * 2
-    }));
-
+  const BackgroundImage = () => {
     return (
-      <motion.div 
-        className="absolute inset-0 overflow-hidden pointer-events-none"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 2 }}
-      >
-        {particles.map((particle) => (
-          <motion.div
-            key={particle.id}
-            className="absolute bg-purple-300/20 rounded-full"
-            style={{
-              width: `${particle.size}rem`,
-              height: `${particle.size}rem`,
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-            }}
-            animate={{
-              scale: [1, 1.5, 1],
-              opacity: [0.2, 0.4, 0.2],
-              translateX: ['-50%', '50%', '-50%'],
-              translateY: ['-50%', '50%', '-50%']
-            }}
-            transition={{
-              duration: 5 + particle.delay,
-              repeat: Infinity,
-              repeatType: "loop",
-              ease: "easeInOut"
-            }}
-          />
-        ))}
-      </motion.div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/screen.jpg)',
+            filter: 'brightness(0.3) contrast(1.2)'
+          }}
+        />
+        
+        {/* Dark overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/40" />
+      </div>
     );
   };
 
-  const adminFeatures = [
-    {
-      icon: <Database className="w-6 h-6" />,
-      title: "Data Management",
-      description: "Manage user data and prompts"
-    },
-    {
-      icon: <Users className="w-6 h-6" />,
-      title: "User Analytics",
-      description: "Track visitor interactions"
-    },
-    {
-      icon: <Settings className="w-6 h-6" />,
-      title: "System Settings",
-      description: "Configure AI responses"
-    }
-  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center overflow-hidden relative">
-      <BackgroundParticles />
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-indigo-900/10 to-blue-900/20 mix-blend-overlay"></div>
-
-      <div className="relative z-10 w-full max-w-6xl mx-auto px-4">
-        <div className="text-center mb-12">
-          {/* Admin Icon */}
+    <div className="min-h-screen relative overflow-hidden">
+      <BackgroundImage />
+      
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md mx-auto">
+          {/* Minimalist Login Form */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-            className="mx-auto w-24 h-24 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mb-8 shadow-2xl"
-          >
-            <Shield className="w-12 h-12 text-white" />
-          </motion.div>
-
-          {/* Main Title */}
-          <motion.h1
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-6xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 mb-4"
-          >
-            Admin Portal
-          </motion.h1>
-
-          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-xl md:text-2xl text-purple-200 mb-12 max-w-3xl mx-auto"
+            transition={{ duration: 0.8 }}
+            className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-2xl"
           >
-            Access your AI assistant with full administrative controls and management tools
-          </motion.p>
-
-          {/* Admin Features */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="grid md:grid-cols-3 gap-8 mb-12 max-w-4xl mx-auto"
-          >
-            {adminFeatures.map((feature, index) => (
-              <div key={index} className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
-                <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-purple-200">{feature.description}</p>
-              </div>
-            ))}
-          </motion.div>
-
-          {/* Login Form */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="max-w-md mx-auto"
-          >
-            <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white mb-6 text-center">Admin Login</h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Username Field */}
-                <div className="space-y-2">
-                  <label className="text-purple-200 text-sm font-medium">Username</label>
-                  <div className="flex items-center bg-white/10 border border-white/20 rounded-xl p-4">
-                    <User className="text-purple-400 mr-3" />
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Enter your username"
-                      className="w-full bg-transparent text-white placeholder-purple-300 focus:outline-none"
-                      disabled={isSubmitting}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Password Field */}
-                <div className="space-y-2">
-                  <label className="text-purple-200 text-sm font-medium">Password</label>
-                  <div className="flex items-center bg-white/10 border border-white/20 rounded-xl p-4">
-                    <Lock className="text-purple-400 mr-3" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      className="w-full bg-transparent text-white placeholder-purple-300 focus:outline-none"
-                      disabled={isSubmitting}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {errorMessage && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-red-400 text-sm flex items-center justify-center"
-                  >
-                    <span className="mr-2">⚠️</span> {errorMessage}
-                  </motion.div>
-                )}
-
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all flex items-center justify-center space-x-2 font-medium text-lg shadow-lg"
-                >
-                  {isSubmitting ? (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-6 h-6 border-2 border-white border-t-transparent rounded-full"
-                    />
-                  ) : (
-                    <>
-                      <span>Access Admin Panel</span>
-                      <ArrowRight className="w-5 h-5" />
-                    </>
-                  )}
-                </motion.button>
-              </form>
-
+            {/* Simple Header */}
+            <div className="text-center mb-8">
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 1.0 }}
-                className="text-center mt-6"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4"
               >
-                <p className="text-purple-300">
-                  Need help?{" "}
-                  <a 
-                    href="/" 
-                    className="text-purple-400 hover:underline transition-colors"
-                  >
-                    Back to Home
-                  </a>
-                </p>
+                <Shield className="w-6 h-6 text-white" />
               </motion.div>
+              <h1 className="text-2xl font-bold text-white mb-2">Admin</h1>
+              <p className="text-gray-400 text-sm">Enter your credentials</p>
             </div>
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Username Field */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Username"
+                    className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all duration-300"
+                    disabled={isSubmitting}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password"
+                    className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all duration-300"
+                    disabled={isSubmitting}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {errorMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-lg flex items-center gap-2"
+                >
+                  <span>⚠️</span> {errorMessage}
+                </motion.div>
+              )}
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-medium border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                  />
+                ) : (
+                  <>
+                    <span>Access</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </motion.button>
+            </form>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="text-center mt-6 pt-6 border-t border-white/10"
+            >
+              <a 
+                href="/" 
+                className="text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                ← Back to Home
+              </a>
+            </motion.div>
           </motion.div>
         </div>
       </div>
