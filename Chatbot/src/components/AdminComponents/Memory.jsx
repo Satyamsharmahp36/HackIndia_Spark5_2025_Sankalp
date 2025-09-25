@@ -12,8 +12,11 @@ import TabNavigation from './TabNavigation';
 import NotificationMessage from './NotificationMessage';
 import LoadingOverlay from './LoadingOverlay';
 
-const Memory = ({ onClose }) => {
-  const { userData, refreshUserData } = useAppContext();
+const Memory = ({ onClose, userData: propUserData }) => {
+  const { userData: contextUserData, refreshUserData } = useAppContext();
+  
+  // Use prop userData if provided, otherwise fall back to context
+  const userData = propUserData || contextUserData;
   
   const [passwordInput, setPasswordInput] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
@@ -191,15 +194,15 @@ const Memory = ({ onClose }) => {
         loadContributions(statusFilter);
       }
     }
-  }, [userData.user]);
+  }, [userData?.user]);
 
   useEffect(() => {
-    if (authenticated) {
+    if (authenticated && userData?.user) {
       setPromptContent(userData.user.prompt || '');
       setResponseStyleContent(userData.user.userPrompt || '');
       loadContributions(statusFilter);
     }
-  }, [authenticated]);
+  }, [authenticated, userData?.user]);
 
   const handleSortChange = (order) => {
     setSortOrder(order);
@@ -278,6 +281,7 @@ const Memory = ({ onClose }) => {
                   updatePrompt={updatePrompt}
                   clearPrompt={clearPrompt}
                   isLoading={isLoading}
+                  userData={userData}
                 />
               )}
               
@@ -288,6 +292,7 @@ const Memory = ({ onClose }) => {
                   updateResponseStyle={updateResponseStyle}
                   clearResponseStyle={clearResponseStyle}
                   isLoading={isLoading}
+                  userData={userData}
                 />
               )}
               
@@ -301,6 +306,7 @@ const Memory = ({ onClose }) => {
                   updateContributionStatus={updateContributionStatus}
                   refreshAllData={refreshAllData}
                   refreshing={refreshing}
+                  userData={userData}
                 />
               )}
             </div>

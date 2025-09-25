@@ -11,9 +11,13 @@ const ContributionsTab = ({
   handleSortChange,
   updateContributionStatus,
   refreshAllData,
-  refreshing
+  refreshing,
+  userData: propUserData
 }) => {
-  const { userData } = useAppContext();
+  const { userData: contextUserData } = useAppContext();
+  
+  // Use prop userData if provided, otherwise fall back to context
+  const userData = propUserData || contextUserData;
 
   return (
     <div className="space-y-4">

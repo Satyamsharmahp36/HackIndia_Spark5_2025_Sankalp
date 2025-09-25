@@ -3,8 +3,11 @@ import { motion } from 'framer-motion';
 import { Bot, Clock, Save, X } from 'lucide-react';
 import { useAppContext } from '../../Appcontext';
 
-const DataManagementTab = ({ promptContent, setPromptContent, updatePrompt, clearPrompt, isLoading }) => {
-  const { userData, refreshUserData } = useAppContext();
+const DataManagementTab = ({ promptContent, setPromptContent, updatePrompt, clearPrompt, isLoading, userData: propUserData }) => {
+  const { userData: contextUserData, refreshUserData } = useAppContext();
+  
+  // Use prop userData if provided, otherwise fall back to context
+  const userData = propUserData || contextUserData;
 
   const handleUpdate = async () => {
     await updatePrompt();

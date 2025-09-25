@@ -200,6 +200,10 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
         }
         
         setCurrentUserData(dataToUse);
+        console.log('[AdminChatLayout] Setting currentUserData:', dataToUse);
+        console.log('[AdminChatLayout] User name:', dataToUse.user.name);
+        console.log('[AdminChatLayout] User tasks:', dataToUse.user.tasks);
+        
         const savedMessages = localStorage.getItem(
           `${presentUserName || "anonymous"}_${dataToUse.user.name}`
         );
@@ -615,12 +619,14 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
           {activeView === "analytics" && (
             <VisitorAnalytics
               onClose={() => setActiveView("chat")}
+              userData={currentUserData}
             />
           )}
 
           {activeView === "memory" && (
             <Memory
               onClose={() => setActiveView("chat")}
+              userData={currentUserData}
             />
           )}
 

@@ -14,10 +14,16 @@ const useAdminPanelTasks = (userData, searchTerm = "", statusFilter = "all", sor
   const [userInfoError, setUserInfoError] = useState("");
 
   useEffect(() => {
+    console.log('[useAdminPanelTasks] userData:', userData);
+    console.log('[useAdminPanelTasks] userData.user:', userData?.user);
+    console.log('[useAdminPanelTasks] userData.user.tasks:', userData?.user?.tasks);
+    
     if (userData?.user?.tasks) {
       setTasks(userData.user.tasks);
+      console.log('[useAdminPanelTasks] Setting tasks:', userData.user.tasks);
     } else {
       setTasks([]);
+      console.log('[useAdminPanelTasks] No tasks found, setting empty array');
     }
   }, [userData?.user?.tasks]);
 
