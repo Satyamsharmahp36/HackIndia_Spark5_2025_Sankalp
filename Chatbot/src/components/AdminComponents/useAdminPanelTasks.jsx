@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import apiService from "../../services/apiService";
 
-const useAdminPanelTasks = (userData, searchTerm = "", statusFilter = "all", sortOrder = "newest", taskCategories = { all: true, meetings: false, selfTasks: false, completed: false, pending: false }) => {
+const useAdminPanelTasks = (userData, searchTerm = "", statusFilter = "all", sortOrder = "newest", taskCategories = { all: true, meetings: false, selfTasks: false, completed: false, pending: false }, autoRefreshInterval = 30000) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -12,6 +13,10 @@ const useAdminPanelTasks = (userData, searchTerm = "", statusFilter = "all", sor
   const [userDescriptions, setUserDescriptions] = useState({});
   const [userInfoLoading, setUserInfoLoading] = useState(false);
   const [userInfoError, setUserInfoError] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(null);
+  const refreshIntervalRef = useRef(null);
+  const refreshTimeoutRef = useRef(null);
 
   useEffect(() => {
     console.log('[useAdminPanelTasks] userData:', userData);
@@ -27,9 +32,115 @@ const useAdminPanelTasks = (userData, searchTerm = "", statusFilter = "all", sor
     }
   }, [userData?.user?.tasks]);
 
+  // Auto-refresh function
+  const refreshTasks = useCallback(async () => {
+    if (!userData?.user?.username || isRefreshing) return;
+    
+    try {
+      setIsRefreshing(true);
+      console.log('[useAdminPanelTasks] Auto-refreshing tasks...');
+      
+      const result = await apiService.getUserData(userData.user.username);
+      
+      if (result.success && result.data?.user?.tasks) {
+        const newTasks = result.data.user.tasks;
+        
+        // Use functional update to avoid dependency on current tasks
+        setTasks(currentTasks => {
+          const currentTaskIds = currentTasks.map(task => task._id || task.uniqueTaskId).sort();
+          const newTaskIds = newTasks.map(task => task._id || task.uniqueTaskId).sort();
+          
+          // Check if tasks have actually changed
+          const tasksChanged = JSON.stringify(currentTaskIds) !== JSON.stringify(newTaskIds) ||
+            JSON.stringify(currentTasks) !== JSON.stringify(newTasks);
+          
+          if (tasksChanged) {
+            setLastRefreshTime(new Date());
+            console.log('[useAdminPanelTasks] Tasks updated via auto-refresh');
+            
+            // Show subtle notification for new tasks
+            const newTaskCount = newTasks.length - currentTasks.length;
+            if (newTaskCount > 0) {
+              toast.info(`${newTaskCount} new task${newTaskCount > 1 ? 's' : ''} available`, {
+                position: "top-right",
+                autoClose: 3000,
+                hideProgressBar: true,
+              });
+            }
+            return newTasks;
+          }
+          
+          return currentTasks; // No change, return current tasks
+        });
+      }
+    } catch (error) {
+      console.error('[useAdminPanelTasks] Error during auto-refresh:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [userData?.user?.username, isRefreshing]);
+
   const fetchTasks = () => {
     setTasks(userData.user.tasks);
   };
+
+  // Manual refresh function
+  const manualRefresh = useCallback(async () => {
+    if (!userData?.user?.username) return;
+    
+    try {
+      setIsRefreshing(true);
+      toast.info("Refreshing tasks...", { position: "top-right" });
+      
+      const result = await apiService.getUserData(userData.user.username);
+      
+      if (result.success && result.data?.user?.tasks) {
+        setTasks(result.data.user.tasks);
+        setLastRefreshTime(new Date());
+        toast.success("Tasks refreshed successfully", { position: "top-right" });
+      } else {
+        toast.error("Failed to refresh tasks", { position: "top-right" });
+      }
+    } catch (error) {
+      console.error('[useAdminPanelTasks] Error during manual refresh:', error);
+      toast.error("Error refreshing tasks", { position: "top-right" });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [userData?.user?.username]);
+
+  // Auto-refresh setup
+  useEffect(() => {
+    if (!userData?.user?.username || autoRefreshInterval <= 0) return;
+
+    // Clear existing intervals
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+
+    // Set up auto-refresh interval
+    refreshIntervalRef.current = setInterval(() => {
+      refreshTasks();
+    }, autoRefreshInterval);
+
+    // Initial refresh after a short delay
+    refreshTimeoutRef.current = setTimeout(() => {
+      refreshTasks();
+    }, 2000);
+
+    // Cleanup on unmount or dependency change
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [userData?.user?.username, autoRefreshInterval]); // Removed refreshTasks from dependencies
 
   const toggleTaskStatus = async (task) => {
     try {
@@ -270,6 +381,10 @@ const useAdminPanelTasks = (userData, searchTerm = "", statusFilter = "all", sor
     error,
     setError,
     fetchTasks,
+    refreshTasks,
+    manualRefresh,
+    isRefreshing,
+    lastRefreshTime,
     toggleTaskStatus,
     expandedTask,
     setExpandedTask,

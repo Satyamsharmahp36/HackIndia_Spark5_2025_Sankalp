@@ -131,6 +131,10 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
     error,
     setError,
     fetchTasks,
+    refreshTasks,
+    manualRefresh,
+    isRefreshing,
+    lastRefreshTime,
     toggleTaskStatus,
     expandedTask,
     setExpandedTask,
@@ -147,7 +151,7 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
     getStatusIcon,
     getMeetingCardStyle,
     renderDescription,
-  } = useAdminPanelTasks(userData, searchTerm, statusFilter, sortOrder, taskCategories);
+  } = useAdminPanelTasks(userData, searchTerm, statusFilter, sortOrder, taskCategories, 30000);
 
   useEffect(() => {
     setIsAuthenticated(false);
@@ -177,11 +181,7 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
   const handleRefreshUserData = async () => {
     try {
       setRefreshing(true);
-      toast.info("Refreshing user data...");
-
-      await refreshUserData();
-      setTasks(userData.user.tasks || []);
-      toast.success("User data refreshed successfully");
+      await manualRefresh();
     } catch (error) {
       console.error("Error refreshing user data:", error);
       toast.error("Error refreshing user data");
@@ -563,6 +563,8 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
           renderTaskSchedulingButton={renderTaskSchedulingButton}
           handleRefreshUserData={handleRefreshUserData}
           refreshing={refreshing}
+          isRefreshing={isRefreshing}
+          lastRefreshTime={lastRefreshTime}
           onClose={onClose}
         />
 

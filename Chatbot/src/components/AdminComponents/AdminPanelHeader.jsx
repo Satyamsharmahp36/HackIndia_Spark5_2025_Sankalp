@@ -6,6 +6,8 @@ const AdminPanelHeader = ({
   renderTaskSchedulingButton,
   handleRefreshUserData,
   refreshing,
+  isRefreshing,
+  lastRefreshTime,
   onClose,
 }) => (
   <div className="border-b border-gray-200 p-4 flex justify-between items-center bg-gray-50">
@@ -20,13 +22,25 @@ const AdminPanelHeader = ({
     </div>
     <div className="flex items-center gap-3">
       {renderTaskSchedulingButton && renderTaskSchedulingButton()}
+      
+      {/* Auto-refresh indicator */}
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+        <span>
+          {lastRefreshTime 
+            ? `Last updated: ${lastRefreshTime.toLocaleTimeString()}`
+            : 'Auto-refresh enabled'
+          }
+        </span>
+      </div>
+      
       <button
         onClick={handleRefreshUserData}
-        disabled={refreshing}
-        className="p-2 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
-        title="Refresh Data"
+        disabled={refreshing || isRefreshing}
+        className="p-2 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 disabled:opacity-50"
+        title="Manual Refresh"
       >
-        <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+        <RefreshCw className={`w-5 h-5 ${(refreshing || isRefreshing) ? "animate-spin" : ""}`} />
       </button>
       <button
         onClick={onClose}

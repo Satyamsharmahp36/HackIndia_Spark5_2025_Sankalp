@@ -101,6 +101,10 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     tasks,
     loading,
     error,
+    refreshTasks,
+    manualRefresh,
+    isRefreshing,
+    lastRefreshTime,
     sortedTasks,
     expandedTask,
     expandedUser,
@@ -116,7 +120,7 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     setExpandedTask,
     setExpandedUser,
     setUserDescriptions,
-  } = useAdminPanelTasks(currentUserData, searchTerm, statusFilter, sortOrder, taskCategories);
+  } = useAdminPanelTasks(currentUserData, searchTerm, statusFilter, sortOrder, taskCategories, 30000);
 
   // Placeholder functions for task actions
   const handleOpenMeetingLink = useCallback((meetingLink) => {
@@ -561,6 +565,9 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
                 handleViewModeToggle={handleViewModeToggle}
                 taskCategories={taskCategories}
                 handleCategoryToggle={handleCategoryToggle}
+                onRefresh={manualRefresh}
+                isRefreshing={isRefreshing}
+                lastRefreshTime={lastRefreshTime}
               />
 
               {/* Task List */}
