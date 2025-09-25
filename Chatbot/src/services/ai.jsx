@@ -658,7 +658,8 @@ if (missingDetails.length === 0) {
   } else {
     // All details are available and valid, ask for final confirmation
     const meetingTitle = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
-    return `I will be scheduling a meeting with ${userData.name} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+    const userName = userData?.name || userData?.user?.name || 'the user';
+    return `I will be scheduling a meeting with ${userName} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
   }
 } else {
   // Missing some details, ask for them - but more simply
@@ -717,7 +718,8 @@ if (missingDetails.length === 0) {
           // Clear the pending meeting details
           pendingMeetingDetails = {};
           
-          return `Great! I've scheduled a meeting with ${userData.name} about ${meetingContext} on ${savedDate} at ${savedTime} for ${savedDuration} minutes. Tracking ID: ${uniqueTaskId}. ${userData.name} will be in touch with you soon.`;
+          const userName = userData?.name || userData?.user?.name || 'the user';
+          return `Great! I've scheduled a meeting with ${userName} about ${meetingContext} on ${savedDate} at ${savedTime} for ${savedDuration} minutes. Tracking ID: ${uniqueTaskId}. ${userName} will be in touch with you soon.`;
         } catch (error) {
           console.error("Error creating meeting task:", error);
           return "I tried to schedule the meeting, but there was an issue. Please try again later.";
@@ -772,7 +774,8 @@ if (missingDetails.length === 0) {
       
       // If we have all details already, go straight to confirmation
       if (initialDetailsFound) {
-        return `I will be scheduling a meeting with ${userData.name} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+        const userName = userData?.name || userData?.user?.name || 'the user';
+        return `I will be scheduling a meeting with ${userName} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
       }
       
       // Ask for any missing meeting details - in a simple, friendly way
@@ -785,7 +788,8 @@ if (missingDetails.length === 0) {
         return `Please provide the following details for your meeting: ${missingDetails.join(', ')}.`;
       } else {
         // All details are available, ask for final confirmation
-        return `I will be scheduling a meeting with ${userData.name} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+        const userName = userData?.name || userData?.user?.name || 'the user';
+        return `I will be scheduling a meeting with ${userName} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
       }
     }
 
@@ -809,7 +813,8 @@ if (missingDetails.length === 0) {
           };
         }
         
-        return `Are you sure you want to have a meeting with ${userData.name} about ${meetingTopic}? (Please respond with "yes" to confirm)`;
+        const userName = userData?.name || userData?.user?.name || 'the user';
+        return `Are you sure you want to have a meeting with ${userName} about ${meetingTopic}? (Please respond with "yes" to confirm)`;
       }
      
       if (presentData) {
@@ -848,7 +853,8 @@ if (missingDetails.length === 0) {
           );
          
           const uniqueTaskId = taskResult.task.uniqueTaskId;
-          return `I've added this to ${userData.name}'s to-do list with tracking ID ${uniqueTaskId}. ${userData.name} will follow up with you about this task later.`;
+          const userName = userData?.name || userData?.user?.name || 'the user';
+          return `I've added this to ${userName}'s to-do list with tracking ID ${uniqueTaskId}. ${userName} will follow up with you about this task later.`;
         } catch (taskError) {
           console.error("Task creation error:", taskError);
           return "I noticed this is a task request, but there was an issue scheduling it.";
@@ -867,14 +873,15 @@ if (missingDetails.length === 0) {
 ${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question}\nAnswer: ${c.answer}`).join('\n\n')}` : 
      'No specific approved contributions yet.';
    
+    const userName = userData?.name || userData?.user?.name || 'the user';
     const prompt = `
-You are ${userData.name}'s personal AI assistant. Answer based on the following details. Also answer the question's in person like instead of AI the ${userData.name} is answering questions.
+You are ${userName}'s personal AI assistant. Answer based on the following details. Also answer the question's in person like instead of AI the ${userName} is answering questions.
 If a you don't have data for any information say "I don't have that information. If you have answers to this, please contribute."
 Answer questions in a bit elaborate manner and can also add funny things if needed.
-Also note if question is like :- Do you know abotu this cors issue in deployment , then it mean's this question is asked from ${userData.name} , not from AI , so answers on the bases of ${userData.name}
+Also note if question is like :- Do you know abotu this cors issue in deployment , then it mean's this question is asked from ${userName} , not from AI , so answers on the bases of ${userName}
 data not by the AI's knowledge . 
 
-Here's ${userData.name}'s latest data:
+Here's ${userName}'s latest data:
 ${userData.prompt || 'No specific context provided'}
 
 And this is daily task of user ${userData.dailyTasks.content}
