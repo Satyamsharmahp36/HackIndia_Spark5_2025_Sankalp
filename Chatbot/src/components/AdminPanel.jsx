@@ -53,6 +53,7 @@ import NotificationToast from "./AdminComponents/NotificationToast";
 import useAdminPanelTasks from "./AdminComponents/useAdminPanelTasks";
 import IntegrationDashboard from "./AdminComponents/IntegrationDashboard";
 import EmailDashboard from "./AdminComponents/EmailDashboard";
+import EmailManagement from "./AdminComponents/EmailManagement";
 import ReminderPanel from "./AdminComponents/ReminderPanel";
 
 const AdminPanel = ({ onClose, showOnlyView = null }) => {
@@ -457,6 +458,10 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
     if (tab === "analytics") {
       setShowVisitorAnalytics(true);
     }
+    // Close any open overlays when switching tabs
+    if (tab !== "emails") {
+      setShowEmailDashboard(false);
+    }
   };
 
   const handleViewModeToggle = () => {
@@ -604,6 +609,25 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
                 onAddReminder={handleAddReminder}
               />
             )}
+
+            {activeView === "emails" && (
+              <EmailManagement userData={userData} />
+            )}
+
+            {activeView === "access" && showAccessManagement && (
+              <AccessManagement
+                userData={userData}
+                onUpdate={handleAccessManagementUpdate}
+                onClose={() => setShowAccessManagement(false)}
+              />
+            )}
+
+            {activeView === "analytics" && showVisitorAnalytics && (
+              <VisitorAnalytics
+                userData={userData}
+                onClose={() => setShowVisitorAnalytics(false)}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -633,12 +657,6 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
         userData={userData}
       />
 
-      {/* Email Dashboard */}
-      <EmailDashboard
-        isOpen={showEmailDashboard}
-        onClose={() => setShowEmailDashboard(false)}
-        userData={userData}
-      />
 
       {/* Notifications */}
       <NotificationToast

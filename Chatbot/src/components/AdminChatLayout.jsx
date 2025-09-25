@@ -22,7 +22,9 @@ import {
   ChevronDown,
   Shield,
   BarChart3,
-  Brain
+  Brain,
+  MessageSquare,
+  Linkedin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +49,9 @@ import AccessManagement from "./AdminComponents/AccessManagement";
 import VisitorAnalytics from "./AdminComponents/VisitorAnalytics";
 import Memory from "./AdminComponents/Memory";
 import IntegrationDashboard from "./AdminComponents/IntegrationDashboard";
-import EmailDashboard from "./AdminComponents/EmailDashboard";
+import EmailManagement from "./AdminComponents/EmailManagement";
+import WhatsAppManagement from "./AdminComponents/WhatsAppManagement";
+import LinkedInManagement from "./AdminComponents/LinkedInManagement";
 import SelfTaskForm from "./AdminComponents/SelfTaskForm";
 import MeetingDetailsPopup from "./AdminComponents/MeetingDetailsPopup";
 import CalendarScheduler from "./AdminComponents/CalendarScheduler";
@@ -368,6 +372,8 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     { id: "memory", label: "Memory", icon: Brain, active: activeView === "memory" },
     { id: "slack", label: "Slack", icon: Slack, active: activeView === "slack" },
     { id: "email", label: "Email", icon: Mail, active: activeView === "email" },
+    { id: "whatsapp", label: "WhatsApp", icon: MessageSquare, active: activeView === "whatsapp" },
+    { id: "linkedin", label: "LinkedIn", icon: Linkedin, active: activeView === "linkedin" },
   ], [activeView]);
 
   const handleTabChange = useCallback((tabId) => {
@@ -671,11 +677,15 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
           )}
 
           {activeView === "email" && (
-            <EmailDashboard
-              isOpen={true}
-              onClose={() => setActiveView("chat")}
-              userData={currentUserData}
-            />
+            <EmailManagement userData={currentUserData} />
+          )}
+
+          {activeView === "whatsapp" && (
+            <WhatsAppManagement userData={currentUserData} />
+          )}
+
+          {activeView === "linkedin" && (
+            <LinkedInManagement userData={currentUserData} />
           )}
         </div>
       </div>
@@ -872,13 +882,6 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
           />
         )}
 
-        {showEmailDashboard && (
-          <EmailDashboard
-            isOpen={showEmailDashboard}
-            onClose={() => setShowEmailDashboard(false)}
-            userData={currentUserData}
-          />
-        )}
 
         {showMeetingDetails && selectedMeeting && (
           <MeetingDetailsPopup
