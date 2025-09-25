@@ -34,6 +34,7 @@ import {
   Menu,
 } from "lucide-react";
 import { getAnswer } from "../services/ai";
+import { getAdminAnswer } from "../services/adminai";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -113,6 +114,25 @@ const ChatBot = () => {
   const inputRef = useRef(null);
   const modalRef = useRef(null);
   const languageDropdownRef = useRef(null);
+
+  // Helper function to check if user is admin based on URL
+  const isAdminUser = () => {
+    const currentURL = window.location.href;
+    const currentPath = window.location.pathname;
+    
+    // Direct check for the specific URL pattern
+    const isAdmin = currentURL.includes('/admin/chat/') || 
+                   currentPath.includes('/admin/chat/') ||
+                   currentURL.includes('admin') ||
+                   currentPath.includes('admin');
+    
+    console.log('ChatBot - Simple admin check:');
+    console.log('  URL:', currentURL);
+    console.log('  Path:', currentPath);
+    console.log('  Contains admin:', isAdmin);
+    
+    return isAdmin;
+  };
 
   const scrollbarStyles = `
   ::-webkit-scrollbar {
@@ -568,12 +588,29 @@ const ChatBot = () => {
         }
       }
 
-      const englishResponse = await getAnswer(
-        textForAI,
-        currentUserDataToUse.user,
-        presentUserData ? presentUserData.user : null,
-        updatedMessages
-      );
+      // Check if user is admin and use appropriate AI service
+      console.log('ChatBot - About to check admin status...');
+      console.log('ChatBot - Current URL:', window.location.href);
+      console.log('ChatBot - Current pathname:', window.location.pathname);
+      
+      const userIsAdmin = isAdminUser();
+      console.log('ChatBot - Is admin user?', userIsAdmin);
+      
+      console.log('ChatBot - Will use service:', userIsAdmin ? 'ADMIN AI' : 'REGULAR AI');
+      
+      const englishResponse = userIsAdmin 
+        ? await getAdminAnswer(
+            textForAI,
+            currentUserDataToUse.user,
+            presentUserData ? presentUserData.user : null,
+            updatedMessages
+          )
+        : await getAnswer(
+            textForAI,
+            currentUserDataToUse.user,
+            presentUserData ? presentUserData.user : null,
+            updatedMessages
+          );
 
       let finalResponse = englishResponse;
       if (detectedLangCode !== "en") {

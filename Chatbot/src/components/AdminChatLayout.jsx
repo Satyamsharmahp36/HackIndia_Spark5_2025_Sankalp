@@ -31,7 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { getAnswer } from "../services/ai";
+import { getAdminAnswer } from "../services/adminai";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -307,8 +307,8 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
         setMessages((prev) => [...prev, errorMessage]);
         return;
       }
-
-      const response = await getAnswer(input.trim(), currentUserData, currentUserData, conversationHistory);
+      console.log("AdminChatLayout - Calling getAdminAnswer:", { question: input.trim(), userData: currentUserData, presentData: currentUserData, conversationHistory });
+      const response = await getAdminAnswer(input.trim(), currentUserData, currentUserData, conversationHistory);
       const botMessage = {
         id: Date.now() + 1,
         text: response,
