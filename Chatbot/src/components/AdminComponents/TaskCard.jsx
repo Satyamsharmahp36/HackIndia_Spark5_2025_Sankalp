@@ -81,7 +81,7 @@ const TaskCard = ({
               <UserIcon className="w-5 h-5 text-blue-400" />
             )}
 
-            <span className="text-gray-900 font-medium">
+            <span className="text-foreground font-medium">
               {task.isSelfTask
                 ? "Self Task"
                 : task.presentUserData?.name || "Unknown User"}
@@ -135,21 +135,21 @@ const TaskCard = ({
         </div>
 
         {task.topicContext && (
-          <p className="text-gray-600 text-sm mb-2">
-            <span className="text-gray-900 font-bold">Context:</span>{" "}
+          <p className="text-muted-foreground text-sm mb-2">
+            <span className="text-foreground font-bold">Context:</span>{" "}
             {renderDescription(task.topicContext)}
           </p>
         )}
 
         {task.taskDescription && (
-          <p className="text-gray-600 text-sm mb-2">
-            <span className="text-gray-900 font-bold">Description:</span>{" "}
+          <p className="text-muted-foreground text-sm mb-2">
+            <span className="text-foreground font-bold">Description:</span>{" "}
             {renderDescription(task.taskDescription)}
           </p>
         )}
 
-        <p className="text-gray-600 text-sm mb-4">
-          <span className="text-gray-900 font-bold">
+        <p className="text-muted-foreground text-sm mb-4">
+          <span className="text-foreground font-bold">
             {task.isSelfTask ? "Task Message:" : "User Message:"}
           </span>{" "}
           {task.taskQuestion}
@@ -301,7 +301,7 @@ const TaskCard = ({
             )}
           </div>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             Created: {formatDate(task.createdAt)}
           </p>
         </div>
@@ -315,24 +315,24 @@ const TaskCard = ({
               transition={{ duration: 0.3 }}
               className="mt-4 overflow-hidden"
             >
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-gray-900 font-medium mb-2">Full Details</h4>
-                <div className="bg-gray-50 p-3 rounded-lg text-sm">
+              <div className="border-t border-border pt-4">
+                <h4 className="text-foreground font-medium mb-2">Full Details</h4>
+                <div className="bg-muted p-3 rounded-lg text-sm">
                   {task.taskQuestion && (
                     <div className="mb-3">
-                      <span className="text-gray-600 font-medium">
+                      <span className="text-muted-foreground font-medium">
                         Message:
                       </span>{" "}
-                      <span className="text-gray-900">{task.taskQuestion}</span>
+                      <span className="text-foreground">{task.taskQuestion}</span>
                     </div>
                   )}
 
                   {task.taskDescription && (
                     <div className="mb-3">
-                      <span className="text-gray-600 font-medium">
+                      <span className="text-muted-foreground font-medium">
                         Description:
                       </span>{" "}
-                      <span className="text-gray-900">
+                      <span className="text-foreground">
                         {task.taskDescription}
                       </span>
                     </div>
@@ -340,19 +340,19 @@ const TaskCard = ({
 
                   {task.topicContext && (
                     <div className="mb-3">
-                      <span className="text-gray-600 font-medium">
+                      <span className="text-muted-foreground font-medium">
                         Context:
                       </span>{" "}
-                      <span className="text-gray-900">{task.topicContext}</span>
+                      <span className="text-foreground">{task.topicContext}</span>
                     </div>
                   )}
 
                   {task.createdAt && (
                     <div className="mb-3">
-                      <span className="text-gray-600 font-medium">
+                      <span className="text-muted-foreground font-medium">
                         Created:
                       </span>{" "}
-                      <span className="text-gray-900">
+                      <span className="text-foreground">
                         {formatDate(task.createdAt)}
                       </span>
                     </div>
@@ -360,10 +360,10 @@ const TaskCard = ({
 
                   {task.updatedAt && (
                     <div className="mb-3">
-                      <span className="text-gray-600 font-medium">
+                      <span className="text-muted-foreground font-medium">
                         Updated:
                       </span>{" "}
-                      <span className="text-gray-900">
+                      <span className="text-foreground">
                         {formatDate(task.updatedAt)}
                       </span>
                     </div>
@@ -371,19 +371,19 @@ const TaskCard = ({
 
                   {task.uniqueTaskId && (
                     <div className="mb-3">
-                      <span className="text-gray-600 font-medium">
+                      <span className="text-muted-foreground font-medium">
                         Task ID:
                       </span>{" "}
-                      <span className="text-gray-900">{task.uniqueTaskId}</span>
+                      <span className="text-foreground">{task.uniqueTaskId}</span>
                     </div>
                   )}
 
                   {task.isMeeting && task.isMeeting.title && (
                     <div className="mb-3">
-                      <span className="text-gray-400 font-medium">
+                      <span className="text-muted-foreground font-medium">
                         Meeting Type:
                       </span>{" "}
-                      <span className="text-gray-300">
+                      <span className="text-foreground">
                         {task.isMeeting.meetingType || "Standard"}
                       </span>
                     </div>
@@ -401,45 +401,45 @@ const TaskCard = ({
               transition={{ duration: 0.3 }}
               className="mt-4 overflow-hidden"
             >
-              <div className="border-t border-gray-700 pt-4">
-                <h4 className="text-gray-300 font-medium mb-2">
+              <div className="border-t border-border pt-4">
+                <h4 className="text-foreground font-medium mb-2">
                   User Information
                 </h4>
-                <div className="bg-gray-900 p-3 rounded-lg text-sm">
+                <div className="bg-muted p-3 rounded-lg text-sm">
                   {task.presentUserData && (
                     <>
                       {task.presentUserData.name && (
                         <div className="mb-2">
-                          <span className="text-gray-400 font-medium">
+                          <span className="text-muted-foreground font-medium">
                             Name:
                           </span>{" "}
-                          <span className="text-gray-300">
+                          <span className="text-foreground">
                             {task.presentUserData.name}
                           </span>
                         </div>
                       )}
                       {task.presentUserData.email && (
                         <div className="mb-2">
-                          <span className="text-gray-400 font-medium">
+                          <span className="text-muted-foreground font-medium">
                             Email:
                           </span>{" "}
-                          <span className="text-gray-300">
+                          <span className="text-foreground">
                             {task.presentUserData.email}
                           </span>
                         </div>
                       )}
                       {task.presentUserData.mobileNo && (
                         <div className="mb-2">
-                          <span className="text-gray-400 font-medium">
+                          <span className="text-muted-foreground font-medium">
                             Mobile:
                           </span>{" "}
-                          <span className="text-gray-300">
+                          <span className="text-foreground">
                             {task.presentUserData.mobileNo}
                           </span>
                         </div>
                       )}
                       {userInfoLoading && (
-                        <div className="mt-3 p-3 bg-gray-800 rounded border border-gray-700 text-blue-400">
+                        <div className="mt-3 p-3 bg-muted rounded border border-border text-blue-600">
                           Loading user description...
                         </div>
                       )}
