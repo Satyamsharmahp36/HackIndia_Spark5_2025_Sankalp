@@ -56,7 +56,7 @@ Focus on clarity, professionalism, and readability in both outputs. The cleaned 
     
     return response.content
 
-def process_audio(recording_id, audio_file_path="audio.mp3", api_key=None, deepgram_api_key="f97100f7e06b2a50352535151a0208acc0ec35d2", save_files=True):
+def process_audio(recording_id, audio_file_path="audio.mp3", api_key=None, deepgram_api_key=None, save_files=True):
     
     logger.info(f"=== STARTING AUDIO PROCESSING ===")
     logger.info(f"Recording ID: {recording_id}")
@@ -68,14 +68,21 @@ def process_audio(recording_id, audio_file_path="audio.mp3", api_key=None, deepg
     os.makedirs(storage_path, exist_ok=True)
     logger.info(f"Storage path created: {storage_path}")
     
-    # null checks for api
+    # null checks for api keys
     if api_key is None:
         api_key = os.getenv("GOOGLE_API_KEY")
         if api_key is None:
             logger.error("Google API key not provided in arguments or environment variables")
             raise ValueError("Google API key not provided. Please provide it as an argument or set GOOGLE_API_KEY environment variable.")
     
+    if deepgram_api_key is None:
+        deepgram_api_key = os.getenv("DEEPGRAM_API_KEY")
+        if deepgram_api_key is None:
+            logger.error("Deepgram API key not provided in arguments or environment variables")
+            raise ValueError("Deepgram API key not provided. Please provide it as an argument or set DEEPGRAM_API_KEY environment variable.")
+    
     logger.info(f"Google API key configured: {api_key[:10]}...{api_key[-4:] if len(api_key) > 14 else '***'}")
+    logger.info(f"Deepgram API key configured: {deepgram_api_key[:10]}...{deepgram_api_key[-4:] if len(deepgram_api_key) > 14 else '***'}")
     configure(api_key=api_key)
 
     logger.info("Initializing Google Gemini LLM...")
@@ -124,7 +131,7 @@ def process_audio(recording_id, audio_file_path="audio.mp3", api_key=None, deepg
     logger.info("=== STARTING DEEPGRAM TRANSCRIPTION ===")
     logger.info("Initializing Deepgram client...")
     start_time = time.time()
-    deepgram = DeepgramClient(deepgram_api_key)
+    deepgram = DeepgramClient()
     logger.info("Deepgram client initialized successfully")
     
     try:
@@ -137,11 +144,10 @@ def process_audio(recording_id, audio_file_path="audio.mp3", api_key=None, deepg
         }
         
         options = PrerecordedOptions(
-            smart_format=True,
             model="nova-3",
-            language="en-US"
+            smart_format=True,
         )
-        logger.info(f"Deepgram options configured: model=nova-3, language=en-US, smart_format=True")
+        logger.info(f"Deepgram options configured: model=nova-3, smart_format=True")
         
         logger.info("Sending request to Deepgram API...")
         response = deepgram.listen.rest.v('1').transcribe_file(payload, options)
