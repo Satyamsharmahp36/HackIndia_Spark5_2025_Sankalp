@@ -53,7 +53,7 @@ import MeetingDetailsPopup from "./AdminComponents/MeetingDetailsPopup";
 import CalendarScheduler from "./AdminComponents/CalendarScheduler";
 import useAdminPanelTasks from "./AdminComponents/useAdminPanelTasks";
 
-const AdminChatLayout = ({ onLogout }) => {
+const AdminChatLayout = ({ onLogout, adminUserData }) => {
   const {
     userData,
     userName,
@@ -183,28 +183,48 @@ const AdminChatLayout = ({ onLogout }) => {
   // Initialize data
   useEffect(() => {
     const initializeData = async () => {
-      if (userData?.user) {
-        setCurrentUserData(userData);
+      // Use adminUserData if provided, otherwise fall back to context userData
+      const dataToUse = adminUserData || userData;
+      
+      if (dataToUse?.user) {
+        // Check if this is a different user than the current one
+        const isDifferentUser = currentUserData?.user?.name !== dataToUse.user.name;
+        
+        if (isDifferentUser) {
+          console.log(`[User Switch] Switching from ${currentUserData?.user?.name || 'none'} to ${dataToUse.user.name}`);
+          // Clear previous user's data
+          setCurrentUserData(null);
+          setMessages([]);
+          setInput("");
+          setIsInitialized(false);
+        }
+        
+        setCurrentUserData(dataToUse);
         const savedMessages = localStorage.getItem(
-          `${presentUserName || "anonymous"}_${userData.user.name}`
+          `${presentUserName || "anonymous"}_${dataToUse.user.name}`
         );
         if (savedMessages) {
           setMessages(JSON.parse(savedMessages));
         } else {
           const welcomeMessage = {
             id: Date.now(),
-            text: `Hello! I'm ${userData.user.name}'s AI assistant. How can I help you today?`,
+            text: `Hello! I'm ${dataToUse.user.name}'s AI assistant. How can I help you today?`,
             isUser: false,
             timestamp: new Date().toISOString(),
           };
           setMessages([welcomeMessage]);
         }
+      } else {
+        // No user data, clear everything
+        setCurrentUserData(null);
+        setMessages([]);
+        setInput("");
       }
       setIsInitialized(true);
     };
 
     initializeData();
-  }, [userData, presentUserName]);
+  }, [adminUserData, userData, presentUserName, currentUserData?.user?.name]);
 
   // Save messages to localStorage
   useEffect(() => {
@@ -246,6 +266,19 @@ const AdminChatLayout = ({ onLogout }) => {
     setIsLoading(true);
 
     try {
+      // Validate user data before making AI call
+      if (!currentUserData?.user) {
+        console.error("No valid user data available for AI response");
+        const errorMessage = {
+          id: Date.now() + 1,
+          text: "I'm sorry, there was an issue loading your profile information. Please try refreshing the page.",
+          isUser: false,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        return;
+      }
+
       const response = await getAnswer(input.trim(), currentUserData);
       const botMessage = {
         id: Date.now() + 1,

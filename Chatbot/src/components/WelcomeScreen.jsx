@@ -12,8 +12,7 @@ const WelcomeScreen = ({
   profileOwnerName, 
   isAuthenticated, 
   visitorName, 
-  onStartChat,
-  onShowAuth 
+  onStartChat
 }) => {
   const backgroundBubbles = useMemo(() => {
     return [...Array(20)].map((_, i) => ({
@@ -157,49 +156,37 @@ const WelcomeScreen = ({
           transition={{ delay: 0.9 }}
           className="w-full max-w-md"
         >
-          {!isAuthenticated ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center space-y-6"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full flex items-center justify-center"
+            >
+              <Bot className="w-8 h-8 text-white" />
+            </motion.div>
+            
+            <h2 className="text-xl font-bold">
+              {visitorName ? `Hello, ${visitorName}!` : "Welcome!"}
+            </h2>
+            
+            <p className="text-gray-300">
+              Ready to start chatting with{profileOwnerName ? ` ${profileOwnerName}'s` : ""} AI Assistant?
+            </p>
+            
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={onShowAuth}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all font-medium flex items-center justify-center gap-3 text-lg"
+              onClick={onStartChat}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all font-medium flex items-center justify-center gap-2"
             >
-              <User className="w-6 h-6" />
-              <span>Get Started</span>
+              <span>Start Chatting</span>
+              <ArrowRight className="w-5 h-5" />
             </motion.button>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center space-y-6"
-            >
-              <motion.div
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full flex items-center justify-center"
-              >
-                <Bot className="w-8 h-8 text-white" />
-              </motion.div>
-              
-              <h2 className="text-xl font-bold">
-                Hello, <span className="text-blue-400">{visitorName}</span>!
-              </h2>
-              
-              <p className="text-gray-300">
-                Ready to start chatting with{profileOwnerName ? ` ${profileOwnerName}'s` : ""} AI Assistant?
-              </p>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onStartChat}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all font-medium flex items-center justify-center gap-2"
-              >
-                <span>Start Chatting</span>
-                <ArrowRight className="w-5 h-5" />
-              </motion.button>
-            </motion.div>
-          )}
+          </motion.div>
         </motion.div>
       </div>
     </motion.div>

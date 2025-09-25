@@ -197,6 +197,18 @@ const ChatBot = () => {
   useEffect(() => {
     const initializeChat = async () => {
       if (userData?.user) {
+        // Check if this is a different user than the current one
+        const isDifferentUser = currentUserData?.user?.name !== userData.user.name;
+        
+        if (isDifferentUser) {
+          console.log(`[User Switch] Switching from ${currentUserData?.user?.name || 'none'} to ${userData.user.name}`);
+          // Clear previous user's data
+          setCurrentUserData(null);
+          setMessages([]);
+          setInput("");
+          setIsInitialized(false);
+        }
+        
         setCurrentUserData(userData);
         setIsInitialized(true);
 
@@ -222,11 +234,17 @@ const ChatBot = () => {
             ];
 
         setMessages(userChatHistory);
+      } else {
+        // No user data, clear everything
+        setCurrentUserData(null);
+        setMessages([]);
+        setInput("");
+        setIsInitialized(false);
       }
     };
 
     initializeChat();
-  }, [userData, presentUserName]);
+  }, [userData, presentUserName, currentUserData?.user?.name]);
 
   useEffect(() => {
     if (!chatHistoryKey || messages.length === 0) return;
@@ -317,7 +335,7 @@ const ChatBot = () => {
     await refreshPresentUserData(); // Wait for context to update
 
     // Navigate back to the home page
-    window.location.href = "/";
+    navigate('/');
   };
 
   const handleDeleteHistory = () => {
@@ -507,6 +525,14 @@ const ChatBot = () => {
       setIsRefreshingContext(true);
       const freshUserData = await refreshUserData();
       const currentUserDataToUse = freshUserData || userData;
+      
+      // Validate that we have the correct user data
+      if (!currentUserDataToUse?.user) {
+        console.error("No valid user data available for AI response");
+        setIsRefreshingContext(false);
+        return;
+      }
+      
       setIsRefreshingContext(false);
 
       const detectedLangCode = await detectLanguage(originalText);
