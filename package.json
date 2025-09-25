@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "googleapis": "^160.0.0",
+    "mongoose": "^8.18.2"
+  }
+}
