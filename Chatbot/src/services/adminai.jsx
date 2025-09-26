@@ -15,6 +15,7 @@ import {
 const EMAIL_SERVICE_URL = 'http://localhost:3000';
 const LINKEDIN_SERVICE_URL = 'http://localhost:4000';
 const WHATSAPP_SERVICE_URL = 'http://localhost:3002';
+const X_SERVICE_URL = 'http://localhost:3001';
 
 // Helper function to check if user is admin based on URL
 function isAdminUser() {
@@ -786,6 +787,80 @@ async function getWhatsAppGroups() {
   }
 }
 
+// X (Twitter) Integration Functions
+async function createXPost(content, options = {}) {
+  try {
+    console.log('Creating X post with:', { content: content.substring(0, 100) + '...', options });
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    const response = await fetch(`${X_SERVICE_URL}/api/x/posts/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: content,
+        enhanceWithAI: options.enhanceWithAI !== false // Default to true
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to create X post via MCP: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('X post creation result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error creating X post via MCP:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('X post creation timed out. Please try again.');
+    }
+    throw error;
+  }
+}
+
+async function previewXContent(content) {
+  try {
+    console.log('Previewing X content:', content.substring(0, 100) + '...');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    const response = await fetch(`${X_SERVICE_URL}/api/x/posts/preview`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: content
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to preview X content via MCP: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('X content preview result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error previewing X content via MCP:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('X content preview timed out. Please try again.');
+    }
+    throw error;
+  }
+}
+
 // Enhanced AI function for admin with MCP integrations
 export async function getAdminAnswer(question, userData, presentData, conversationHistory = []) {
   console.log('getAdminAnswer called with:', { question, userData, presentData });
@@ -817,6 +892,11 @@ export async function getAdminAnswer(question, userData, presentData, conversati
     // LinkedIn commands
     if (lowerQuestion.includes('linkedin') || lowerQuestion.includes('linkedin post')) {
       return await handleLinkedInCommand(question, userData, genAI);
+    }
+    
+    // X (Twitter) commands
+    if (lowerQuestion.includes('twitter') || lowerQuestion.includes('x post') || lowerQuestion.includes('tweet')) {
+      return await handleXCommand(question, userData, genAI);
     }
     
     // WhatsApp commands - more flexible matching for LLM parsing
@@ -949,6 +1029,14 @@ You are ${userName}'s personal AI assistant with ADMIN PRIVILEGES and MCP integr
 - "Post WhatsApp status about [topic]"
 - "Check WhatsApp messages"
 - "List WhatsApp groups"
+
+🐦 X (TWITTER) COMMANDS:
+- "Create X post about [topic]" - AI-enhanced tweets
+- "Tweet about [content]" - Quick tweet creation
+- "Post to X [content]" - Direct posting
+- "Quick tweet [message]" - Fast tweet posting
+- "Preview X [content]" - Preview enhanced content
+- "HackIndia tweet [status]" - HackIndia-specific tweets
 
 🔍 SYSTEM COMMANDS:
 - "MCP status" - Check all service statuses
@@ -1651,7 +1739,8 @@ async function checkMCPStatus() {
   const services = [
     { name: 'Email Service', url: EMAIL_SERVICE_URL, endpoint: '/health' },
     { name: 'LinkedIn Service', url: LINKEDIN_SERVICE_URL, endpoint: '/' },
-    { name: 'WhatsApp Service', url: WHATSAPP_SERVICE_URL, endpoint: '/' }
+    { name: 'WhatsApp Service', url: WHATSAPP_SERVICE_URL, endpoint: '/' },
+    { name: 'X (Twitter) Service', url: X_SERVICE_URL, endpoint: '/health' }
   ];
   
   let response = '🔧 MCP Service Status:\n\n';
@@ -1677,6 +1766,7 @@ async function checkMCPStatus() {
   response += '📧 Email: Send emails, check accounts, get recent emails\n';
   response += '💼 LinkedIn: AI-powered post generation, content enhancement, analytics, message management\n';
   response += '📱 WhatsApp: Send messages, post status, manage groups\n';
+  response += '🐦 X (Twitter): AI-enhanced tweet creation, content preview, HackIndia posts\n';
   
   response += '\n🚀 LinkedIn Features:\n';
   response += '• AI-enhanced post generation (achievement, insight, engagement)\n';
@@ -1684,6 +1774,13 @@ async function checkMCPStatus() {
   response += '• Content enhancement and optimization\n';
   response += '• Message analytics and management\n';
   response += '• HackIndia-specific post templates\n';
+  
+  response += '\n🐦 X (Twitter) Features:\n';
+  response += '• AI-enhanced tweet creation with emojis and hashtags\n';
+  response += '• Content preview before posting\n';
+  response += '• Quick tweet posting\n';
+  response += '• HackIndia-specific tweet templates\n';
+  response += '• Character count optimization (280 limit)\n';
   
   return response;
 }
@@ -1738,6 +1835,105 @@ async function getRecentMessagesFromAllServices() {
   }
   
   return response;
+}
+
+// Handle X (Twitter) commands
+async function handleXCommand(question, userData, genAI) {
+  try {
+    const lowerQuestion = question.toLowerCase();
+    
+    // Create X post commands
+    if (lowerQuestion.includes('create x post') || lowerQuestion.includes('tweet about') || lowerQuestion.includes('post to x')) {
+      const postMatch = question.match(/create x post about (.+)/i) || 
+                       question.match(/tweet about (.+)/i) ||
+                       question.match(/post to x (.+)/i);
+      
+      if (postMatch) {
+        const [, content] = postMatch;
+        
+        const result = await createXPost(content, { enhanceWithAI: true });
+        
+        if (result.success) {
+          toast.success('X post created successfully!', {
+            position: "top-right",
+            autoClose: 3000,
+          });
+          
+          return `✅ X post created successfully!\n\n🐦 Content: ${result.data.content}\n\n📊 Tweet ID: ${result.data.tweetId}\n\n🔗 View: https://x.com/yourusername/status/${result.data.tweetId}`;
+        } else {
+          return `Failed to create X post: ${result.message}`;
+        }
+      }
+    }
+    
+    // Quick tweet command
+    if (lowerQuestion.includes('quick tweet') || lowerQuestion.includes('tweet this')) {
+      const quickMatch = question.match(/quick tweet (.+)/i) || 
+                        question.match(/tweet this (.+)/i);
+      
+      if (quickMatch) {
+        const [, content] = quickMatch;
+        
+        const result = await createXPost(content, { enhanceWithAI: true });
+        
+        if (result.success) {
+          toast.success('Quick tweet posted!', {
+            position: "top-right",
+            autoClose: 3000,
+          });
+          
+          return `✅ Quick tweet posted!\n\n🐦 Content: ${result.data.content}\n\n📊 Tweet ID: ${result.data.tweetId}`;
+        } else {
+          return `Failed to post quick tweet: ${result.message}`;
+        }
+      }
+    }
+    
+    // Preview content command
+    if (lowerQuestion.includes('preview x') || lowerQuestion.includes('preview tweet')) {
+      const previewMatch = question.match(/preview x (.+)/i) || 
+                          question.match(/preview tweet (.+)/i);
+      
+      if (previewMatch) {
+        const [, content] = previewMatch;
+        
+        const result = await previewXContent(content);
+        
+        if (result.success) {
+          return `📝 X Post Preview:\n\n🔸 Original: ${content}\n\n🔸 Enhanced: ${result.data.enhancedContent}\n\n📊 Character count: ${result.data.characterCount}/280\n\nUse "create x post" to publish it.`;
+        } else {
+          return `Failed to preview content: ${result.message}`;
+        }
+      }
+    }
+    
+    // HackIndia X post command
+    if (lowerQuestion.includes('hackindia tweet') || lowerQuestion.includes('hackindia x')) {
+      const statusMatch = question.match(/hackindia tweet (.+)/i) || 
+                         question.match(/hackindia x (.+)/i);
+      const status = statusMatch ? statusMatch[1] : 'finalist';
+      
+      const hackIndiaContent = `Excited to share that our team has made it to the ${status} round of HackIndia! 🚀 Building something amazing and can't wait to showcase our innovation. #HackIndia #Innovation #Tech`;
+      
+      const result = await createXPost(hackIndiaContent, { enhanceWithAI: true });
+      
+      if (result.success) {
+        toast.success('HackIndia tweet posted!', {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        
+        return `✅ HackIndia ${status} tweet posted!\n\n🐦 Content: ${result.data.content}\n\n📊 Tweet ID: ${result.data.tweetId}\n\n🔗 View: https://x.com/yourusername/status/${result.data.tweetId}`;
+      } else {
+        return `Failed to post HackIndia tweet: ${result.message}`;
+      }
+    }
+    
+    return `X command not recognized. Available commands:\n\n🐦 Post Creation:\n• "Create X post about [topic]"\n• "Tweet about [content]"\n• "Post to X [content]"\n• "Quick tweet [message]"\n• "Tweet this [content]"\n\n📝 Preview:\n• "Preview X [content]"\n• "Preview tweet [content]"\n\n🏆 Special:\n• "HackIndia tweet [status]"\n• "HackIndia X [status]"`;
+  } catch (error) {
+    console.error('Error handling X command:', error);
+    return `Error with X command: ${error.message}`;
+  }
 }
 
 // Handle regular task flow (same as regular AI)
