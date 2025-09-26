@@ -42,6 +42,8 @@ import Cookies from "js-cookie";
 import MessageContent from "./MessageContent";
 import { useAppContext } from "../Appcontext";
 import AIVoice from "./AIVoice";
+import { toast } from "react-toastify";
+import axios from "axios";
 import TaskList from "./AdminComponents/TaskList";
 import TaskControls from "./AdminComponents/TaskControls";
 import DailyWorkflow from "./DailyWorkflow";
@@ -99,6 +101,7 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     completed: false,
     pending: false,
   });
+  const [creatingBot, setCreatingBot] = useState(false);
 
   // Admin tasks hook
   const {
@@ -158,10 +161,142 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
     }
   }, [currentUserData]);
 
-  const handleCreateBotAssistant = useCallback((task) => {
-    console.log("Create bot assistant for task:", task);
-    // TODO: Implement bot assistant creation
-  }, []);
+  const handleCreateBotAssistant = useCallback(async (task) => {
+    try {
+      if (!task.isMeeting) {
+        toast.error("Meeting data not available");
+        return;
+      }
+
+      setCreatingBot(true);
+      toast.info("Creating bot assistant for meeting...");
+
+      // Ensure geminiApiKey exists (use environment variable as fallback)
+      const apiKey = currentUserData?.user?.geminiApiKey || import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+      if (!apiKey) {
+        toast.error("API key is required but not found");
+        setCreatingBot(false);
+        return;
+      }
+
+      // Prepare comprehensive meeting context for the bot
+      const meetingContext = [];
+      
+      // Add meeting title and description
+      if (task.isMeeting.title) {
+        meetingContext.push(`Meeting Title: ${task.isMeeting.title}`);
+      }
+      
+      if (task.isMeeting.description) {
+        meetingContext.push(`Meeting Description: ${task.isMeeting.description}`);
+      }
+      
+      // Add meeting scheduling details
+      if (task.isMeeting.date && task.isMeeting.time) {
+        meetingContext.push(`Scheduled Date: ${task.isMeeting.date}`);
+        meetingContext.push(`Scheduled Time: ${task.isMeeting.time}`);
+      }
+      
+      if (task.isMeeting.duration) {
+        meetingContext.push(`Duration: ${task.isMeeting.duration}`);
+      }
+      
+      // Add topic context if available
+      if (task.topicContext) {
+        meetingContext.push(`Topic Context: ${task.topicContext}`);
+      }
+      
+      // Add task description/question
+      if (task.taskDescription) {
+        meetingContext.push(`Task Description: ${task.taskDescription}`);
+      }
+      
+      if (task.taskQuestion) {
+        meetingContext.push(`Original Question: ${task.taskQuestion}`);
+      }
+      
+      // Add meeting transcript if available
+      if (task.isMeeting.meetingRawData) {
+        meetingContext.push(`Meeting Transcript: ${task.isMeeting.meetingRawData}`);
+      }
+      
+      // Add meeting minutes if available
+      if (task.isMeeting.meetingMinutes) {
+        meetingContext.push(`Meeting Minutes: ${task.isMeeting.meetingMinutes}`);
+      }
+      
+      // Add meeting summary if available
+      if (task.isMeeting.meetingSummary) {
+        meetingContext.push(`Meeting Summary: ${task.isMeeting.meetingSummary}`);
+      }
+      
+      // Create comprehensive prompt
+      const comprehensivePrompt = meetingContext.length > 0 
+        ? `You are an AI assistant for the meeting: "${task.isMeeting.title || task.topicContext || 'Meeting'}". Here is the meeting context:\n\n${meetingContext.join('\n\n')}\n\nPlease help users with questions about this meeting, provide insights based on the meeting content, and assist with any follow-up tasks or discussions related to this meeting.`
+        : task.taskDescription || task.taskQuestion || "Meeting Assistant";
+
+      // Prepare the bot data with proper validation
+      const botData = {
+        name: task.topicContext || task.isMeeting.title || "Meeting Assistant",
+        email: currentUserData?.user?.email || "",
+        mobileNo: currentUserData?.user?.mobileNo || "0000000000",
+        username: task.uniqueTaskId,
+        password: currentUserData?.user?.password || "defaultpassword", // Make sure this exists
+        geminiApiKey: apiKey,
+        plan: "meeting",
+        prompt: comprehensivePrompt,
+        google: currentUserData?.user?.google
+          ? {
+              accessToken: currentUserData.user.google.accessToken || null,
+              refreshToken: currentUserData.user.google.refreshToken || null,
+              tokenExpiryDate: currentUserData.user.google.tokenExpiryDate || null,
+            }
+          : null,
+      };
+
+      console.log("Creating bot with data:", {
+        ...botData,
+        password: "[REDACTED]", // Don't log the actual password
+      });
+
+      // Make the API call with error handling
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND}/register`,
+          botData
+        );
+
+        if (response.data && response.data.userId) {
+          toast.success("Bot assistant created successfully!");
+
+          // Open the new bot in a new tab
+          window.open(
+            `${import.meta.env.VITE_FRONTEND}/home/${task.uniqueTaskId}`,
+            "_blank"
+          );
+
+          // Refresh tasks to show updated bot status
+          refreshTasks();
+        } else {
+          toast.error(
+            response.data?.message || "Failed to create bot assistant"
+          );
+        }
+      } catch (error) {
+        console.error("API Error:", error.response?.data || error.message);
+        if (error.response?.data?.message) {
+          toast.error(`Error: ${error.response.data.message}`);
+        } else {
+          toast.error("Server error when creating bot assistant");
+        }
+      }
+    } catch (error) {
+      console.error("Error creating bot assistant:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setCreatingBot(false);
+    }
+  }, [currentUserData, refreshTasks]);
 
   const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -597,7 +732,7 @@ const AdminChatLayout = ({ onLogout, adminUserData }) => {
                 handleScheduleMeeting={handleScheduleMeeting}
                 handleCreateBotAssistant={handleCreateBotAssistant}
                 toggleTaskStatus={toggleTaskStatus}
-                creatingBot={false}
+                creatingBot={creatingBot}
                 formatDate={formatDate}
                 getStatusColor={getStatusColor}
                 getStatusIcon={getStatusIcon}

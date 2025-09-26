@@ -382,6 +382,62 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
         return;
       }
 
+      // Prepare comprehensive meeting context for the bot
+      const meetingContext = [];
+      
+      // Add meeting title and description
+      if (task.isMeeting.title) {
+        meetingContext.push(`Meeting Title: ${task.isMeeting.title}`);
+      }
+      
+      if (task.isMeeting.description) {
+        meetingContext.push(`Meeting Description: ${task.isMeeting.description}`);
+      }
+      
+      // Add meeting scheduling details
+      if (task.isMeeting.date && task.isMeeting.time) {
+        meetingContext.push(`Scheduled Date: ${task.isMeeting.date}`);
+        meetingContext.push(`Scheduled Time: ${task.isMeeting.time}`);
+      }
+      
+      if (task.isMeeting.duration) {
+        meetingContext.push(`Duration: ${task.isMeeting.duration}`);
+      }
+      
+      // Add topic context if available
+      if (task.topicContext) {
+        meetingContext.push(`Topic Context: ${task.topicContext}`);
+      }
+      
+      // Add task description/question
+      if (task.taskDescription) {
+        meetingContext.push(`Task Description: ${task.taskDescription}`);
+      }
+      
+      if (task.taskQuestion) {
+        meetingContext.push(`Original Question: ${task.taskQuestion}`);
+      }
+      
+      // Add meeting transcript if available
+      if (task.isMeeting.meetingRawData) {
+        meetingContext.push(`Meeting Transcript: ${task.isMeeting.meetingRawData}`);
+      }
+      
+      // Add meeting minutes if available
+      if (task.isMeeting.meetingMinutes) {
+        meetingContext.push(`Meeting Minutes: ${task.isMeeting.meetingMinutes}`);
+      }
+      
+      // Add meeting summary if available
+      if (task.isMeeting.meetingSummary) {
+        meetingContext.push(`Meeting Summary: ${task.isMeeting.meetingSummary}`);
+      }
+      
+      // Create comprehensive prompt
+      const comprehensivePrompt = meetingContext.length > 0 
+        ? `You are an AI assistant for the meeting: "${task.isMeeting.title || task.topicContext || 'Meeting'}". Here is the meeting context:\n\n${meetingContext.join('\n\n')}\n\nPlease help users with questions about this meeting, provide insights based on the meeting content, and assist with any follow-up tasks or discussions related to this meeting.`
+        : task.taskDescription || task.taskQuestion || "Meeting Assistant";
+
       // Prepare the bot data with proper validation
       const botData = {
         name: task.topicContext || task.isMeeting.title || "Meeting Assistant",
@@ -391,11 +447,7 @@ const AdminPanel = ({ onClose, showOnlyView = null }) => {
         password: userData.user.password || "defaultpassword", // Make sure this exists
         geminiApiKey: apiKey,
         plan: "meeting",
-        prompt:
-          task.isMeeting.meetingRawData ||
-          task.taskDescription ||
-          task.taskQuestion ||
-          "",
+        prompt: comprehensivePrompt,
         google: userData.user.google
           ? {
               accessToken: userData.user.google.accessToken || null,

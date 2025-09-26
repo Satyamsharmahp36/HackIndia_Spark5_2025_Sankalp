@@ -44,7 +44,7 @@ const EmailManagement = ({ userData }) => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_EMAIL_BACKEND}/api/emails/Uikx_tZVTQywUxzAxhrc6g?limit=20`
+        `${import.meta.env.VITE_EMAIL_BACKEND}/api/emails/Uikx_tZVTQywUxzAxhrc6g?limit=10`
       );
 
       if (response.data?.success) {

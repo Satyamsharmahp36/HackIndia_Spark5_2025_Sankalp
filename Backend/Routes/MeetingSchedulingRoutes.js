@@ -1,15 +1,13 @@
 const express=require('express');
 const router=express.Router();
 const dotenv = require('dotenv');
-const googleapis = require('googleapis');
 const mongoose = require('mongoose');
 const User = require('../Schema/UserSchema');
 const { google } = require('googleapis');  
 const mongoose = require('mongoose');
 const MeetingData = require('../Schema/MeetingDataSchema');
+const { createCalendarClient } = require('../utils/googleAuthUtils');
 dotenv.config();
-
-const { google } = googleapis;
 
 router.post('/schedule-meeting', async (req, res) => {
     const { taskId, username, title, description, startTime, endTime, userEmails } = req.body;
@@ -29,18 +27,8 @@ router.post('/schedule-meeting', async (req, res) => {
         return res.status(400).json({ error: 'Organizer has not linked Google Calendar.' });
       }
       
-      const oAuth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        process.env.GOOGLE_REDIRECT_URI
-      );
-      
-      oAuth2Client.setCredentials({
-        refresh_token: organizer.google.refreshToken
-      });
-      
-      
-      const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+      // Create calendar client with automatic token refresh
+      const { calendar } = await createCalendarClient(organizer);
       
       const event = {
         summary: title,
@@ -131,7 +119,34 @@ router.post('/schedule-meeting', async (req, res) => {
       
     } catch (error) {
       console.error(`Error scheduling meeting:`, error.message);
-      return res.status(500).json({ error: error.message });
+      
+      // Handle specific OAuth errors
+      if (error.message.includes('invalid_grant')) {
+        return res.status(401).json({ 
+          error: 'Google Calendar access has expired. Please re-authenticate your Google account.',
+          code: 'INVALID_GRANT'
+        });
+      } else if (error.message.includes('insufficient authentication scopes')) {
+        return res.status(403).json({ 
+          error: 'Insufficient permissions to access Google Calendar. Please re-authenticate with calendar permissions.',
+          code: 'INSUFFICIENT_SCOPES'
+        });
+      } else if (error.message.includes('quotaExceeded')) {
+        return res.status(429).json({ 
+          error: 'Google Calendar API quota exceeded. Please try again later.',
+          code: 'QUOTA_EXCEEDED'
+        });
+      } else if (error.message.includes('forbidden')) {
+        return res.status(403).json({ 
+          error: 'Access denied to Google Calendar. Please check your permissions.',
+          code: 'FORBIDDEN'
+        });
+      }
+      
+      return res.status(500).json({ 
+        error: 'Failed to schedule meeting. Please try again.',
+        details: error.message 
+      });
     }
   });
   router.post('/update-meeting-info', async (req, res) => {

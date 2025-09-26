@@ -47,6 +47,13 @@ const HomePage = ({ onLogout, isOwner = false }) => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('=== HOMEPAGE: PROFILE OWNER DATA FETCHED ===');
+        console.log('Username:', username);
+        console.log('Full data object:', data);
+        console.log('User prompt field:', data.user?.prompt);
+        console.log('User userPrompt field:', data.user?.userPrompt);
+        console.log('User name:', data.user?.name);
+        console.log('===========================================');
         setProfileOwnerData(data);
         setProfileOwnerName(data.user?.name || username);
         setIsProfileOwnerLoaded(true);

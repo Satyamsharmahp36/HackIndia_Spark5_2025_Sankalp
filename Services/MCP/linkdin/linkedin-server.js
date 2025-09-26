@@ -737,6 +737,75 @@ app.get('/api/linkedin/messages/unread', async (req, res) => {
 });
 
 /**
+ * GET /api/linkedin/messages/summary - Get message summary and insights
+ */
+app.get('/api/linkedin/messages/summary', async (req, res) => {
+    try {
+        const messages = await linkedinService.getLinkedInMessages({ limit: 50 });
+        
+        const unreadMessages = messages.messages.filter(msg => !msg.isRead);
+        const uniqueSenders = [...new Set(messages.messages.map(msg => msg.from.identifier))];
+        
+        // Categorize messages
+        const categories = {
+            networking: messages.messages.filter(msg => 
+                msg.content.toLowerCase().includes('connect') || 
+                msg.content.toLowerCase().includes('network')
+            ).length,
+            job: messages.messages.filter(msg => 
+                msg.content.toLowerCase().includes('job') || 
+                msg.content.toLowerCase().includes('opportunity') ||
+                msg.content.toLowerCase().includes('position')
+            ).length,
+            collaboration: messages.messages.filter(msg => 
+                msg.content.toLowerCase().includes('collaborate') || 
+                msg.content.toLowerCase().includes('partnership')
+            ).length,
+            sales: messages.messages.filter(msg => 
+                msg.content.toLowerCase().includes('sales') || 
+                msg.content.toLowerCase().includes('product') ||
+                msg.content.toLowerCase().includes('service')
+            ).length
+        };
+
+        res.json({
+            success: true,
+            message: 'Message summary generated successfully',
+            data: {
+                totalMessages: messages.total,
+                unreadCount: unreadMessages.length,
+                uniqueSenders: uniqueSenders.length,
+                categories: categories,
+                recentActivity: messages.messages.slice(0, 5).map(msg => ({
+                    from: msg.from.name || msg.from.identifier,
+                    subject: msg.subject || 'No Subject',
+                    date: msg.date,
+                    isRead: msg.isRead
+                })),
+                urgentMessages: messages.messages.filter(msg => 
+                    msg.content.toLowerCase().includes('urgent') ||
+                    msg.content.toLowerCase().includes('asap') ||
+                    msg.content.toLowerCase().includes('immediately')
+                ).length
+            },
+            actions: {
+                getUnread: 'GET /api/linkedin/messages/unread',
+                replyToAll: 'POST /api/linkedin/messages/bulk-reply',
+                analyzeMessage: 'POST /api/linkedin/messages/analyze'
+            },
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to generate message summary',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+/**
  * GET /api/linkedin/messages/:messageId - Get specific message details
  */
 app.get('/api/linkedin/messages/:messageId', async (req, res) => {
@@ -913,74 +982,6 @@ app.post('/api/linkedin/messages/send-enhanced', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to send enhanced LinkedIn message',
-            error: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-/**
- * GET /api/linkedin/messages/summary - Get message summary and insights
- */
-app.get('/api/linkedin/messages/summary', async (req, res) => {
-    try {
-        const messages = await linkedinService.getLinkedInMessages({ limit: 50 });
-        
-        const unreadMessages = messages.messages.filter(msg => !msg.isRead);
-        const uniqueSenders = [...new Set(messages.messages.map(msg => msg.from.identifier))];
-        
-        // Categorize messages
-        const categories = {
-            networking: messages.messages.filter(msg => 
-                msg.content.toLowerCase().includes('connect') || 
-                msg.content.toLowerCase().includes('network')
-            ).length,
-            job: messages.messages.filter(msg => 
-                msg.content.toLowerCase().includes('job') || 
-                msg.content.toLowerCase().includes('opportunity') ||
-                msg.content.toLowerCase().includes('position')
-            ).length,
-            collaboration: messages.messages.filter(msg => 
-                msg.content.toLowerCase().includes('collaborate') || 
-                msg.content.toLowerCase().includes('partnership')
-            ).length,
-            sales: messages.messages.filter(msg => 
-                msg.content.toLowerCase().includes('sales') || 
-                msg.content.toLowerCase().includes('product') ||
-                msg.content.toLowerCase().includes('service')
-            ).length
-        };
-
-        res.json({
-            success: true,
-            message: 'Message summary generated successfully',
-            data: {
-                totalMessages: messages.total,
-                unreadCount: unreadMessages.length,
-                uniqueSenders: uniqueSenders.length,
-                categories: categories,
-                recentActivity: messages.messages.slice(0, 5).map(msg => ({
-                    from: msg.from.name || msg.from.identifier,
-                    subject: msg.subject || 'No Subject',
-                    date: msg.date,
-                    isRead: msg.isRead
-                })),
-                urgentMessages: messages.messages.filter(msg => 
-                    msg.content.toLowerCase().includes('urgent') ||
-                    msg.content.toLowerCase().includes('asap') ||
-                    msg.content.toLowerCase().includes('immediately')
-                ).length
-            },
-            actions: {
-                getUnread: 'GET /api/linkedin/messages/unread',
-                replyToAll: 'POST /api/linkedin/messages/bulk-reply',
-                analyzeMessage: 'POST /api/linkedin/messages/analyze'
-            },
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Failed to generate message summary',
             error: error.message,
             timestamp: new Date().toISOString()
         });
