@@ -19,11 +19,19 @@ import {
   ExternalLink,
   MessageSquare,
   Users,
+  FileText,
+  Brain,
+  Sparkles,
+  Copy,
+  Check,
+  AlertCircle,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -38,8 +46,105 @@ const LinkedInManagement = ({ userData }) => {
   const [expandedMessages, setExpandedMessages] = useState(new Set());
   const [messageLimit, setMessageLimit] = useState(20);
 
-  // Fetch messages from the LinkedIn API
-  const fetchMessages = async (limit = 20) => {
+  // Summary related states
+  const [summary, setSummary] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [showCustomPrompt, setShowCustomPrompt] = useState(false);
+  const [summaryHistory, setSummaryHistory] = useState([]);
+  const [copied, setCopied] = useState(false);
+  const [showApiSettings, setShowApiSettings] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+
+  // Auto-processing states
+  const [autoProcessing, setAutoProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState("");
+  const [hasAutoFetched, setHasAutoFetched] = useState(false);
+
+  // Get API key from environment or state
+  const geminiApiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY || apiKey;
+
+  // Load saved data from localStorage on component mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('linkedin-gemini-api-key');
+    const savedSummaryHistory = localStorage.getItem('linkedin-summary-history');
+    const savedMessageLimit = localStorage.getItem('linkedin-message-limit');
+
+    if (savedApiKey && !import.meta.env.VITE_GOOGLE_GENAI_API_KEY) {
+      setApiKey(savedApiKey);
+    }
+
+    if (savedSummaryHistory) {
+      try {
+        setSummaryHistory(JSON.parse(savedSummaryHistory));
+      } catch (error) {
+        console.error("Error parsing summary history:", error);
+      }
+    }
+
+    if (savedMessageLimit) {
+      setMessageLimit(parseInt(savedMessageLimit) || 20);
+    }
+
+    // Auto-fetch messages on component mount
+    if (!hasAutoFetched) {
+      autoFetchAndSummarize();
+      setHasAutoFetched(true);
+    }
+  }, []);
+
+  // Save data to localStorage
+  useEffect(() => {
+    if (apiKey && !import.meta.env.VITE_GOOGLE_GENAI_API_KEY) {
+      localStorage.setItem('linkedin-gemini-api-key', apiKey);
+    }
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (summaryHistory.length > 0) {
+      localStorage.setItem('linkedin-summary-history', JSON.stringify(summaryHistory));
+    }
+  }, [summaryHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('linkedin-message-limit', messageLimit.toString());
+  }, [messageLimit]);
+
+  // Auto-fetch and summarize on component load
+  const autoFetchAndSummarize = async () => {
+    if (autoProcessing) return;
+    
+    setAutoProcessing(true);
+    toast.info("🔄 Auto-loading LinkedIn messages...");
+    
+    try {
+      // Step 1: Fetch messages automatically
+      setProcessingStage("📧 Fetching LinkedIn messages...");
+      const fetchedMessages = await fetchMessagesInternal(messageLimit);
+      
+      // Step 2: Auto-generate summary if we have messages and API key
+      if (fetchedMessages && fetchedMessages.length > 0) {
+        if (geminiApiKey) {
+          await generateAutoSummary(fetchedMessages);
+        } else {
+          toast.info("Messages loaded! Set up Gemini API key for auto-summaries");
+        }
+      } else {
+        toast.warning("No LinkedIn messages found");
+      }
+      
+    } catch (error) {
+      console.error("Error in auto-processing:", error);
+      toast.error(`Failed to auto-process LinkedIn messages: ${error.message}`);
+    } finally {
+      setAutoProcessing(false);
+      setProcessingStage("");
+    }
+  };
+
+  // Internal fetch function that returns messages
+  const fetchMessagesInternal = async (limit = 20) => {
     setLoading(true);
     try {
       const response = await axios.get(
@@ -47,24 +152,329 @@ const LinkedInManagement = ({ userData }) => {
         {
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 10000
         }
       );
 
       if (response.data?.success) {
-        setMessages(response.data.data || []);
-        toast.success(`💼 Retrieved ${response.data.data?.length || 0} LinkedIn messages`);
+        const messagesData = response.data.data || [];
+        setMessages(messagesData);
+        toast.success(`💼 Retrieved ${messagesData.length} LinkedIn messages`);
+        return messagesData;
       } else {
         toast.error("Failed to fetch LinkedIn messages");
         setMessages([]);
+        return [];
       }
     } catch (error) {
       console.error("Error fetching LinkedIn messages:", error);
-      toast.error("Error fetching LinkedIn messages");
+      if (error.code === 'ECONNREFUSED' || error.response?.status === 404) {
+        toast.error("LinkedIn API server is not running. Please start your server on port 4000.");
+      } else {
+        toast.error(`Error fetching LinkedIn messages: ${error.message}`);
+      }
       setMessages([]);
+      return [];
     } finally {
       setLoading(false);
     }
+  };
+
+  // Public fetch function for manual refresh
+  const fetchMessages = async (limit = 20) => {
+    await fetchMessagesInternal(limit);
+  };
+
+  // Auto-generate summary with specific messages
+  const generateAutoSummary = async (messagesToSummarize) => {
+    if (!geminiApiKey) {
+      toast.warning("Set up Gemini API key for AI summaries");
+      return;
+    }
+
+    if (!messagesToSummarize || messagesToSummarize.length === 0) {
+      toast.warning("No messages to summarize");
+      return;
+    }
+
+    setSummaryLoading(true);
+    setProcessingStage("🤖 Generating AI summary of LinkedIn conversations...");
+    
+    try {
+      // Prepare LinkedIn messages for summary
+      const messageTexts = messagesToSummarize.map(msg => {
+        const sender = msg.from?.name || 'Unknown Sender';
+        const content = msg.content || msg.preview || 'No content';
+        const date = new Date(msg.date).toLocaleDateString();
+        const isCurrentUser = msg.from?.isCurrentUser ? ' (You)' : '';
+        const subject = msg.subject && msg.subject !== "No Subject" ? ` - Subject: ${msg.subject}` : '';
+        const threadId = msg.threadId ? ` [Thread: ${msg.threadId}]` : '';
+        
+        return `[${date}] ${sender}${isCurrentUser}${subject}: ${content}${threadId}`;
+      }).join('\n');
+
+      const defaultPrompt = `Analyze these LinkedIn message conversations and provide a comprehensive professional summary. Focus on:
+
+1. **Professional Networking**: What connections and professional relationships are being built?
+2. **Business Opportunities**: Any job offers, project collaborations, or business discussions?
+3. **Knowledge Sharing**: Educational content, advice, or expertise being shared?
+4. **Key Conversations**: Important discussions with specific people and their outcomes?
+5. **Action Items**: Any follow-ups, meetings, or commitments mentioned?
+6. **Professional Development**: Career advice, learning opportunities, or skill development?
+
+Context: These are LinkedIn direct messages showing professional networking activity.
+
+LinkedIn Conversations:
+${messageTexts}
+
+Please provide a detailed summary that captures the professional networking value and key relationships being developed.`;
+
+      // Use the Gemini API
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: defaultPrompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            topK: 32,
+            topP: 0.8,
+            maxOutputTokens: 1024,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH", 
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Gemini API Error:', response.status, errorText);
+        
+        if (response.status === 400) {
+          throw new Error('Invalid API request. Please check your API key and request format.');
+        } else if (response.status === 403) {
+          throw new Error('API key is invalid or doesn\'t have permission to access Gemini API.');
+        } else if (response.status === 404) {
+          throw new Error('Invalid API endpoint or model name. Please verify your Gemini API key is correct.');
+        } else if (response.status === 429) {
+          throw new Error('API rate limit exceeded. Please try again in a few minutes.');
+        } else {
+          throw new Error(`API Error (${response.status}): ${errorText}`);
+        }
+      }
+
+      const data = await response.json();
+      const generatedSummary = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (generatedSummary) {
+        setSummary(generatedSummary);
+        setShowSummary(true);
+        
+        // Add to summary history
+        const newSummaryEntry = {
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          messageCount: messagesToSummarize.length,
+          summary: generatedSummary.substring(0, 200) + '...', // Store preview
+          fullSummary: generatedSummary,
+          promptUsed: 'Auto-generated LinkedIn summary'
+        };
+        
+        setSummaryHistory(prev => [newSummaryEntry, ...prev.slice(0, 9)]);
+        toast.success("✨ LinkedIn summary generated successfully!");
+      } else {
+        throw new Error("No summary content received from API");
+      }
+
+    } catch (error) {
+      console.error("Error generating auto summary:", error);
+      toast.error(`Failed to generate summary: ${error.message}`);
+    } finally {
+      setSummaryLoading(false);
+      setProcessingStage("");
+    }
+  };
+
+  // Manual generate summary
+  const generateSummary = async (useCustomPrompt = false) => {
+    if (!geminiApiKey) {
+      toast.error("Please set your Gemini API key first");
+      setShowApiSettings(true);
+      return;
+    }
+
+    if (!messages || messages.length === 0) {
+      toast.error("No messages to summarize");
+      return;
+    }
+
+    setSummaryLoading(true);
+    
+    try {
+      // Prepare LinkedIn messages for summary
+      const messageTexts = messages.map(msg => {
+        const sender = msg.from?.name || 'Unknown Sender';
+        const content = msg.content || msg.preview || 'No content';
+        const date = new Date(msg.date).toLocaleDateString();
+        const isCurrentUser = msg.from?.isCurrentUser ? ' (You)' : '';
+        const subject = msg.subject && msg.subject !== "No Subject" ? ` - Subject: ${msg.subject}` : '';
+        return `[${date}] ${sender}${isCurrentUser}${subject}: ${content}`;
+      }).join('\n');
+
+      const defaultPrompt = `Analyze these LinkedIn message conversations and provide a comprehensive professional summary. Focus on:
+
+1. **Professional Networking**: What connections and professional relationships are being built?
+2. **Business Opportunities**: Any job offers, project collaborations, or business discussions?
+3. **Knowledge Sharing**: Educational content, advice, or expertise being shared?
+4. **Key Conversations**: Important discussions with specific people and their outcomes?
+5. **Action Items**: Any follow-ups, meetings, or commitments mentioned?
+6. **Professional Development**: Career advice, learning opportunities, or skill development?
+
+LinkedIn Conversations:
+${messageTexts}
+
+Please provide a detailed summary that captures the professional networking value and key relationships being developed.`;
+
+      const promptToUse = useCustomPrompt && customPrompt.trim() 
+        ? `${customPrompt}\n\nLinkedIn Conversations:\n${messageTexts}` 
+        : defaultPrompt;
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: promptToUse
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            topK: 32,
+            topP: 0.8,
+            maxOutputTokens: 1024,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH", 
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Gemini API Error:', response.status, errorText);
+        
+        if (response.status === 400) {
+          throw new Error('Invalid API request. Please check your API key and request format.');
+        } else if (response.status === 403) {
+          throw new Error('API key is invalid or doesn\'t have permission to access Gemini API.');
+        } else if (response.status === 404) {
+          throw new Error('Invalid API endpoint or model name. Please verify your Gemini API key is correct.');
+        } else if (response.status === 429) {
+          throw new Error('API rate limit exceeded. Please try again in a few minutes.');
+        } else {
+          throw new Error(`API Error (${response.status}): ${errorText}`);
+        }
+      }
+
+      const data = await response.json();
+      const generatedSummary = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (generatedSummary) {
+        setSummary(generatedSummary);
+        setShowSummary(true);
+        
+        const newSummaryEntry = {
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          messageCount: messages.length,
+          summary: generatedSummary.substring(0, 200) + '...',
+          fullSummary: generatedSummary,
+          promptUsed: useCustomPrompt ? customPrompt : 'Default LinkedIn summary prompt'
+        };
+        
+        setSummaryHistory(prev => [newSummaryEntry, ...prev.slice(0, 9)]);
+        toast.success("✨ Summary generated successfully!");
+      } else {
+        throw new Error("No summary content received from API");
+      }
+
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      toast.error(`Failed to generate summary: ${error.message}`);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  // Copy summary to clipboard
+  const copySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      toast.success("Summary copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error("Failed to copy summary");
+    }
+  };
+
+  // Save API key
+  const saveApiKey = () => {
+    if (!apiKey.trim()) {
+      toast.error("Please enter a valid API key");
+      return;
+    }
+    if (!apiKey.startsWith('AIza')) {
+      toast.warning("API key should start with 'AIza'. Please verify your key.");
+    }
+    localStorage.setItem('linkedin-gemini-api-key', apiKey);
+    setShowApiSettings(false);
+    toast.success("API key saved successfully!");
   };
 
   // Filter messages based on search and filter criteria
@@ -72,11 +482,15 @@ const LinkedInManagement = ({ userData }) => {
     const messageArray = Array.isArray(messages) ? messages : [];
     
     return messageArray.filter((message) => {
-      const matchesSearch = 
-        message.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        message.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        message.from?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        message.preview?.toLowerCase().includes(searchTerm.toLowerCase());
+      const searchFields = [
+        message.content,
+        message.subject,
+        message.from?.name,
+        message.preview,
+        message.from?.headline
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      const matchesSearch = !searchTerm || searchFields.includes(searchTerm.toLowerCase());
 
       const matchesFilter = 
         filterType === "all" ||
@@ -145,8 +559,24 @@ const LinkedInManagement = ({ userData }) => {
           <Badge variant="secondary" className="bg-blue-100 text-blue-800">
             {Array.isArray(messages) ? messages.length : 0} messages
           </Badge>
+          {autoProcessing && (
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 animate-pulse">
+              🔄 Processing...
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          {!import.meta.env.VITE_GOOGLE_GENAI_API_KEY && (
+            <Button
+              onClick={() => setShowApiSettings(true)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              API Settings
+            </Button>
+          )}
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">Limit:</label>
             <Input
@@ -156,451 +586,262 @@ const LinkedInManagement = ({ userData }) => {
               className="w-20"
               min="1"
               max="100"
+              disabled={autoProcessing}
             />
           </div>
           <Button
             onClick={() => fetchMessages(messageLimit)}
-            disabled={loading}
+            disabled={loading || autoProcessing}
             variant="outline"
             size="sm"
             className="flex items-center gap-2"
           >
-            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-            {loading ? "Loading..." : "Fetch Messages"}
+            <RefreshCw className={cn("w-4 h-4", (loading || autoProcessing) && "animate-spin")} />
+            {loading ? "Loading..." : "Manual Refresh"}
           </Button>
         </div>
       </div>
 
-      {/* Search and Filter Bar */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search Input */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search LinkedIn messages..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+      {/* Processing Status */}
+      {(autoProcessing || processingStage) && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="w-5 h-5 animate-spin text-yellow-600" />
+              <div className="flex-1">
+                <p className="font-medium text-yellow-800">
+                  {processingStage || "Processing LinkedIn messages..."}
+                </p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Please wait while we fetch messages and generate AI summary
+                </p>
+              </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
 
-            {/* Filter Toggle */}
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              Filters
-              {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </Button>
-          </div>
-
-          {/* Filter Options */}
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-4 pt-4 border-t border-gray-200"
-            >
-              <div className="flex flex-wrap gap-2">
+      {/* API Settings Section */}
+      {showApiSettings && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5 text-purple-600" />
+              Gemini AI Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Gemini API Key
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="AIza..."
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="flex-1"
+                />
                 <Button
-                  variant={filterType === "all" ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
-                  onClick={() => setFilterType("all")}
-                  className="flex items-center gap-2"
+                  onClick={() => window.open('https://ai.google.dev/gemini-api/docs/api-key', '_blank')}
                 >
-                  <Inbox className="w-4 h-4" />
-                  All
-                </Button>
-                <Button
-                  variant={filterType === "unread" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilterType("unread")}
-                  className="flex items-center gap-2"
-                >
-                  <EyeOff className="w-4 h-4" />
-                  Unread
-                </Button>
-                <Button
-                  variant={filterType === "important" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilterType("important")}
-                  className="flex items-center gap-2"
-                >
-                  <Paperclip className="w-4 h-4" />
-                  With Attachments
+                  Get Key
                 </Button>
               </div>
-            </motion.div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Messages List */}
-      <div className="space-y-3">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600 font-medium">Loading LinkedIn messages...</p>
-              <p className="text-sm text-gray-500 mt-1">Fetching {messageLimit} messages</p>
-            </div>
-          </div>
-        ) : filteredMessages.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Linkedin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">No messages found</h3>
-              <p className="text-gray-500 mb-4">
-                {searchTerm || filterType !== "all" 
-                  ? "Try adjusting your search or filter criteria"
-                  : "Click 'Fetch Messages' to load LinkedIn messages"}
+              <p className="text-xs text-gray-500 mt-1">
+                Get your free API key from Google AI Studio. Keys are stored locally.
               </p>
-              {!searchTerm && filterType === "all" && (
-                <Button
-                  onClick={() => fetchMessages(messageLimit)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Linkedin className="w-4 h-4 mr-2" />
-                  Fetch LinkedIn Messages
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          filteredMessages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Card 
-                className={cn(
-                  "cursor-pointer transition-all duration-200 hover:shadow-md",
-                  !message.isRead && "border-l-4 border-l-blue-500",
-                  selectedMessage?.id === message.id && "ring-2 ring-blue-500"
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={saveApiKey} className="bg-purple-600 hover:bg-purple-700">
+                Save API Key
+              </Button>
+              <Button onClick={() => setShowApiSettings(false)} variant="outline">
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI Summary Section */}
+      {messages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                AI LinkedIn Summary
+                {!geminiApiKey && (
+                  <Badge variant="destructive" className="ml-2">
+                    API Key Required
+                  </Badge>
                 )}
-                onClick={() => setSelectedMessage(selectedMessage?.id === message.id ? null : message)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      {/* Message Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm",
-                            message.from?.isCurrentUser 
-                              ? "bg-gradient-to-br from-green-500 to-green-600" 
-                              : "bg-gradient-to-br from-blue-500 to-blue-600"
-                          )}>
-                            <User className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold text-gray-900 truncate">
-                                {message.from?.name || 'Unknown Sender'}
-                              </span>
-                              <Badge 
-                                variant="secondary" 
-                                className={cn("text-xs px-2 py-1", getStatusColor(message))}
-                              >
-                                {getStatusIcon(message)}
-                                <span className="ml-1">
-                                  {!message.isRead ? "Unread" : message.hasAttachments ? "Has Attachments" : message.from?.isCurrentUser ? "You" : "Read"}
-                                </span>
-                              </Badge>
-                              {message.from?.isCurrentUser && (
-                                <Badge variant="outline" className="text-xs border-green-300 text-green-700">
-                                  Sent by You
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {message.from?.linkedinProfile && (
-                                <a 
-                                  href={message.from.linkedinProfile} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  LinkedIn Profile
-                                </a>
-                              )}
-                              {message.from?.headline && (
-                                <span className="text-sm text-gray-500 truncate">
-                                  • {message.from.headline}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right text-xs text-gray-500 flex-shrink-0 ml-2">
-                          <div className="flex items-center gap-1 mb-1">
-                            <Clock className="w-3 h-3" />
-                            {formatDate(message.date)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Subject */}
-                      {message.subject && message.subject !== "No Subject" && (
-                        <div className="mb-3">
-                          <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight">
-                            {message.subject}
-                          </h3>
-                        </div>
-                      )}
-
-                      {/* Message Content */}
-                      <div className="mb-4">
-                        <div className={cn(
-                          "rounded-xl p-4 border shadow-sm",
-                          message.from?.isCurrentUser 
-                            ? "bg-gradient-to-r from-green-50 to-green-100 border-green-200"
-                            : "bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200"
-                        )}>
-                          <div className="flex items-start gap-3">
-                            <div className={cn(
-                              "w-2 h-2 rounded-full mt-2 flex-shrink-0",
-                              message.from?.isCurrentUser ? "bg-green-500" : "bg-blue-500"
-                            )}></div>
-                            <div className="flex-1">
-                              <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
-                                {message.content || message.preview || 'No message content available'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Message Metadata */}
-                      <div className="flex items-center gap-4 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">Thread ID:</span>
-                          <span className="font-mono">{message.threadId}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span>Type:</span>
-                          <span className="capitalize">{message.messageType?.replace('_', ' ')}</span>
-                        </div>
-                        {message.hasAttachments && (
-                          <div className="flex items-center gap-1">
-                            <Paperclip className="w-3 h-3" />
-                            <span>Attachments</span>
-                          </div>
-                        )}
-                        {message.linkedinData?.reactions?.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            <span>Reactions: {message.linkedinData.reactions.length}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Expanded Content */}
-                      {expandedMessages.has(message.id) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mt-6 pt-6 border-t border-gray-200"
-                        >
-                          <div className="space-y-6">
-                            {/* Message Details */}
-                            <div>
-                              <div className="flex items-center gap-2 mb-4">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                <h4 className="text-lg font-semibold text-gray-900">Message Details</h4>
-                              </div>
-                              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                  <div>
-                                    <label className="font-medium text-gray-600 block mb-1">Message ID</label>
-                                    <p className="text-gray-900 font-mono text-xs bg-gray-100 p-2 rounded">
-                                      {message.id}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <label className="font-medium text-gray-600 block mb-1">Chat ID</label>
-                                    <p className="text-gray-900 font-mono text-xs bg-gray-100 p-2 rounded">
-                                      {message.chatId}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <label className="font-medium text-gray-600 block mb-1">Timestamp</label>
-                                    <p className="text-gray-900">
-                                      {new Date(message.date).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <label className="font-medium text-gray-600 block mb-1">Read Status</label>
-                                    <p className={cn(
-                                      "font-medium",
-                                      !message.isRead ? "text-blue-600" : "text-gray-600"
-                                    )}>
-                                      {!message.isRead ? 'Unread' : 'Read'}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <label className="font-medium text-gray-600 block mb-1">Message Type</label>
-                                    <p className="text-gray-900 capitalize">{message.messageType?.replace('_', ' ')}</p>
-                                  </div>
-                                  <div>
-                                    <label className="font-medium text-gray-600 block mb-1">Attachments</label>
-                                    <p className="text-gray-900">{message.hasAttachments ? 'Yes' : 'No'}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Sender Information */}
-                            <div>
-                              <div className="flex items-center gap-2 mb-4">
-                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <h4 className="text-lg font-semibold text-gray-900">Sender Information</h4>
-                              </div>
-                              <div className="bg-gradient-to-r from-gray-50 to-blue-50 border border-gray-200 rounded-lg p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-3">
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-600 block mb-1">Name</label>
-                                      <p className="text-gray-900 font-medium">{message.from?.name || 'Unknown'}</p>
-                                    </div>
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-600 block mb-1">Identifier</label>
-                                      <p className="text-gray-700 font-mono text-sm">{message.from?.identifier || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-600 block mb-1">Attendee ID</label>
-                                      <p className="text-gray-700 font-mono text-sm">{message.from?.attendeeId || 'N/A'}</p>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-3">
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-600 block mb-1">Headline</label>
-                                      <p className="text-gray-900">{message.from?.headline || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-600 block mb-1">Current User</label>
-                                      <p className={cn(
-                                        "font-medium",
-                                        message.from?.isCurrentUser ? "text-green-600" : "text-gray-600"
-                                      )}>
-                                        {message.from?.isCurrentUser ? 'Yes' : 'No'}
-                                      </p>
-                                    </div>
-                                    {message.from?.linkedinProfile && (
-                                      <div>
-                                        <label className="text-sm font-medium text-gray-600 block mb-1">Profile</label>
-                                        <a 
-                                          href={message.from.linkedinProfile} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-                                        >
-                                          <ExternalLink className="w-3 h-3" />
-                                          View Profile
-                                        </a>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* LinkedIn Raw Data */}
-                            {message.linkedinData && (
-                              <div>
-                                <div className="flex items-center gap-2 mb-4">
-                                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                  <h4 className="text-lg font-semibold text-gray-900">LinkedIn Data</h4>
-                                </div>
-                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                      <label className="font-medium text-gray-600 block mb-1">Sender ID</label>
-                                      <p className="text-gray-900 font-mono text-xs">{message.linkedinData.senderId}</p>
-                                    </div>
-                                    <div>
-                                      <label className="font-medium text-gray-600 block mb-1">Provider ID</label>
-                                      <p className="text-gray-900 font-mono text-xs">{message.linkedinData.providerId}</p>
-                                    </div>
-                                    <div>
-                                      <label className="font-medium text-gray-600 block mb-1">Seen Status</label>
-                                      <p className="text-gray-900">{message.linkedinData.seen ? 'Seen' : 'Not Seen'}</p>
-                                    </div>
-                                    <div>
-                                      <label className="font-medium text-gray-600 block mb-1">Is Sender</label>
-                                      <p className="text-gray-900">{message.linkedinData.isSender ? 'Yes' : 'No'}</p>
-                                    </div>
-                                    {message.linkedinData.reactions?.length > 0 && (
-                                      <div className="md:col-span-2">
-                                        <label className="font-medium text-gray-600 block mb-1">Reactions</label>
-                                        <div className="flex gap-2 flex-wrap">
-                                          {message.linkedinData.reactions.map((reaction, index) => (
-                                            <Badge key={index} variant="outline" className="text-xs">
-                                              {reaction.value}
-                                            </Badge>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Full Message Content */}
-                            <div>
-                              <div className="flex items-center gap-2 mb-4">
-                                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                <h4 className="text-lg font-semibold text-gray-900">Full Message Content</h4>
-                              </div>
-                              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                                <div className="prose prose-sm max-w-none">
-                                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                                    {message.content || 'No message content available'}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </div>
-
-                    {/* Expand/Collapse Button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMessageExpansion(message.id);
-                      }}
-                      className="ml-2"
-                    >
-                      {expandedMessages.has(message.id) ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setShowCustomPrompt(!showCustomPrompt)}
+                  variant="outline"
+                  size="sm"
+                >
+                  Custom Prompt
+                </Button>
+                <Button
+                  onClick={() => generateSummary(false)}
+                  disabled={summaryLoading || !geminiApiKey || autoProcessing}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {summaryLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="w-4 h-4 mr-2" />
+                      Generate Summary
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* API Key Warning */}
+            {!geminiApiKey && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-red-800">Gemini API Key Required</h4>
+                    <p className="text-sm text-red-700 mt-1">
+                      Set up your free Gemini API key to use AI-powered LinkedIn conversation summaries.
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))
-        )}
-      </div>
+                </div>
+              </div>
+            )}
 
-      
+            {/* Auto-processing info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-blue-800">Auto-Processing Enabled</h4>
+                  <p className="text-sm text-blue-700 mt-1">
+                    LinkedIn messages are automatically fetched and summarized when you visit this page
+                    {!geminiApiKey && " (API key required for AI summaries)"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Custom Prompt Input */}
+            {showCustomPrompt && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Custom Analysis Prompt
+                  </label>
+                  <Textarea
+                    placeholder="E.g., 'Focus on business opportunities and networking', 'Identify potential collaborations', 'Summarize career advice and mentoring'"
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    rows={3}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => generateSummary(true)}
+                    disabled={summaryLoading || !customPrompt.trim() || !geminiApiKey || autoProcessing}
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    Generate Custom Summary
+                  </Button>
+                  <Button
+                    onClick={() => setShowCustomPrompt(false)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Summary Display */}
+            {showSummary && summary && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    <h3 className="font-semibold text-gray-900">LinkedIn Analysis Results</h3>
+                  </div>
+                  <Button
+                    onClick={copySummary}
+                    variant="ghost"
+                    size="sm"
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+                
+                {/* Properly formatted Markdown content */}
+                <div className="prose prose-sm max-w-none">
+                  <div 
+                    className="markdown-content"
+                    dangerouslySetInnerHTML={{
+                      __html: summary
+                        // Convert **bold** to <strong>
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                        // Convert *italic* to <em>
+                        .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em class="italic text-gray-700">$1</em>')
+                        // Convert numbered sections like "**1. Key Discussion Points:**"
+                        .replace(/\*\*(\d+\.\s+[^*]+):\*\*/g, '<h2 class="text-lg font-bold text-gray-900 mt-6 mb-3 border-b border-gray-200 pb-2">$1</h2>')
+                        // Convert bullet points with **labels:**
+                        .replace(/\*\s+\*\*([^*]+):\*\*/g, '<h3 class="text-base font-semibold text-gray-800 mt-4 mb-2">• $1:</h3>')
+                        // Convert regular bullet points
+                        .replace(/^\*\s+([^*\n]+)$/gm, '<li class="ml-6 mb-2 list-disc text-gray-700">$1</li>')
+                        // Wrap consecutive <li> elements in <ul>
+                        .replace(/(<li[^>]*>.*?<\/li>\s*)+/gs, '<ul class="mb-4">$&</ul>')
+                        // Convert line breaks to paragraphs
+                        .replace(/\n\n/g, '</p><p class="mb-3 text-gray-700">')
+                        // Wrap remaining content in paragraphs
+                        .replace(/^(?!<[hul])/gm, '<p class="mb-3 text-gray-700">')
+                        // Clean up any extra closing tags
+                        .replace(/<\/p>$/, '')
+                    }}
+                  />
+                </div>
+                
+                {/* Summary metadata */}
+                <div className="mt-4 pt-4 border-t border-purple-200 flex items-center justify-between text-xs text-gray-500">
+                  <span>💼 LinkedIn Messages • {messages.length} conversations analyzed</span>
+                  <span>{new Date().toLocaleString()}</span>
+                </div>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+
     </div>
   );
 };
