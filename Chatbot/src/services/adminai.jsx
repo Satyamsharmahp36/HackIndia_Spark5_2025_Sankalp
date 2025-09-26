@@ -377,8 +377,14 @@ async function sendLinkedInMessage(chatId, content, options = {}) {
   }
 }
 
-async function generateLinkedInPost(brief, type = 'professional') {
+// Enhanced LinkedIn post generation with multiple types
+async function generateLinkedInPost(brief, type = 'professional', options = {}) {
   try {
+    console.log('Generating LinkedIn post with:', { brief, type, options });
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
     const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/posts/auto-create`, {
       method: 'POST',
       headers: {
@@ -387,29 +393,294 @@ async function generateLinkedInPost(brief, type = 'professional') {
       body: JSON.stringify({
         brief,
         type,
-        postImmediately: false,
-        enhancement: 'improve'
+        postImmediately: options.postImmediately || false,
+        enhancement: options.enhancement || 'improve',
+        visibility: options.visibility || 'public'
       }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      throw new Error('Failed to generate LinkedIn post via MCP');
+      throw new Error(`Failed to generate LinkedIn post via MCP: ${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('LinkedIn post generation result:', result);
+    return result;
   } catch (error) {
     console.error('Error generating LinkedIn post via MCP:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('LinkedIn post generation timed out. Please try again.');
+    }
     throw error;
   }
 }
 
-async function getLinkedInMessages(limit = 20) {
+// Quick post generation (one-liner to enhanced post)
+async function generateQuickLinkedInPost(message, autoPost = false) {
   try {
-    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/messages?limit=${limit}`);
+    console.log('Generating quick LinkedIn post with:', { message, autoPost });
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/posts/quick-post`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        autoPost
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate quick LinkedIn post via MCP: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('Quick LinkedIn post generation result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error generating quick LinkedIn post via MCP:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('Quick LinkedIn post generation timed out. Please try again.');
+    }
+    throw error;
+  }
+}
+
+// Create LinkedIn post directly
+async function createLinkedInPost(content, options = {}) {
+  try {
+    console.log('Creating LinkedIn post with:', { content: content.substring(0, 100) + '...', options });
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/posts/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content,
+        visibility: options.visibility || 'public',
+        imageUrl: options.imageUrl,
+        mentions: options.mentions
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to create LinkedIn post via MCP: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('LinkedIn post creation result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error creating LinkedIn post via MCP:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('LinkedIn post creation timed out. Please try again.');
+    }
+    throw error;
+  }
+}
+
+// Enhance existing post content
+async function enhanceLinkedInPost(content, enhancement = 'improve') {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/posts/enhance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content,
+        enhancement
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to enhance LinkedIn post via MCP');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error enhancing LinkedIn post via MCP:', error);
+    throw error;
+  }
+}
+
+// Generate specific post types
+async function generateAchievementPost(achievement, details = {}) {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/ai/posts/achievement`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        achievement,
+        details
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate achievement post via MCP');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error generating achievement post via MCP:', error);
+    throw error;
+  }
+}
+
+async function generateHackIndiaPost(status = 'finalist') {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/ai/posts/hackindia`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate HackIndia post via MCP');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error generating HackIndia post via MCP:', error);
+    throw error;
+  }
+}
+
+async function generateInsightPost(topic, insight, context = {}) {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/ai/posts/insight`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topic,
+        insight,
+        context
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate insight post via MCP');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error generating insight post via MCP:', error);
+    throw error;
+  }
+}
+
+async function generateEngagementPost(question, context = '') {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/ai/posts/engagement`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        question,
+        context
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate engagement post via MCP');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error generating engagement post via MCP:', error);
+    throw error;
+  }
+}
+
+// Get LinkedIn messages with enhanced filtering
+async function getLinkedInMessages(limit = 20, options = {}) {
+  try {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      ...(options.offset && { offset: options.offset.toString() }),
+      ...(options.since && { since: options.since }),
+      ...(options.until && { until: options.until })
+    });
+
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/messages?${params}`);
     if (!response.ok) throw new Error('Failed to get LinkedIn messages');
     return await response.json();
   } catch (error) {
     console.error('Error getting LinkedIn messages:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Get unread LinkedIn messages
+async function getUnreadLinkedInMessages(limit = 20) {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/messages/unread?limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to get unread LinkedIn messages');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting unread LinkedIn messages:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Get LinkedIn message summary and analytics
+async function getLinkedInMessageSummary() {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/messages/summary`);
+    if (!response.ok) throw new Error('Failed to get LinkedIn message summary');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting LinkedIn message summary:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Get LinkedIn accounts
+async function getLinkedInAccounts() {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/accounts`);
+    if (!response.ok) throw new Error('Failed to get LinkedIn accounts');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting LinkedIn accounts:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Get LinkedIn posts
+async function getLinkedInPosts(limit = 10) {
+  try {
+    const response = await fetch(`${LINKEDIN_SERVICE_URL}/api/linkedin/posts?limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to get LinkedIn posts');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting LinkedIn posts:', error);
     return { success: false, error: error.message };
   }
 }
@@ -644,7 +915,7 @@ You are ${userName}'s personal AI assistant with ADMIN PRIVILEGES and MCP integr
 
 🔧 ADMIN FEATURES:
 - Email management (send emails, check accounts, get recent emails)
-- LinkedIn integration (send messages, generate posts, manage content)
+- LinkedIn integration (AI-powered post generation, content enhancement, analytics)
 - WhatsApp integration (send messages, post status, manage groups)
 - Service status monitoring
 
@@ -654,9 +925,24 @@ You are ${userName}'s personal AI assistant with ADMIN PRIVILEGES and MCP integr
 - "Get recent emails"
 
 💼 LINKEDIN COMMANDS:
-- "Create LinkedIn post about [topic]"
-- "Send LinkedIn message to [person]"
-- "Check LinkedIn messages"
+📝 Post Creation:
+- "Create LinkedIn post about [topic]" - AI-enhanced professional posts
+- "Quick post [message]" - One-liner to enhanced post
+- "HackIndia post [status]" - HackIndia-specific achievement posts
+- "Achievement post [achievement]" - Professional achievement posts
+- "Insight post about [topic]" - Thought leadership content
+- "Engagement post [question]" - Question-based engagement posts
+
+📤 Publishing:
+- "Post this to LinkedIn: [content]" - Publish content directly
+- "Enhance LinkedIn post [content]" - Improve existing content
+
+📊 Analytics & Management:
+- "Check LinkedIn messages" - View recent messages
+- "Unread LinkedIn messages" - See unread messages with priority
+- "LinkedIn summary" - Message analytics and insights
+- "My LinkedIn posts" - View your published posts
+- "LinkedIn accounts" - Manage connected accounts
 
 📱 WHATSAPP COMMANDS:
 - "Send WhatsApp message to [number/group]"
@@ -789,31 +1075,182 @@ async function handleEmailCommand(question, userData, genAI) {
   }
 }
 
-// Handle LinkedIn commands
+// Enhanced LinkedIn command handler
 async function handleLinkedInCommand(question, userData, genAI) {
   try {
-    // Create LinkedIn post command
-    const postMatch = question.match(/create linkedin post about (.+)/i);
+    const lowerQuestion = question.toLowerCase();
     
-    if (postMatch) {
-      const [, topic] = postMatch;
+    // Create LinkedIn post commands
+    if (lowerQuestion.includes('create linkedin post') || lowerQuestion.includes('linkedin post about')) {
+      const postMatch = question.match(/create linkedin post about (.+)/i) || 
+                       question.match(/linkedin post about (.+)/i);
       
-      const result = await generateLinkedInPost(topic, 'professional');
+      if (postMatch) {
+        const [, topic] = postMatch;
+        
+        // Determine post type based on content
+        let postType = 'professional';
+        if (lowerQuestion.includes('achievement') || lowerQuestion.includes('won') || lowerQuestion.includes('success')) {
+          postType = 'achievement';
+        } else if (lowerQuestion.includes('insight') || lowerQuestion.includes('thought') || lowerQuestion.includes('opinion')) {
+          postType = 'insight';
+        } else if (lowerQuestion.includes('question') || lowerQuestion.includes('ask')) {
+          postType = 'engagement';
+        }
+        
+        const result = await generateLinkedInPost(topic, postType, { postImmediately: true });
+        
+        if (result.success) {
+          const postedStatus = result.data.posted ? 
+            `\n\n🚀 **POSTED TO LINKEDIN!**\n🔗 Post URL: ${result.data.postUrl}\n📊 Post ID: ${result.data.postId}` : 
+            `\n\nWould you like me to post this to LinkedIn? Use "post this to LinkedIn" to publish it.`;
+            
+          toast.success('LinkedIn post generated successfully!', {
+            position: "top-right",
+            autoClose: 3000,
+          });
+          
+          return `✅ LinkedIn ${postType} post generated successfully!${postedStatus}\n\n📝 Enhanced Content:\n${result.data.enhancedContent}\n\n💡 Improvements: ${result.data.improvements.join(', ')}\n\n📊 Character count: ${result.data.wordCount} words\n\n🎯 Post Type: ${postType}`;
+        } else {
+          return `Failed to generate LinkedIn post: ${result.message}`;
+        }
+      }
+    }
+    
+    // Quick post command
+    if (lowerQuestion.includes('quick post') || lowerQuestion.includes('post this')) {
+      const quickMatch = question.match(/quick post (.+)/i) || 
+                        question.match(/post this (.+)/i);
+      
+      if (quickMatch) {
+        const [, message] = quickMatch;
+        
+        const result = await generateQuickLinkedInPost(message, true);
+        
+        if (result.success) {
+          toast.success('Quick LinkedIn post generated!', {
+            position: "top-right",
+            autoClose: 3000,
+          });
+          
+          return `✅ Quick LinkedIn post generated!\n\n📝 Enhanced Content:\n${result.data.enhancedContent}\n\n💡 Improvements: ${result.data.improvements.join(', ')}\n\n📊 Character count: ${result.data.characterCount}\n\nUse "post this to LinkedIn" to publish it.`;
+        } else {
+          return `Failed to generate quick post: ${result.message}`;
+        }
+      }
+    }
+    
+    // Post immediately command
+    if (lowerQuestion.includes('post this to linkedin') || lowerQuestion.includes('post to linkedin')) {
+      // Extract content from the question or use the last generated content
+      const contentMatch = question.match(/post this to linkedin[:\s]*(.+)/i);
+      if (contentMatch) {
+        const [, content] = contentMatch;
+        const result = await createLinkedInPost(content.trim());
+        
+        if (result.success) {
+          toast.success('LinkedIn post published successfully!', {
+            position: "top-right",
+            autoClose: 3000,
+          });
+          
+          return `✅ LinkedIn post published successfully!\n\n📝 Content: ${content}\n\n🔗 Post URL: ${result.data.url}\n\n📊 Post ID: ${result.data.postId}\n\nYour post is now live on LinkedIn!`;
+        } else {
+          return `Failed to post to LinkedIn: ${result.message}`;
+        }
+      } else {
+        return `Please provide the content to post. Example: "Post this to LinkedIn: [your content]"`;
+      }
+    }
+    
+    // Generate specific post types
+    if (lowerQuestion.includes('hackindia post') || lowerQuestion.includes('hackindia')) {
+      const statusMatch = question.match(/hackindia post (.+)/i);
+      const status = statusMatch ? statusMatch[1] : 'finalist';
+      
+      const result = await generateHackIndiaPost(status);
+      
+      // Post to LinkedIn immediately after generation
+      if (result.success) {
+        const postResult = await createLinkedInPost(result.data.content);
+        if (postResult.success) {
+          result.data.posted = true;
+          result.data.postId = postResult.data.postId;
+          result.data.postUrl = postResult.data.url;
+        }
+      }
       
       if (result.success) {
-        toast.success('LinkedIn post generated successfully!', {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        
-        return `✅ LinkedIn post generated successfully!\n\n📝 Enhanced Content:\n${result.data.enhancedContent}\n\n💡 Improvements: ${result.data.improvements.join(', ')}\n\n📊 Character count: ${result.data.wordCount} words\n\nWould you like me to post this to LinkedIn?`;
+        const postedStatus = result.data.posted ? 
+          `\n\n🚀 **POSTED TO LINKEDIN!**\n🔗 Post URL: ${result.data.postUrl}\n📊 Post ID: ${result.data.postId}` : 
+          `\n\nUse "post this to LinkedIn" to publish it.`;
+          
+        return `✅ HackIndia ${status} post generated!${postedStatus}\n\n📝 Content:\n${result.data.content}\n\n📊 Word count: ${result.data.metadata.wordCount}\n\n🎯 Engagement score: ${result.data.metadata.estimatedEngagement.level}\n\n💡 Suggested media: ${result.data.suggestedMedia.join(', ')}`;
       } else {
-        return `Failed to generate LinkedIn post: ${result.message}`;
+        return `Failed to generate HackIndia post: ${result.message}`;
+      }
+    }
+    
+    if (lowerQuestion.includes('achievement post')) {
+      const achievementMatch = question.match(/achievement post (.+)/i);
+      if (achievementMatch) {
+        const [, achievement] = achievementMatch;
+        const result = await generateAchievementPost(achievement);
+        
+        if (result.success) {
+          return `✅ Achievement post generated!\n\n📝 Content:\n${result.data.content}\n\n📊 Word count: ${result.data.metadata.wordCount}\n\n🎯 Engagement score: ${result.data.metadata.estimatedEngagement.level}\n\nUse "post this to LinkedIn" to publish it.`;
+        } else {
+          return `Failed to generate achievement post: ${result.message}`;
+        }
+      }
+    }
+    
+    if (lowerQuestion.includes('insight post')) {
+      const insightMatch = question.match(/insight post about (.+)/i);
+      if (insightMatch) {
+        const [, topic] = insightMatch;
+        const result = await generateInsightPost(topic, `My thoughts on ${topic}`);
+        
+        if (result.success) {
+          return `✅ Insight post generated!\n\n📝 Content:\n${result.data.content}\n\n📊 Word count: ${result.data.metadata.wordCount}\n\n🎯 Engagement score: ${result.data.metadata.estimatedEngagement.level}\n\nUse "post this to LinkedIn" to publish it.`;
+        } else {
+          return `Failed to generate insight post: ${result.message}`;
+        }
+      }
+    }
+    
+    if (lowerQuestion.includes('engagement post') || lowerQuestion.includes('question post')) {
+      const questionMatch = question.match(/engagement post (.+)/i) || 
+                           question.match(/question post (.+)/i);
+      if (questionMatch) {
+        const [, questionText] = questionMatch;
+        const result = await generateEngagementPost(questionText);
+        
+        if (result.success) {
+          return `✅ Engagement post generated!\n\n📝 Content:\n${result.data.content}\n\n📊 Word count: ${result.data.metadata.wordCount}\n\n🎯 Expected responses: ${result.data.metadata.expectedResponses}\n\nUse "post this to LinkedIn" to publish it.`;
+        } else {
+          return `Failed to generate engagement post: ${result.message}`;
+        }
+      }
+    }
+    
+    // Enhance existing content
+    if (lowerQuestion.includes('enhance') && lowerQuestion.includes('linkedin')) {
+      const enhanceMatch = question.match(/enhance linkedin post (.+)/i);
+      if (enhanceMatch) {
+        const [, content] = enhanceMatch;
+        const result = await enhanceLinkedInPost(content);
+        
+        if (result.success) {
+          return `✅ LinkedIn post enhanced!\n\n📝 Enhanced Content:\n${result.data.enhancedContent}\n\n💡 Improvements: ${result.data.improvements.join(', ')}\n\nUse "post this to LinkedIn" to publish it.`;
+        } else {
+          return `Failed to enhance post: ${result.message}`;
+        }
       }
     }
     
     // Check LinkedIn messages command
-    if (question.toLowerCase().includes('linkedin messages') || question.toLowerCase().includes('check linkedin')) {
+    if (lowerQuestion.includes('linkedin messages') || lowerQuestion.includes('check linkedin')) {
       const messagesResponse = await getLinkedInMessages(5);
       
       if (!messagesResponse.success) {
@@ -833,7 +1270,81 @@ async function handleLinkedInCommand(question, userData, genAI) {
       return response;
     }
     
-    return "LinkedIn command not recognized. Try: 'Create LinkedIn post about [topic]' or 'Check LinkedIn messages'";
+    // Check unread messages
+    if (lowerQuestion.includes('unread linkedin') || lowerQuestion.includes('linkedin unread')) {
+      const unreadResponse = await getUnreadLinkedInMessages(10);
+      
+      if (!unreadResponse.success) {
+        return `Failed to get unread LinkedIn messages: ${unreadResponse.error}`;
+      }
+      
+      const messages = unreadResponse.data;
+      let response = `📬 Unread LinkedIn Messages (${messages.length}):\n\n`;
+      
+      messages.forEach((message, index) => {
+        response += `${index + 1}. From: ${message.from}\n`;
+        response += `   Subject: ${message.subject}\n`;
+        response += `   Priority: ${message.priority}\n`;
+        response += `   Preview: ${message.preview}\n\n`;
+      });
+      
+      return response;
+    }
+    
+    // LinkedIn message summary
+    if (lowerQuestion.includes('linkedin summary') || lowerQuestion.includes('linkedin analytics')) {
+      const summaryResponse = await getLinkedInMessageSummary();
+      
+      if (!summaryResponse.success) {
+        return `Failed to get LinkedIn summary: ${summaryResponse.error}`;
+      }
+      
+      const data = summaryResponse.data;
+      return `📊 LinkedIn Message Summary:\n\n📈 Total Messages: ${data.totalMessages}\n📬 Unread: ${data.unreadCount}\n👥 Unique Senders: ${data.uniqueSenders}\n\n📋 Categories:\n• Networking: ${data.categories.networking}\n• Job Opportunities: ${data.categories.job}\n• Collaboration: ${data.categories.collaboration}\n• Sales: ${data.categories.sales}\n\n🚨 Urgent Messages: ${data.urgentMessages}\n\nRecent Activity:\n${data.recentActivity.map((msg, i) => `${i+1}. ${msg.from}: ${msg.subject}`).join('\n')}`;
+    }
+    
+    // Get LinkedIn accounts
+    if (lowerQuestion.includes('linkedin accounts') || lowerQuestion.includes('linkedin account')) {
+      const accountsResponse = await getLinkedInAccounts();
+      
+      if (!accountsResponse.success) {
+        return `Failed to get LinkedIn accounts: ${accountsResponse.error}`;
+      }
+      
+      const accounts = accountsResponse.data;
+      let response = `🔗 LinkedIn Accounts (${accounts.length}):\n\n`;
+      
+      accounts.forEach((account, index) => {
+        response += `${index + 1}. ${account.name}\n`;
+        response += `   Status: ${account.status}\n`;
+        response += `   Provider: ${account.provider}\n`;
+        response += `   Profile: ${account.profileUrl || 'N/A'}\n\n`;
+      });
+      
+      return response;
+    }
+    
+    // Get LinkedIn posts
+    if (lowerQuestion.includes('my linkedin posts') || lowerQuestion.includes('linkedin posts')) {
+      const postsResponse = await getLinkedInPosts(5);
+      
+      if (!postsResponse.success) {
+        return `Failed to get LinkedIn posts: ${postsResponse.error}`;
+      }
+      
+      const posts = postsResponse.data;
+      let response = `📝 Recent LinkedIn Posts (${posts.length}):\n\n`;
+      
+      posts.forEach((post, index) => {
+        response += `${index + 1}. ${post.content?.substring(0, 100)}...\n`;
+        response += `   Likes: ${post.likes} | Comments: ${post.comments} | Shares: ${post.shares}\n`;
+        response += `   Date: ${new Date(post.createdAt).toLocaleString()}\n\n`;
+      });
+      
+      return response;
+    }
+    
+    return `LinkedIn command not recognized. Available commands:\n\n📝 Post Creation:\n• "Create LinkedIn post about [topic]"\n• "Quick post [message]"\n• "HackIndia post [status]"\n• "Achievement post [achievement]"\n• "Insight post about [topic]"\n• "Engagement post [question]"\n\n📤 Publishing:\n• "Post this to LinkedIn: [content]"\n\n📊 Analytics:\n• "Check LinkedIn messages"\n• "Unread LinkedIn messages"\n• "LinkedIn summary"\n• "My LinkedIn posts"\n• "LinkedIn accounts"\n\n🔧 Enhancement:\n• "Enhance LinkedIn post [content]"`;
   } catch (error) {
     console.error('Error handling LinkedIn command:', error);
     return `Error with LinkedIn command: ${error.message}`;
@@ -1164,8 +1675,15 @@ async function checkMCPStatus() {
   
   response += '\n💡 Available integrations:\n';
   response += '📧 Email: Send emails, check accounts, get recent emails\n';
-  response += '💼 LinkedIn: Generate posts, send messages, check messages\n';
+  response += '💼 LinkedIn: AI-powered post generation, content enhancement, analytics, message management\n';
   response += '📱 WhatsApp: Send messages, post status, manage groups\n';
+  
+  response += '\n🚀 LinkedIn Features:\n';
+  response += '• AI-enhanced post generation (achievement, insight, engagement)\n';
+  response += '• Quick post creation from one-liners\n';
+  response += '• Content enhancement and optimization\n';
+  response += '• Message analytics and management\n';
+  response += '• HackIndia-specific post templates\n';
   
   return response;
 }

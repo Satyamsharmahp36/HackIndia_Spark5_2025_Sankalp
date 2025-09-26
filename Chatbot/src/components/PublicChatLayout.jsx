@@ -195,6 +195,13 @@ const PublicChatLayout = ({ profileOwnerData, visitorName, onBackToWelcome }) =>
         }
       };
 
+      console.log('=== PUBLIC CHAT: DATA BEING PASSED TO AI ===');
+      console.log('profileOwnerData:', profileOwnerData);
+      console.log('combinedContext:', combinedContext);
+      console.log('combinedContext.prompt:', combinedContext.prompt);
+      console.log('combinedContext.user?.prompt:', combinedContext.user?.prompt);
+      console.log('============================================');
+
       const response = await getAnswer(input.trim(), combinedContext, combinedContext.presentData, conversationHistory);
       const botMessage = {
         id: Date.now() + 1,

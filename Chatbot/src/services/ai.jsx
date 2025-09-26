@@ -875,6 +875,18 @@ ${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question
      'No specific approved contributions yet.';
    
     const userName = userData?.name || userData?.user?.name || 'the user';
+    
+    // Debug: Log what data we're working with
+    console.log('=== AI SERVICE DEBUG INFO ===');
+    console.log('userData object:', userData);
+    console.log('userData.prompt:', userData.prompt);
+    console.log('userData.user?.prompt:', userData.user?.prompt);
+    console.log('userData.userPrompt:', userData.userPrompt);
+    console.log('userData.user?.userPrompt:', userData.user?.userPrompt);
+    console.log('userName:', userName);
+    console.log('question:', question);
+    console.log('=============================');
+
     const prompt = `
 You are ${userName}'s personal AI assistant. Answer based on the following details. Also answer the question's in person like instead of AI the ${userName} is answering questions.
 If a you don't have data for any information say "I don't have that information. If you have answers to this, please contribute."
@@ -883,7 +895,7 @@ Also note if question is like :- Do you know abotu this cors issue in deployment
 data not by the AI's knowledge . 
 
 Here's ${userName}'s latest data:
-${userData.prompt || 'No specific context provided'}
+${userData.user?.prompt || userData.prompt || 'No specific context provided'}
 
 And this is daily task of user ${userData.dailyTasks?.content || 'No daily tasks'}
 
@@ -897,10 +909,14 @@ ${contributionsKnowledgeBase}
 
 When providing links, give plain URLs like https://github.com/xxxx/
 
-This is the way I want the responses to be ${userData.userPrompt || 'Professional and helpful'}
+This is the way I want the responses to be ${userData.user?.userPrompt || userData.userPrompt || 'Professional and helpful'}
 
 IMPORTANT: Maintain context from the conversation history when answering follow-up questions. If the question seems like a follow-up to previous messages, make sure your response builds on the earlier conversation.
 `;
+
+    console.log('=== FINAL PROMPT BEING SENT TO GEMINI ===');
+    console.log('Full prompt:', prompt);
+    console.log('=========================================');
 
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.0-flash",

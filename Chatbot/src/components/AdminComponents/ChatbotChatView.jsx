@@ -55,19 +55,37 @@ const ChatbotChatView = ({ chatbot, onBack, currentUserData }) => {
     setIsLoading(true);
 
     try {
-      // Create a mock user data for the chatbot
-      const mockUserData = {
+      // Debug: Log the chatbot data received
+      console.log('=== CHATBOT DEBUG INFO ===');
+      console.log('Full chatbot object:', chatbot);
+      console.log('Chatbot prompt field:', chatbot.prompt);
+      console.log('Chatbot userPrompt field:', chatbot.userPrompt);
+      console.log('Chatbot name:', chatbot.name);
+      console.log('Chatbot username:', chatbot.username);
+      console.log('==========================');
+
+      // Use the actual chatbot data from the database
+      const chatbotUserData = {
         user: {
           name: chatbot.name,
           username: chatbot.username,
-          prompt: `You are ${chatbot.name}'s AI assistant. ${chatbot.description || 'You help answer questions about this person.'}`,
-          userPrompt: 'Be helpful, friendly, and informative in your responses.',
-          email: `${chatbot.username}@example.com`,
-          mobileNo: 'N/A'
+          prompt: chatbot.prompt || `You are ${chatbot.name}'s AI assistant. ${chatbot.description || 'You help answer questions about this person.'}`,
+          userPrompt: chatbot.userPrompt || 'Be helpful, friendly, and informative in your responses.',
+          email: chatbot.email || `${chatbot.username}@example.com`,
+          mobileNo: chatbot.mobileNo || 'N/A',
+          // Include other relevant fields from the chatbot
+          dailyTasks: chatbot.dailyTasks || null,
+          contributions: chatbot.contributions || [],
+          google: chatbot.google || null
         }
       };
 
-      const response = await getAnswer(input.trim(), mockUserData, mockUserData, conversationHistory);
+      console.log('=== USER DATA BEING PASSED TO AI ===');
+      console.log('chatbotUserData:', chatbotUserData);
+      console.log('Final prompt being used:', chatbotUserData.user.prompt);
+      console.log('====================================');
+
+      const response = await getAnswer(input.trim(), chatbotUserData, chatbotUserData, conversationHistory);
       
       const aiMessage = {
         id: Date.now() + 1,
