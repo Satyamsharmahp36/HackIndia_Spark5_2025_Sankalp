@@ -56,8 +56,12 @@ def run_recording_process(meeting_link, recording_id, task_id, username):
     else:
         print(f"Recording failed with return code {process.returncode}")
 
-def send_to_api(results, username, task_id, api_url=os.getenv("SERVER_API") + "/update-meeting-info"):
-    """Send the results along with username and task_id to the specified API endpoint"""
+def send_to_api(results, username, task_id, api_url=None):
+    if api_url is None:
+        server_api = os.getenv("SERVER_API", "http://localhost:5000")
+        api_url = server_api + "/update-meeting-info"
+    """Send theet's discover how computers handle real number calculations and why it's more complex than integer math!
+ results along with username and task_id to the specified API endpoint"""
     try:
         # Create payload with all required information
         payload = {
@@ -205,7 +209,8 @@ def record_meeting():
 def fetch_upcoming_meetings():
     """Fetch upcoming meetings from the API"""
     try:
-        response = requests.get(os.getenv("SERVER_API") + "/meeting-records")
+        server_api = os.getenv("SERVER_API", "http://localhost:5000")
+        response = requests.get(server_api + "/meeting-records")
         if response.status_code == 200:
             meetings = response.json()
             print(f"Successfully fetched {len(meetings)} meetings")
@@ -247,7 +252,8 @@ def check_upcoming_meetings():
                 
                 try:
                     # Delete the meeting record to prevent re-processing
-                    delete_url = f"{os.getenv('SERVER_API')}/delete-meeting-record/{meeting['taskId']}"
+                    server_api = os.getenv("SERVER_API", "http://localhost:5000")
+                    delete_url = f"{server_api}/delete-meeting-record/{meeting['taskId']}"
                     delete_response = requests.delete(delete_url)
                     
                     if delete_response.status_code == 200:

@@ -1,0 +1,22 @@
+{
+  "name": "unipile-email-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Email backend using Unipile API",
+  "main": "email-backend-server.js",
+  "scripts": {
+    "start": "node email-backend-server.js",
+    "dev": "node --watch email-backend-server.js",
+    "test": "node test-config.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "axios": "^1.5.0",
+    "form-data": "^4.0.0"
+  },
+  "keywords": ["email", "api", "unipile"],
+  "author": "Your Name",
+  "license": "MIT"
+}

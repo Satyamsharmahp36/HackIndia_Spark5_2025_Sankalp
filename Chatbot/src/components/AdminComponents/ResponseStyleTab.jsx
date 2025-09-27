@@ -7,10 +7,14 @@ const ResponseStyleTab = ({
   responseStyleContent, 
   setResponseStyleContent, 
   updateResponseStyle, 
-  clearResponseStyle,
-  isLoading 
+  clearResponseStyle, 
+  isLoading,
+  userData: propUserData
 }) => {
-  const { userData, refreshUserData } = useAppContext();
+  const { userData: contextUserData, refreshUserData } = useAppContext();
+  
+  // Use prop userData if provided, otherwise fall back to context
+  const userData = propUserData || contextUserData;
 
   const styleTemplates = [
     { name: "Professional", desc: "Formal, precise responses with authoritative tone" },
@@ -32,83 +36,75 @@ const ResponseStyleTab = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-y-auto shadow-lg">
-        <div className="bg-gray-900 px-4 py-3 border-b border-gray-700 flex justify-between items-center">
-          <h3 className="text-white font-medium flex items-center">
-            <MessageCircle className="w-5 h-5 mr-2 text-purple-400" />
+    <div className="space-y-4">
+      <div className="bg-white border border-gray-200 rounded-lg">
+        <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+          <h3 className="text-gray-700 font-medium flex items-center">
+            <MessageCircle className="w-4 h-4 mr-2 text-purple-600" />
             Response Style Configuration
           </h3>
           <div className="flex items-center text-xs text-gray-400">
-            <Clock className="w-4 h-4 mr-1" />
+            <Clock className="w-3 h-3 mr-1" />
             Last updated: Today
           </div>
         </div>
 
-        <div className="bg-gray-800 border border-gray-700 overflow-y-auto shadow-lg max-h-72 flex flex-col">
-          <div className="bg-gray-900 px-4 py-3 border-b border-gray-700">
-            <h3 className="text-white font-medium flex items-center">
-              <Settings className="w-5 h-5 mr-2 text-purple-400" />
+        <div className="p-4">
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              <Settings className="w-4 h-4 mr-2 text-purple-600" />
               Quick Templates
-            </h3>
-          </div>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto">
-            {styleTemplates.map((template, idx) => (
-              <motion.div
-                key={idx}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setResponseStyleContent(prevContent => 
-                  `${template.name.toUpperCase()} STYLE: ${template.desc}. ${prevContent ? '\n\nAdditional instructions: ' + prevContent : ''}`
-                )}
-                className="bg-gray-900 border border-gray-700 hover:border-purple-500 rounded-lg p-3 cursor-pointer transition-all"
-              >
-                <div className="font-medium text-white mb-1">{template.name}</div>
-                <div className="text-sm text-gray-400">{template.desc}</div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-2 bg-gray-900 bg-opacity-50">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-sm text-gray-300 mb-3">
-            <div className="flex items-start mb-2">
-              <Info className="w-5 h-5 text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-              <p>Define how you want the AI model to respond. You can specify behaviors like being funny, concise, or strict about certain topics.</p>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {styleTemplates.map((template, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setResponseStyleContent(prevContent => 
+                    `${template.name.toUpperCase()} STYLE: ${template.desc}. ${prevContent ? '\n\nAdditional instructions: ' + prevContent : ''}`
+                  )}
+                  className="text-left p-3 bg-gray-50 hover:bg-purple-50 border border-gray-200 hover:border-purple-300 rounded transition-colors"
+                >
+                  <div className="font-medium text-gray-900 text-sm mb-1">{template.name}</div>
+                  <div className="text-xs text-gray-600">{template.desc}</div>
+                </button>
+              ))}
             </div>
           </div>
-          <textarea
-            value={responseStyleContent}
-            onChange={(e) => setResponseStyleContent(e.target.value)}
-            className="w-full p-3 bg-gray-800 text-white focus:outline-none focus:ring-1 focus:ring-purple-500 rounded-lg h-48 resize-none font-mono text-sm border border-gray-700"
-            placeholder="Define how you want the AI to respond (e.g., funny, precise, strict, etc.)..."
-            disabled={isLoading}
-          />
+
+          <div className="mb-3">
+            <div className="flex items-start text-xs text-gray-600 mb-2">
+              <Info className="w-3 h-3 text-purple-600 mr-2 flex-shrink-0 mt-0.5" />
+              <p>Define how you want the AI model to respond. You can specify behaviors like being funny, concise, or strict about certain topics.</p>
+            </div>
+            <textarea
+              value={responseStyleContent}
+              onChange={(e) => setResponseStyleContent(e.target.value)}
+              className="w-full p-3 bg-gray-50 text-gray-900 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded border-0 h-32 resize-none text-sm"
+              placeholder="Define how you want the AI to respond (e.g., funny, precise, strict, etc.)..."
+              disabled={isLoading}
+            />
+          </div>
         </div>
       </div>
       
-      <div className="flex space-x-4">
-        <motion.button
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
+      <div className="flex space-x-3">
+        <button
           onClick={handleUpdate}
           disabled={isLoading}
-          className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg shadow-lg hover:shadow-purple-500/30 transition-all font-medium flex items-center justify-center"
+          className="flex-1 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors font-medium flex items-center justify-center text-sm"
         >
-          <Save className="w-5 h-5 mr-2" />
+          <Save className="w-4 h-4 mr-2" />
           <span>{isLoading ? 'Saving...' : 'Save Response Style'}</span>
-        </motion.button>
+        </button>
         
-        <motion.button
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={handleClear}
           disabled={isLoading}
-          className="py-4 px-6 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-lg hover:from-red-700 hover:to-red-600 shadow-lg hover:shadow-red-500/30 transition-all font-medium flex items-center justify-center"
+          className="py-2 px-4 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors font-medium flex items-center justify-center text-sm"
         >
-          <X className="w-5 h-5 mr-2" />
+          <X className="w-4 h-4 mr-2" />
           <span>{isLoading ? 'Clearing...' : 'Clear'}</span>
-        </motion.button>
+        </button>
       </div>
     </div>
   );

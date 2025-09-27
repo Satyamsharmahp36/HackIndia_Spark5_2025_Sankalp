@@ -3,13 +3,16 @@ import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-
 import { motion, AnimatePresence } from 'framer-motion';
 import Cookies from 'js-cookie';
 import HomePage from './components/HomePage';
-import UserVerificationPage from './components/UserVerificationPage';
+import LandingPage from './components/LandingPage';
+import AdminAuthPage from './components/AdminAuthPage';
+import AdminChatRoute from './components/AdminChatRoute';
 import { useAppContext } from './Appcontext';
 
 const UserChatRoute = ({ onUserVerified }) => {
   const { username } = useParams();
   const [loading, setLoading] = useState(true);
   const [userExists, setUserExists] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const { setUserName, refreshUserData, isInitialized } = useAppContext();
   
   useEffect(() => {
@@ -19,7 +22,13 @@ const UserChatRoute = ({ onUserVerified }) => {
         const data = await response.json();
         
         if (response.ok) {
-          setUserName(username); // This will trigger context update
+          // Check if current user is the owner of this profile
+          const currentUserName = Cookies.get('userName');
+          if (currentUserName === username) {
+            setIsOwner(true);
+            setUserName(username); // This will trigger context update
+          }
+          
           onUserVerified(data);
           setUserExists(true);
         }
@@ -37,11 +46,11 @@ const UserChatRoute = ({ onUserVerified }) => {
   
   if (!isInitialized || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-800">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"
         />
       </div>
     );
@@ -51,7 +60,7 @@ const UserChatRoute = ({ onUserVerified }) => {
     return <Navigate to="/" />;
   }
   
-  return <HomePage />;
+  return <HomePage isOwner={isOwner} />;
 };
 
 const AppContent = () => {
@@ -153,15 +162,12 @@ const AppContent = () => {
               path="/" 
               element={
                 <motion.div
-                  key="home-verification"
+                  key="landing-page"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <UserVerificationPage 
-                    onUserVerified={handleUserVerified}
-                    onGetStarted={handleGetStarted}
-                  />
+                  <LandingPage />
                 </motion.div>
               } 
             />
@@ -169,6 +175,25 @@ const AppContent = () => {
             <Route 
               path="home/:username" 
               element={<UserChatRoute onUserVerified={handleUserVerified} />} 
+            />
+            
+            <Route 
+              path="admin" 
+              element={
+                <motion.div
+                  key="admin-auth"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <AdminAuthPage />
+                </motion.div>
+              } 
+            />
+            
+            <Route 
+              path="admin/chat/:username" 
+              element={<AdminChatRoute />} 
             />
           </Routes>
         )}

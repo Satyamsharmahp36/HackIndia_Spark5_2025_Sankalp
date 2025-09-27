@@ -11,11 +11,28 @@ export const AppProvider = ({ children }) => {
   const [presentUserName, setPresentUserName] = useState(() => Cookies.get('presentUserName') || null);
   const [per, setPer] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [fetchAttempts, setFetchAttempts] = useState(0);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
 
-  // Helper function to refresh user data
+  // Helper function to refresh user data with debouncing
   const refreshUserData = async () => {
     try {
       if (!userName) return null;
+      
+      // Debounce: Don't fetch if we've tried recently
+      const now = Date.now();
+      if (now - lastFetchTime < 5000) { // 5 second debounce
+        return userData;
+      }
+      
+      // Limit fetch attempts to prevent infinite loops
+      if (fetchAttempts > 3) {
+        console.warn("Too many fetch attempts, stopping to prevent infinite loop");
+        return userData;
+      }
+      
+      setLastFetchTime(now);
+      setFetchAttempts(prev => prev + 1);
       
       const response = await fetch(`${import.meta.env.VITE_BACKEND}/verify-user/${userName}`, {
         method: "GET",
@@ -27,6 +44,7 @@ export const AppProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         setUserData(data);
+        setFetchAttempts(0); // Reset on success
         return data;
       } else {
         console.error(`Failed to refresh user data: ${response.status}`);
@@ -38,10 +56,21 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Helper function to refresh present user data
+  // Helper function to refresh present user data with debouncing
   const refreshPresentUserData = async () => {
     try {
       if (!presentUserName) return null;
+      
+      // Use same debouncing logic for present user data
+      const now = Date.now();
+      if (now - lastFetchTime < 5000) { // 5 second debounce
+        return presentUserData;
+      }
+      
+      if (fetchAttempts > 3) {
+        console.warn("Too many present user fetch attempts, stopping");
+        return presentUserData;
+      }
       
       const response = await fetch(`${import.meta.env.VITE_BACKEND}/verify-user/${presentUserName}`, {
         method: "GET",

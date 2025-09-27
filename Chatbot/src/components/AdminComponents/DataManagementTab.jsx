@@ -3,8 +3,11 @@ import { motion } from 'framer-motion';
 import { Bot, Clock, Save, X } from 'lucide-react';
 import { useAppContext } from '../../Appcontext';
 
-const DataManagementTab = ({ promptContent, setPromptContent, updatePrompt, clearPrompt, isLoading }) => {
-  const { userData, refreshUserData } = useAppContext();
+const DataManagementTab = ({ promptContent, setPromptContent, updatePrompt, clearPrompt, isLoading, userData: propUserData }) => {
+  const { userData: contextUserData, refreshUserData } = useAppContext();
+  
+  // Use prop userData if provided, otherwise fall back to context
+  const userData = propUserData || contextUserData;
 
   const handleUpdate = async () => {
     await updatePrompt();
@@ -17,51 +20,47 @@ const DataManagementTab = ({ promptContent, setPromptContent, updatePrompt, clea
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-y-auto shadow-lg">
-        <div className="bg-gray-900 px-4 py-3 border-b border-gray-700 flex justify-between items-center">
-          <h3 className="text-white font-medium flex items-center">
-            <Bot className="w-5 h-5 mr-2 text-blue-400" />
+    <div className="space-y-4">
+      <div className="bg-white border border-gray-200 rounded-lg ">
+        <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center ">
+          <h3 className="text-gray-700 font-medium flex items-center">
+            <Bot className="w-4 h-4 mr-2 text-purple-600" />
             Enter Data
           </h3>
           <div className="flex items-center text-xs text-gray-400">
-            <Clock className="w-4 h-4 mr-1" />
+            <Clock className="w-3 h-3 mr-1" />
             Last updated: Today
           </div>
         </div>
-        <div className="p-1">
+        <div className="p-4">
           <textarea
             value={promptContent}
             onChange={(e) => setPromptContent(e.target.value)}
-            className="w-full p-3 bg-gray-800 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-lg h-64 resize-none font-mono text-sm"
+            className="w-full p-3 bg-gray-50 text-gray-900 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded border-0 h-96  resize-none text-sm"
             placeholder="Enter your Data here..."
             disabled={isLoading}
           />
         </div>
       </div>
       
-      <div className="flex space-x-4">
-        <motion.button
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
+      <div className="flex space-x-3">
+        <button
           onClick={handleUpdate}
           disabled={isLoading}
-          className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all font-medium flex items-center justify-center"
+          className="flex-1 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors font-medium flex items-center justify-center text-sm"
         >
-          <Save className="w-5 h-5 mr-2" />
+          <Save className="w-4 h-4 mr-2" />
           <span>{isLoading ? 'Saving...' : 'Save Changes'}</span>
-        </motion.button>
+        </button>
         
-        <motion.button
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={handleClear}
           disabled={isLoading}
-          className="py-4 px-6 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-lg hover:from-red-700 hover:to-red-600 shadow-lg hover:shadow-red-500/30 transition-all font-medium flex items-center justify-center"
+          className="py-2 px-4 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors font-medium flex items-center justify-center text-sm"
         >
-          <X className="w-5 h-5 mr-2" />
+          <X className="w-4 h-4 mr-2" />
           <span>{isLoading ? 'Clearing...' : 'Clear'}</span>
-        </motion.button>
+        </button>
       </div>
     </div>
   );

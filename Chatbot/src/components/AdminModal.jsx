@@ -12,7 +12,7 @@ import TabNavigation from './AdminComponents/TabNavigation';
 import NotificationMessage from './AdminComponents/NotificationMessage';
 import LoadingOverlay from './AdminComponents/LoadingOverlay';
 
-const AdminModal = ({ isOpen, onClose, onPromptUpdated, password }) => {
+const AdminModal = ({ isOpen = true, onClose, onPromptUpdated, password }) => {
   const { userData, refreshUserData } = useAppContext();
   
   const [passwordInput, setPasswordInput] = useState('');

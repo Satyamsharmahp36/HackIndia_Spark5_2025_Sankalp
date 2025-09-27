@@ -1,14 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from 'react-toastify';
 
-async function detectTaskRequest(question, userData, conversationContext = "") {
+export async function detectTaskRequest(question, userData, conversationContext = "") {
   try {
-    if (!userData || !userData.geminiApiKey) {
+    // Use environment variable for Gemini API key
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    // console.log("apiKey", apiKey);
+    
+    if (!apiKey) {
       return { isTask: false, error: "No Gemini API key available" };
     }
 
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const detectionPrompt = `
     Analyze the following text and determine if it contains a request for a future task, follow-up, or reminder.
@@ -98,12 +102,12 @@ function isTimeInPast(dateStr, timeStr) {
 
 async function extractMeetingDetails(message, userData) {
   try {
-    if (!userData || !userData.geminiApiKey) {
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    if (!apiKey) {
       return null;
     }
-
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
@@ -206,7 +210,7 @@ function generateUniqueTaskId() {
   return `${seconds}${minutes}${hours}${day}${month}${year}`;
 }
 
-async function createTask(taskQuestion, taskDescription, userData, presentData, topicContext = null, meetingDetails = null) {
+export async function createTask(taskQuestion, taskDescription, userData, presentData, topicContext = null, meetingDetails = null) {
   try {
     const uniqueTaskId = generateUniqueTaskId();
     
@@ -231,7 +235,6 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
       description: meetingDetails.description || enhancedDescription
     } : null;
 
-    console.log("rfgnkifniuenfiu wefn", topicContext);
 
     const response = await fetch(`${import.meta.env.VITE_BACKEND}/create-task`, {
       method: 'POST',
@@ -239,7 +242,7 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userId: userData.username,
+        userId: userData.username || userData.user?.username,
         taskQuestion: taskQuestion,
         taskDescription: enhancedDescription,
         uniqueTaskId: uniqueTaskId,
@@ -255,7 +258,8 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
     }
     const result = await response.json();
     
-    toast.success(`Task added to ${userData.name}'s to-do list!`, {
+    const userName = userData.name || userData.user?.name || 'the user';
+    toast.success(`Task added to ${userName}'s to-do list!`, {
       position: "top-right",
       autoClose: 3000,
       hideProgressBar: false,
@@ -275,14 +279,17 @@ async function createTask(taskQuestion, taskDescription, userData, presentData, 
   }
 }
 
-async function extractConversationTopic(messages, question, userData) {
-  if (!messages || messages.length < 2 || !userData.geminiApiKey) {
+export async function extractConversationTopic(messages, question, userData) {
+  if (!messages || messages.length < 2) {
     return null;
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    if (!apiKey) return null;
+    
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     
     const recentMessages = messages.slice(-5);
     const formattedHistory = recentMessages.map(msg => 
@@ -320,8 +327,7 @@ async function extractConversationTopic(messages, question, userData) {
 }
 
 // Function to handle meeting confirmations or requesting additional meeting details
-// Function to handle meeting confirmations or requesting additional meeting details
-function processMeetingState(currentMessage, messages) {
+export function processMeetingState(currentMessage, messages) {
   if (messages.length < 2) return { type: "none" };
   
   const currentMessageLower = currentMessage.toLowerCase().trim();
@@ -334,15 +340,24 @@ function processMeetingState(currentMessage, messages) {
     currentMessageLower.endsWith(' ' + keyword)
   );
   
-  const previousBotMessage = messages[messages.length - 2];
+  // Find the last bot message in the conversation
+  let previousBotMessage = null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].type === 'bot') {
+      previousBotMessage = messages[i];
+      break;
+    }
+  }
 
   // Log for debugging purposes
   console.log("Previous bot message:", previousBotMessage?.content);
   console.log("Current user message:", currentMessage);
+  console.log("Previous bot message type:", previousBotMessage?.type);
+  
+  if (!previousBotMessage) return { type: "none" };
   
   // Check if previous message was requesting meeting details
-  if (previousBotMessage.type === 'bot' && 
-      previousBotMessage.content.includes('Please provide the following details for your meeting')) {
+  if (previousBotMessage.content.includes('Please provide the following details for your meeting')) {
     console.log("Detected meeting details being provided");
     return { 
       type: "meetingDetailsProvided",
@@ -351,10 +366,11 @@ function processMeetingState(currentMessage, messages) {
   }
   
   // Check if previous message was a meeting confirmation request
-  if (isConfirmation && previousBotMessage.type === 'bot' && 
+  if (isConfirmation && 
       (previousBotMessage.content.includes('want to have a meeting') || 
        previousBotMessage.content.includes('want to schedule a meeting') ||
-       previousBotMessage.content.includes('do you want to confirm this'))) {
+       previousBotMessage.content.includes('do you want to confirm this') ||
+       previousBotMessage.content.includes('Please respond with "yes" to confirm'))) {
     console.log("Detected meeting confirmation");
     return { 
       type: "meetingConfirmed" 
@@ -362,7 +378,7 @@ function processMeetingState(currentMessage, messages) {
   }
   
   // Check if this is a final confirmation after all details are provided
-  if (isConfirmation && previousBotMessage.type === 'bot' && 
+  if (isConfirmation && 
       previousBotMessage.content.includes('I will be scheduling a')) {
     console.log("Detected final confirmation");
     return { 
@@ -373,12 +389,12 @@ function processMeetingState(currentMessage, messages) {
   return { type: "none" };
 }
 
-async function parseMeetingDetailsResponse(response, userData) {
+export async function parseMeetingDetailsResponse(response, userData) {
   try {
-    if (!userData || !userData.geminiApiKey) return null;
-    
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    if (!apiKey) return null;
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     
     // Get current date and time information
     const now = new Date();
@@ -547,9 +563,12 @@ function extractDurationFromMessage(message) {
 let pendingMeetingDetails = {};
 
 export async function getAnswer(question, userData, presentData, conversationHistory = []) {
+  console.log("getAnswer called with:", { question, userData, presentData, conversationHistory });
   try {
-    if (!userData || !userData.geminiApiKey) {
-      return "No Gemini API key available for this user.";
+    // Use environment variable for Gemini API key
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY;
+    if (!apiKey) {
+      return "No Gemini API key available.";
     }
 
     const urlPattern = /(https?:\/\/[^\s]+)/g;
@@ -640,7 +659,8 @@ if (missingDetails.length === 0) {
   } else {
     // All details are available and valid, ask for final confirmation
     const meetingTitle = pendingMeetingDetails.title || conversationTopic || "the discussed topic";
-    return `I will be scheduling a meeting with ${userData.name} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+    const userName = userData?.name || userData?.user?.name || 'the user';
+    return `I will be scheduling a meeting with ${userName} about ${meetingTitle} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
   }
 } else {
   // Missing some details, ask for them - but more simply
@@ -699,7 +719,8 @@ if (missingDetails.length === 0) {
           // Clear the pending meeting details
           pendingMeetingDetails = {};
           
-          return `Great! I've scheduled a meeting with ${userData.name} about ${meetingContext} on ${savedDate} at ${savedTime} for ${savedDuration} minutes. Tracking ID: ${uniqueTaskId}. ${userData.name} will be in touch with you soon.`;
+          const userName = userData?.name || userData?.user?.name || 'the user';
+          return `Great! I've scheduled a meeting with ${userName} about ${meetingContext} on ${savedDate} at ${savedTime} for ${savedDuration} minutes. Tracking ID: ${uniqueTaskId}. ${userName} will be in touch with you soon.`;
         } catch (error) {
           console.error("Error creating meeting task:", error);
           return "I tried to schedule the meeting, but there was an issue. Please try again later.";
@@ -754,7 +775,8 @@ if (missingDetails.length === 0) {
       
       // If we have all details already, go straight to confirmation
       if (initialDetailsFound) {
-        return `I will be scheduling a meeting with ${userData.name} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+        const userName = userData?.name || userData?.user?.name || 'the user';
+        return `I will be scheduling a meeting with ${userName} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
       }
       
       // Ask for any missing meeting details - in a simple, friendly way
@@ -767,7 +789,8 @@ if (missingDetails.length === 0) {
         return `Please provide the following details for your meeting: ${missingDetails.join(', ')}.`;
       } else {
         // All details are available, ask for final confirmation
-        return `I will be scheduling a meeting with ${userData.name} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
+        const userName = userData?.name || userData?.user?.name || 'the user';
+        return `I will be scheduling a meeting with ${userName} about ${meetingTopic} on ${pendingMeetingDetails.date} at ${pendingMeetingDetails.time} for ${pendingMeetingDetails.duration} minutes. Do you want to confirm this? Press yes to confirm.`;
       }
     }
 
@@ -791,7 +814,8 @@ if (missingDetails.length === 0) {
           };
         }
         
-        return `Are you sure you want to have a meeting with ${userData.name} about ${meetingTopic}? (Please respond with "yes" to confirm)`;
+        const userName = userData?.name || userData?.user?.name || 'the user';
+        return `Are you sure you want to have a meeting with ${userName} about ${meetingTopic}? (Please respond with "yes" to confirm)`;
       }
      
       if (presentData) {
@@ -830,7 +854,8 @@ if (missingDetails.length === 0) {
           );
          
           const uniqueTaskId = taskResult.task.uniqueTaskId;
-          return `I've added this to ${userData.name}'s to-do list with tracking ID ${uniqueTaskId}. ${userData.name} will follow up with you about this task later.`;
+          const userName = userData?.name || userData?.user?.name || 'the user';
+          return `I've added this to ${userName}'s to-do list with tracking ID ${uniqueTaskId}. ${userName} will follow up with you about this task later.`;
         } catch (taskError) {
           console.error("Task creation error:", taskError);
           return "I noticed this is a task request, but there was an issue scheduling it.";
@@ -840,7 +865,7 @@ if (missingDetails.length === 0) {
       }
     }
 
-    const genAI = new GoogleGenerativeAI(userData.geminiApiKey);
+    const genAI = new GoogleGenerativeAI(apiKey);
     
     const approvedContributions = userData.contributions?.filter(contribution => 
      contribution.status === "approved") || [];
@@ -849,17 +874,30 @@ if (missingDetails.length === 0) {
 ${approvedContributions.map((c, index) => `[${index + 1}] Question: ${c.question}\nAnswer: ${c.answer}`).join('\n\n')}` : 
      'No specific approved contributions yet.';
    
+    const userName = userData?.name || userData?.user?.name || 'the user';
+    
+    // Debug: Log what data we're working with
+    console.log('=== AI SERVICE DEBUG INFO ===');
+    console.log('userData object:', userData);
+    console.log('userData.prompt:', userData.prompt);
+    console.log('userData.user?.prompt:', userData.user?.prompt);
+    console.log('userData.userPrompt:', userData.userPrompt);
+    console.log('userData.user?.userPrompt:', userData.user?.userPrompt);
+    console.log('userName:', userName);
+    console.log('question:', question);
+    console.log('=============================');
+
     const prompt = `
-You are ${userData.name}'s personal AI assistant. Answer based on the following details. Also answer the question's in person like instead of AI the ${userData.name} is answering questions.
+You are ${userName}'s personal AI assistant. Answer based on the following details. Also answer the question's in person like instead of AI the ${userName} is answering questions.
 If a you don't have data for any information say "I don't have that information. If you have answers to this, please contribute."
 Answer questions in a bit elaborate manner and can also add funny things if needed.
-Also note if question is like :- Do you know abotu this cors issue in deployment , then it mean's this question is asked from ${userData.name} , not from AI , so answers on the bases of ${userData.name}
+Also note if question is like :- Do you know abotu this cors issue in deployment , then it mean's this question is asked from ${userName} , not from AI , so answers on the bases of ${userName}
 data not by the AI's knowledge . 
 
-Here's ${userData.name}'s latest data:
-${userData.prompt || 'No specific context provided'}
+Here's ${userName}'s latest data:
+${userData.user?.prompt || userData.prompt || 'No specific context provided'}
 
-And this is daily task of user ${userData.dailyTasks.content}
+And this is daily task of user ${userData.dailyTasks?.content || 'No daily tasks'}
 
 ${conversationHistory.length > 0 ? 'RECENT CONVERSATION HISTORY:\n' + formattedHistory + '\n\n' : ''}
 
@@ -871,13 +909,17 @@ ${contributionsKnowledgeBase}
 
 When providing links, give plain URLs like https://github.com/xxxx/
 
-This is the way I want the responses to be ${userData.userPrompt}
+This is the way I want the responses to be ${userData.user?.userPrompt || userData.userPrompt || 'Professional and helpful'}
 
 IMPORTANT: Maintain context from the conversation history when answering follow-up questions. If the question seems like a follow-up to previous messages, make sure your response builds on the earlier conversation.
 `;
 
+    console.log('=== FINAL PROMPT BEING SENT TO GEMINI ===');
+    console.log('Full prompt:', prompt);
+    console.log('=========================================');
+
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       generationConfig: {
         maxOutputTokens: 512,
         temperature: 0.8,

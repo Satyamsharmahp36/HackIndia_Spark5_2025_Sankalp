@@ -26,17 +26,27 @@ import {
   Mic,
   Volume2,
   VolumeX,
+  Search,
+  BrainCircuit,
+  Home,
+  LogOut,
+  ArrowUp,
+  Menu,
 } from "lucide-react";
 import { getAnswer } from "../services/ai";
+import { getAdminAnswer } from "../services/adminai";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import { motion, AnimatePresence } from "framer-motion";
 import ContributionForm from "./ContributionForm";
+import AdminPanel from "./AdminPanel";
+import Cookies from "js-cookie";
 import AdminModal from "./AdminModal";
 import MessageContent from "./MessageContent";
 import languages from "../services/languages";
 import { useAppContext } from "../Appcontext";
+import AIVoice from "./AIVoice";
 
 const ChatBot = () => {
   const {
@@ -61,6 +71,7 @@ const ChatBot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showContributionForm, setShowContributionForm] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [promptUpdated, setPromptUpdated] = useState(false);
   const [lastQuestion, setLastQuestion] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -76,27 +87,52 @@ const ChatBot = () => {
   const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [showTranslationInfo, setShowTranslationInfo] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-
-  // Track voice input messages
-  const [voiceInputMessages, setVoiceInputMessages] = useState(new Set());
+  const [isFocused, setIsFocused] = useState(false);
+  const [showMicPermissionPrompt, setShowMicPermissionPrompt] = useState(false);
+  const [isRefreshingContext, setIsRefreshingContext] = useState(false);
 
   const {
     transcript,
     listening,
     resetTranscript,
     browserSupportsSpeechRecognition,
-  } = useSpeechRecognition();
+    isMicrophoneAvailable,
+  } = useSpeechRecognition({
+    clearTranscriptOnListen: true,
+    commands: [
+      {
+        command: "*",
+        callback: (command) =>
+          console.log(`Voice command detected: ${command}`),
+      },
+    ],
+  });
 
   const [isVoiceInput, setIsVoiceInput] = useState(false);
-  // Track if voice input is actively listening (not just transcript available)
-  const [isActivelyListening, setIsActivelyListening] = useState(false);
-  // Track if message originated from voice (separate from current voice input state)
-  const [messageFromVoice, setMessageFromVoice] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const modalRef = useRef(null);
   const languageDropdownRef = useRef(null);
+
+  // Helper function to check if user is admin based on URL
+  const isAdminUser = () => {
+    const currentURL = window.location.href;
+    const currentPath = window.location.pathname;
+    
+    // Direct check for the specific URL pattern
+    const isAdmin = currentURL.includes('/admin/chat/') || 
+                   currentPath.includes('/admin/chat/') ||
+                   currentURL.includes('admin') ||
+                   currentPath.includes('admin');
+    
+    console.log('ChatBot - Simple admin check:');
+    console.log('  URL:', currentURL);
+    console.log('  Path:', currentPath);
+    console.log('  Contains admin:', isAdmin);
+    
+    return isAdmin;
+  };
 
   const scrollbarStyles = `
   ::-webkit-scrollbar {
@@ -105,36 +141,94 @@ const ChatBot = () => {
   }
   
   ::-webkit-scrollbar-track {
-    background: #1f2937; /* gray-800 */
+    background: #f3f4f6; /* gray-100 */
     border-radius: 10px;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: #4b5563; /* gray-600 */
+    background: #d1d5db; /* gray-300 */
     border-radius: 10px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: #6b7280; /* gray-500 */
+    background: #9ca3af; /* gray-400 */
   }
   
   * {
     scrollbar-width: thin;
-    scrollbar-color: #4b5563 #1f2937; 
+    scrollbar-color: #d1d5db #f3f4f6; 
   }
 `;
-
   useEffect(() => {
     console.log("Current input:", input);
   }, [input]);
 
   useEffect(() => {
-    console.log("Speech transcript:", transcript);
-  }, [transcript]);
+    console.log("Speech transcript updated:", transcript);
+    console.log("Listening status:", listening);
+    console.log(
+      "Browser supports speech recognition:",
+      browserSupportsSpeechRecognition
+    );
+    console.log("Microphone available:", isMicrophoneAvailable);
+  }, [
+    transcript,
+    listening,
+    browserSupportsSpeechRecognition,
+    isMicrophoneAvailable,
+  ]);
+
+  // Check for microphone permissions when component mounts
+  useEffect(() => {
+    if (browserSupportsSpeechRecognition) {
+      // Check if we already have microphone permission
+      navigator.permissions
+        .query({ name: "microphone" })
+        .then((permissionStatus) => {
+          console.log("Microphone permission status:", permissionStatus.state);
+          if (permissionStatus.state === "granted") {
+            // We already have permission
+          } else if (permissionStatus.state === "prompt") {
+            // We'll be prompted when we try to use the microphone
+          } else if (permissionStatus.state === "denied") {
+            // Permission has been denied
+            setShowMicPermissionPrompt(true);
+          }
+
+          // Listen for changes to permission state
+          permissionStatus.onchange = () => {
+            console.log(
+              "Microphone permission changed to:",
+              permissionStatus.state
+            );
+            if (permissionStatus.state === "granted") {
+              setShowMicPermissionPrompt(false);
+            } else if (permissionStatus.state === "denied") {
+              setShowMicPermissionPrompt(true);
+            }
+          };
+        })
+        .catch((error) => {
+          console.error("Error checking microphone permission:", error);
+        });
+    }
+  }, [browserSupportsSpeechRecognition]);
 
   useEffect(() => {
     const initializeChat = async () => {
       if (userData?.user) {
+        // Check if this is a different user than the current one
+        const isDifferentUser = currentUserData?.user?.name !== userData.user.name;
+        
+        if (isDifferentUser) {
+          console.log(`[User Switch] Switching from ${currentUserData?.user?.name || 'none'} to ${userData.user.name}`);
+          // Clear previous user's data
+          setCurrentUserData(null);
+          setMessages([]);
+          setInput("");
+          setIsInitialized(false);
+        }
+        
         setCurrentUserData(userData);
         setIsInitialized(true);
 
@@ -160,11 +254,17 @@ const ChatBot = () => {
             ];
 
         setMessages(userChatHistory);
+      } else {
+        // No user data, clear everything
+        setCurrentUserData(null);
+        setMessages([]);
+        setInput("");
+        setIsInitialized(false);
       }
     };
 
     initializeChat();
-  }, [userData, presentUserName]);
+  }, [userData, presentUserName, currentUserData?.user?.name]);
 
   useEffect(() => {
     if (!chatHistoryKey || messages.length === 0) return;
@@ -249,6 +349,15 @@ const ChatBot = () => {
     setShowDeleteModal(false);
   };
 
+  const handleLogout = async () => {
+    // Remove cookies and refresh context
+    Cookies.remove("presentUserName");
+    await refreshPresentUserData(); // Wait for context to update
+
+    // Navigate back to the home page
+    navigate('/');
+  };
+
   const handleDeleteHistory = () => {
     setIsDeleting(true);
 
@@ -285,61 +394,82 @@ const ChatBot = () => {
     }
   };
 
-  // Updated handleMicClick to better track listening state
   const handleMicClick = () => {
     if (listening) {
+      console.log("Stopping speech recognition");
       SpeechRecognition.stopListening();
       setIsVoiceInput(false);
-      setIsActivelyListening(false);
       setInput(transcript);
     } else {
+      console.log("Starting speech recognition");
       setInput("");
       resetTranscript();
+      console.log("resetTranscript called");
       setIsVoiceInput(true);
-      setIsActivelyListening(true);
-      SpeechRecognition.startListening({
-        continuous: false,
-        language:
-          selectedLanguage.code === "auto" ? "en-US" : selectedLanguage.code,
-      });
+
+      // Check if browser supports speech recognition
+      if (!browserSupportsSpeechRecognition) {
+        console.error("Browser doesn't support speech recognition");
+        return;
+      }
+
+      // Check if microphone is available
+      if (!isMicrophoneAvailable) {
+        console.error("Microphone is not available");
+        setShowMicPermissionPrompt(true);
+        // Try to request microphone permission
+        navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .then(() => {
+            console.log("Microphone permission granted");
+            setShowMicPermissionPrompt(false);
+            // Try starting speech recognition again
+            SpeechRecognition.startListening({
+              continuous: true,
+              language:
+                selectedLanguage.code === "auto"
+                  ? "en-US"
+                  : selectedLanguage.code,
+            });
+          })
+          .catch((err) => {
+            console.error("Error getting microphone permission:", err);
+            setShowMicPermissionPrompt(true);
+          });
+        return;
+      }
+
+      try {
+        SpeechRecognition.startListening({
+          continuous: true, // Keep listening until stopped
+          language:
+            selectedLanguage.code === "auto" ? "en-US" : selectedLanguage.code,
+        });
+      } catch (error) {
+        console.error("Error starting speech recognition:", error);
+      }
     }
   };
-  
-  // Updated handleVoiceSend to mark message as from voice
+  // Send voice transcript as message
   const handleVoiceSend = () => {
     setInput(transcript);
     resetTranscript();
     setIsVoiceInput(false);
-    setIsActivelyListening(false);
-    setMessageFromVoice(true); // MARK: This message came from voice
-    // Don't call handleSendMessage here, let the user click the send button
+    handleSendMessage();
   };
-  
-  // Updated handleVoiceCancel
+  // Cancel voice input
   const handleVoiceCancel = () => {
     SpeechRecognition.stopListening();
     resetTranscript();
     setIsVoiceInput(false);
-    setIsActivelyListening(false);
     setInput("");
   };
-
-  // Function to stop speaking
-  const stopSpeaking = () => {
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
-  };
-
-  // Updated speakText function
   const speakText = (text, languageCode) => {
     if (!("speechSynthesis" in window)) {
       console.warn("Speech Synthesis not supported in this browser");
       return;
     }
 
-    // Cancel any ongoing speech first
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -384,7 +514,6 @@ const ChatBot = () => {
       return "en";
     }
   };
-  
   const translateText = async (text, sourceLang, targetLang) => {
     if (!text.trim()) return "";
     if (sourceLang === targetLang) return text;
@@ -403,41 +532,40 @@ const ChatBot = () => {
     }
   };
 
-  // Updated handleSendMessage to properly track voice input
   const handleSendMessage = async () => {
     if (input.trim() === "") return;
 
     const originalText = input;
-    const messageId = Date.now(); // Unique identifier for this message
-    const wasVoiceInput = messageFromVoice; // FIXED: Use messageFromVoice instead of isVoiceInput
-    
-    console.log("Voice input debug:", { messageFromVoice, wasVoiceInput }); // Debug log
-    
     setInput("");
     setIsLoading(true);
-    setMessageFromVoice(false); // Reset after capturing the value
-    setIsVoiceInput(false); 
-    setIsActivelyListening(false);
     inputRef.current?.focus();
 
     try {
+      // Refresh user data to ensure we have the latest context
+      setIsRefreshingContext(true);
+      const freshUserData = await refreshUserData();
+      const currentUserDataToUse = freshUserData || userData;
+      
+      // Validate that we have the correct user data
+      if (!currentUserDataToUse?.user) {
+        console.error("No valid user data available for AI response");
+        setIsRefreshingContext(false);
+        return;
+      }
+      
+      setIsRefreshingContext(false);
+
       const detectedLangCode = await detectLanguage(originalText);
       const userMessage = {
         type: "user",
         content: originalText,
         timestamp: new Date().toISOString(),
         originalLanguage: detectedLangCode,
-        id: messageId,
       };
 
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
       setLastQuestion(originalText);
-
-      // Track if this message was sent via voice
-      if (wasVoiceInput) {
-        setVoiceInputMessages(prev => new Set([...prev, messageId]));
-      }
 
       const urlPattern = /(https?:\/\/[^\s]+)/g;
       const urls = originalText.match(urlPattern) || [];
@@ -460,12 +588,29 @@ const ChatBot = () => {
         }
       }
 
-      const englishResponse = await getAnswer(
-        textForAI,
-        userData.user,
-        presentUserData ? presentUserData.user : null,
-        updatedMessages
-      );
+      // Check if user is admin and use appropriate AI service
+      console.log('ChatBot - About to check admin status...');
+      console.log('ChatBot - Current URL:', window.location.href);
+      console.log('ChatBot - Current pathname:', window.location.pathname);
+      
+      const userIsAdmin = isAdminUser();
+      console.log('ChatBot - Is admin user?', userIsAdmin);
+      
+      console.log('ChatBot - Will use service:', userIsAdmin ? 'ADMIN AI' : 'REGULAR AI');
+      
+      const englishResponse = userIsAdmin 
+        ? await getAdminAnswer(
+            textForAI,
+            currentUserDataToUse.user,
+            presentUserData ? presentUserData.user : null,
+            updatedMessages
+          )
+        : await getAnswer(
+            textForAI,
+            currentUserDataToUse.user,
+            presentUserData ? presentUserData.user : null,
+            updatedMessages
+          );
 
       let finalResponse = englishResponse;
       if (detectedLangCode !== "en") {
@@ -481,15 +626,11 @@ const ChatBot = () => {
         content: finalResponse,
         timestamp: new Date().toISOString(),
         originalLanguage: detectedLangCode,
-        responseToId: messageId,
       };
 
       setMessages((prev) => [...prev, botMessage]);
 
-      // FIXED: Only speak if voice is enabled AND the original message was sent via voice
-      console.log("Speaking decision:", { voiceEnabled, wasVoiceInput }); // Debug log
-      if (voiceEnabled && wasVoiceInput) {
-        console.log("Speaking response:", finalResponse); // Debug log
+      if (voiceEnabled) {
         speakText(finalResponse, detectedLangCode);
       }
     } catch (error) {
@@ -505,6 +646,7 @@ const ChatBot = () => {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setIsRefreshingContext(false);
     }
   };
 
@@ -552,411 +694,652 @@ const ChatBot = () => {
 
   if (!isInitialized || !currentUserData?.user) {
     return (
-      <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-900 text-white shadow-2xl overflow-hidden items-center justify-center">
+      <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-50 text-gray-800 shadow-lg overflow-hidden items-center justify-center min-w-[100vw]">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         >
-          <Loader2 className="w-8 h-8 text-blue-500" />
+          <Loader2 className="w-8 h-8 text-gray-500" />
         </motion.div>
-        <p className="mt-4 text-gray-400">Initializing chat...</p>
+        <p className="mt-4 text-gray-500">Initializing chat...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen md:h-11/12 lg:max-w-1/2 lg:rounded-xl md:pt-0 pt-16 text-xl bg-gray-900 text-white shadow-2xl overflow-hidden">
+    <div className="flex h-screen bg-white text-gray-800 overflow-hidden">
       <style>{scrollbarStyles}</style>
 
-      <div className="bg-gray-800 py-4 rounded-t-xl px-6 flex justify-between items-center border-b border-gray-700">
-        <div className="flex items-center">
-          <Bot className="w-6 h-6 text-blue-400 mr-2" />
-          <h1 className="text-xl font-bold">
-            {" "}
-            {currentUserData.user.name}'s AI Assistant
-          </h1>
-        </div>
-        <div className="flex gap-2">
-          <div className="relative" ref={languageDropdownRef}>
+      {/* Main content */}
+      <div className="flex-1 flex flex-col w-[100vw] mx-auto">
+        {/* Header */}
+        <div className="bg-white py-4 px-6 flex justify-between items-center border-b border-gray-100 sticky top-0 z-10">
+          <div className="flex items-center space-x-3">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={toggleLanguageDropdown}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2"
+              onClick={() => window.history.back()}
+              className="p-2 text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Go back"
             >
-              <Globe className="w-4 h-4" />
-              <span className="hidden sm:inline">{selectedLanguage.name}</span>
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="w-5 h-5 transform rotate-90" />
+            </motion.button>
+            <div className="flex items-center">
+              <div className="bg-purple-100 p-2 rounded-full mr-3">
+                <Bot className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {currentUserData.user.name}'s AI Assistant
+                </h1>
+                <p className="text-xs text-gray-500">Powered by ChatMATE</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 items-center">
+            {messages.length > 1 && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleOpenDeleteModal}
+                disabled={isDeleting}
+                aria-label="Delete chat history"
+                className={`text-xs text-gray-500 hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded-full hover:bg-gray-100 transition-colors ${
+                  isDeleting ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                data-testid="delete-chat-button"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Clear chat</span>
+              </motion.button>
+            )}
+
+            <div className="relative" ref={languageDropdownRef}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleLanguageDropdown}
+                className="p-2 text-gray-600 rounded-full hover:bg-gray-100 transition-colors flex items-center gap-1"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm">
+                  {selectedLanguage.name}
+                </span>
+                <ChevronDown className="w-3 h-3" />
+              </motion.button>
+
+              {showLanguageDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-10">
+                  <div className="max-h-64 overflow-y-auto">
+                    {languages.map((language) => (
+                      <button
+                        key={language.code}
+                        onClick={() => handleLanguageSelect(language)}
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center ${
+                          selectedLanguage.code === language.code
+                            ? "bg-gray-50"
+                            : ""
+                        }`}
+                      >
+                        {language.code === selectedLanguage.code && (
+                          <CheckCircle className="w-4 h-4 mr-2 text-purple-500" />
+                        )}
+                        <span className="mr-1 text-sm">{language.name}</span>
+                        <span className="text-xs text-gray-500">
+                          ({language.native})
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowContributionForm(true)}
+              className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-full hover:bg-purple-700 transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Contribute</span>
             </motion.button>
 
-            {showLanguageDropdown && (
-              <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden z-10">
-                <div className="max-h-64 overflow-y-auto">
-                  {languages.map((language) => (
-                    <button
-                      key={language.code}
-                      onClick={() => handleLanguageSelect(language)}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-700 flex items-center ${
-                        selectedLanguage.code === language.code
-                          ? "bg-blue-900"
-                          : ""
-                      }`}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAdminPanel(true)}
+              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full flex items-center justify-center cursor-pointer"
+            >
+              <Home className="w-4 h-4" />
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full flex items-center justify-center cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </motion.button>
+
+            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-sm font-medium text-white shadow-sm">
+              {presentUserName ? presentUserName.charAt(0).toUpperCase() : "U"}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden justify-center w-full">
+          {/* Chat content area */}
+          <div className="flex-1 flex flex-col justify-center items-center relative overflow-y-auto w-full max-w-[1200px] mx-auto">
+            {messages.length <= 1 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                <h2 className="text-4xl font-semibold mb-4 text-gray-900">
+                  Hi there, {presentUserName || "User"}
+                </h2>
+                <h3 className="text-2xl font-medium mb-8 text-purple-600">
+                  What would you like to know?
+                </h3>
+
+                <p className="text-gray-500 mb-6 max-w-md">
+                  Use one of the most common prompts below or use your own to
+                  begin
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-2xl">
+                  {[
+                    {
+                      icon: <MessageCircle className="w-5 h-5" />,
+                      text: "Write a to-do list for a personal project or task",
+                    },
+                    {
+                      icon: <Send className="w-5 h-5" />,
+                      text: "Generate an email in reply to a job offer",
+                    },
+                    {
+                      icon: <Bot className="w-5 h-5" />,
+                      text: "Summarize this article or text for me in one paragraph",
+                    },
+                    {
+                      icon: <BrainCircuit className="w-5 h-5" />,
+                      text: "How does AI work in a technical capacity",
+                    },
+                  ].map((item, index) => (
+                    <motion.button
+                      key={index}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setInput(item.text)}
+                      className="flex items-start p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-all text-left"
                     >
-                      {language.code === selectedLanguage.code && (
-                        <CheckCircle className="w-4 h-4 mr-2 text-blue-400" />
-                      )}
-                      <span className="mr-1">{language.name}</span>
-                      <span className="text-sm text-gray-400">
-                        ({language.native})
-                      </span>
-                    </button>
+                      <div className="p-2 bg-gray-100 rounded-lg mr-3">
+                        {item.icon}
+                      </div>
+                      <span className="text-sm text-gray-700">{item.text}</span>
+                    </motion.button>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowContributionForm(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Contribute</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowSettings(true)}
-            className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-          </motion.button>
-        </div>
-      </div>
+                <div className="w-full max-w-xl">
+                  <div className="relative flex flex-col rounded-xl transition-all duration-200 w-full text-left cursor-text ring-1 ring-black/10 bg-black/5">
+                    <div className="overflow-y-auto max-h-[200px]">
+                      <textarea
+                        id="ai-input-04"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                        placeholder="Ask whatever you want..."
+                        className="w-full rounded-xl rounded-b-none px-4 py-3 bg-white border-none text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-300 border-b leading-[1.2] min-h-[52px]"
+                        disabled={isVoiceInput}
+                        style={{ height: input ? "auto" : "52px" }}
+                        onInput={autoResizeTextarea}
+                      />
+                    </div>
 
-      <div
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-        id="chat-messages-container"
-      >
-        <AnimatePresence>
-          {promptUpdated && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-green-900 bg-opacity-20 border border-green-500 rounded-lg p-3 text-green-300 flex items-center"
-            >
-              <CheckCircle className="w-5 h-5 mr-2" />
-              Knowledge base updated successfully! I'm now equipped with the
-              latest information.
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {showTranslationInfo && detectedLanguage && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-blue-900 bg-opacity-20 border border-blue-500 rounded-lg p-3 text-blue-300 flex items-center"
-            >
-              <Info className="w-5 h-5 mr-2" />
-              Detected {detectedLanguage.name} ({detectedLanguage.native}).
-              Translation is active.
-              <button
-                onClick={() => setShowTranslationInfo(false)}
-                className="ml-auto text-blue-300 hover:text-blue-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {messages.map((message, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className={`flex items-start ${
-              message.type === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
-            <div
-              className={`max-w-[80%] rounded-lg p-3 shadow-md ${
-                message.type === "user"
-                  ? "bg-blue-600 text-white rounded-br-none"
-                  : "bg-gray-800 text-white rounded-bl-none border border-gray-700"
-              }`}
-            >
-              <div className="flex items-center mb-1">
-                {message.type === "bot" ? (
-                  <Bot className="w-4 h-4 mr-2 text-blue-400" />
-                ) : (
-                  <User className="w-4 h-4 mr-2 text-blue-300" />
-                )}
-                <div className="text-xs opacity-70">
-                  {message.type === "bot"
-                    ? "Assistant"
-                    : presentUserName || "You"}
-                  {message.timestamp && (
-                    <span className="ml-2 text-xs opacity-50">
-                      {new Date(message.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  )}
-                  {message.originalLanguage &&
-                    message.originalLanguage !== "en" && (
-                      <span className="ml-2 text-xs bg-blue-900 px-2 py-0.5 rounded-full">
-                        {languages.find(
-                          (l) => l.code === message.originalLanguage
-                        )?.name || message.originalLanguage}
-                      </span>
-                    )}
+                    <div className="h-12 bg-white rounded-b-xl border-t border-gray-100">
+                      <div className="absolute left-3 bottom-3 flex items-center gap-2">
+                        {!isVoiceInput && (
+                          <button
+                            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+                            onClick={handleMicClick}
+                            disabled={
+                              isLoading || !browserSupportsSpeechRecognition
+                            }
+                          >
+                            <Mic className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="absolute right-3 bottom-3">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleSendMessage}
+                          disabled={
+                            isLoading || input.trim() === "" || isVoiceInput
+                          }
+                          className={`rounded-lg p-2 transition-colors ${
+                            input.trim()
+                              ? "bg-purple-500 text-white"
+                              : "bg-gray-100 text-gray-400"
+                          }`}
+                        >
+                          <Send className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="text-sm whitespace-pre-wrap break-words">
-                {message.type === "bot" &&
-                index === messages.length - 1 &&
-                isLoading ? (
-                  <motion.div
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="flex items-center gap-2"
-                  >
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  </motion.div>
-                ) : (
-                  <MessageContent content={message.content} />
-                )}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-        {isLoading && messages[messages.length - 1]?.type === "user" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex items-start justify-start"
-          >
-            <div className="max-w-[80%] rounded-lg p-3 shadow-md bg-gray-800 text-white rounded-bl-none border border-gray-700">
-              <div className="flex items-center mb-1">
-                <Bot className="w-4 h-4 mr-2 text-blue-400" />
-                <div className="text-xs opacity-70">Assistant</div>
-              </div>
-              <div className="text-sm">
-                <motion.div
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="flex items-center gap-2"
-                >
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                </motion.div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+            )}
 
-      <div>
-        <div className="flex items-end p-4 border-t border-gray-700">
-          <div className="relative flex items-center w-full rounded-lg bg-gray-800 p-2">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                autoResizeTextarea(e);
-              }}
-              onKeyDown={handleKeyPress}
-              placeholder={`Ask me anything about ${currentUserData.user.name} ...`}
-              className="flex-1 bg-transparent outline-none resize-none text-white placeholder-gray-400 max-h-32"
-              rows={1}
-              disabled={isActivelyListening} // Only disable when actively listening
-            />
-
-            {/* --- Mic Button --- */}
-            <div className="flex items-center space-x-2">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleMicClick}
-                disabled={isLoading || !browserSupportsSpeechRecognition}
-                className={`p-2 rounded-full ${
-                  listening ? "bg-blue-600" : "bg-gray-700"
-                } text-white hover:bg-blue-700 transition-colors`}
-                aria-label={
-                  listening ? "Stop voice input" : "Start voice input"
-                }
+            {messages.length > 1 && (
+              <div
+                className="w-full p-4 space-y-4"
+                id="chat-messages-container"
               >
-                <Mic className="w-5 h-5" />
-              </motion.button>
-
-              {/* Updated voice output button with stop functionality */}
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => {
-                  if (isSpeaking) {
-                    stopSpeaking();
-                  } else {
-                    setVoiceEnabled((prev) => !prev);
-                  }
-                }}
-                className={`p-2 rounded-full ${
-                  voiceEnabled ? "bg-green-600" : "bg-gray-600"
-                } text-white hover:bg-green-700 transition-colors`}
-                aria-pressed={voiceEnabled}
-                aria-label={
-                  isSpeaking 
-                    ? "Stop speaking"
-                    : voiceEnabled 
-                    ? "Disable voice output" 
-                    : "Enable voice output"
-                }
-              >
-                {voiceEnabled ? (
-                  isSpeaking ? (
+                <AnimatePresence>
+                  {promptUpdated && (
                     <motion.div
-                      animate={{ scale: [1, 1.5, 1] }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 1,
-                        ease: "easeInOut",
-                      }}
-                      className="flex items-center justify-center"
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 flex items-center"
                     >
-                      <VolumeX className="w-5 h-5 text-red-400" />
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Knowledge base updated successfully! I'm now equipped with
+                      the latest information.
                     </motion.div>
-                  ) : (
-                    <Volume2 className="w-5 h-5" />
-                  )
-                ) : (
-                  <VolumeX className="w-5 h-5" />
-                )}
-              </motion.button>
-            </div>
+                  )}
+                </AnimatePresence>
 
-            {!browserSupportsSpeechRecognition && (
-              <span className="text-red-400">
-                Browser doesn't support voice input.
-              </span>
-            )}
+                <AnimatePresence>
+                  {isRefreshingContext && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 flex items-center"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <Loader2 className="w-5 h-5 mr-2" />
+                      </motion.div>
+                      Refreshing context with latest data...
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-            {/* Updated voice transcript UI */}
-            {isActivelyListening && (
-              <div className="absolute bottom-14 left-2 right-2 bg-gray-900 rounded-xl shadow-lg border border-blue-700 z-10 p-3 flex items-center gap-2">
-                <span className="flex-1 text-blue-400">
-                  {transcript || (listening ? "Listening..." : "")}
-                </span>
-                <button
-                  onClick={handleVoiceSend}
-                  disabled={!transcript.trim()}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
-                >
-                  Use Text
-                </button>
-                <button
-                  onClick={handleVoiceCancel}
-                  className="px-3 py-1 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <AnimatePresence>
+                  {showTranslationInfo && detectedLanguage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 flex items-center"
+                    >
+                      <Info className="w-5 h-5 mr-2" />
+                      Detected {detectedLanguage.name} (
+                      {detectedLanguage.native}). Translation is active.
+                      <button
+                        onClick={() => setShowTranslationInfo(false)}
+                        className="ml-auto text-blue-700 hover:text-blue-900"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {messages.map((message, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className={`flex items-start ${
+                      message.type === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    {message.type === "bot" && (
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-3 mt-1">
+                        <Bot className="w-4 h-4 text-purple-600" />
+                      </div>
+                    )}
+
+                    <div
+                      className={`max-w-[75%] rounded-2xl p-4 ${
+                        message.type === "user"
+                          ? "bg-purple-600 text-white rounded-br-none"
+                          : "bg-white text-gray-800 rounded-bl-none border border-gray-100 shadow-sm"
+                      }`}
+                    >
+                      <div className="flex items-center mb-1.5">
+                        <div
+                          className={`text-xs text-opacity-90 flex items-center gap-2 ${
+                            message.type === "user"
+                              ? "text-white"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          <span className="font-medium">
+                            {message.type === "bot"
+                              ? "Assistant"
+                              : presentUserName || "You"}
+                          </span>
+                          {message.timestamp && (
+                            <span className="text-xs opacity-70">
+                              {new Date(message.timestamp).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </span>
+                          )}
+                          {message.originalLanguage &&
+                            message.originalLanguage !== "en" && (
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full ${
+                                  message.type === "user"
+                                    ? "bg-purple-500 text-white"
+                                    : "bg-purple-100 text-purple-700"
+                                }`}
+                              >
+                                {languages.find(
+                                  (l) => l.code === message.originalLanguage
+                                )?.name || message.originalLanguage}
+                              </span>
+                            )}
+                        </div>
+                      </div>
+
+                      <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                        {message.type === "bot" &&
+                        index === messages.length - 1 &&
+                        isLoading ? (
+                          <motion.div
+                            animate={{ opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                            className="flex items-center gap-2"
+                          >
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                          </motion.div>
+                        ) : (
+                          <MessageContent content={message.content} />
+                        )}
+                      </div>
+                    </div>
+
+                    {message.type === "user" && (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center ml-3 mt-1 text-white text-sm font-medium">
+                        {presentUserName
+                          ? presentUserName.charAt(0).toUpperCase()
+                          : "U"}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+                {isLoading &&
+                  messages[messages.length - 1]?.type === "user" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex items-start justify-start"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-3 mt-1">
+                        <Bot className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div className="max-w-[75%] rounded-2xl p-4 bg-white text-gray-800 rounded-bl-none border border-gray-100 shadow-sm">
+                        <div className="flex items-center mb-1.5">
+                          <div className="text-xs text-opacity-90 flex items-center gap-2 text-gray-500">
+                            <span className="font-medium">Assistant</span>
+                          </div>
+                        </div>
+                        <div className="text-sm">
+                          <motion.div
+                            animate={{ opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                            className="flex items-center gap-2"
+                          >
+                            <div className="w-2 h-2 bg-purple-300 rounded-full"></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                          </motion.div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                <div ref={messagesEndRef} />
               </div>
             )}
-
-            {/* Send Button - removed isVoiceInput from disabled condition */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleSendMessage}
-              disabled={isLoading || input.trim() === ""} // REMOVED isVoiceInput condition
-              className="p-2 ml-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {isLoading ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                >
-                  <Loader2 className="w-5 h-5" />
-                </motion.div>
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </motion.button>
-
-            <button
-              onClick={handleOpenDeleteModal}
-              disabled={isDeleting}
-              aria-label="Delete chat history"
-              className={`p-2 ml-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors ${
-                isDeleting ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              data-testid="delete-chat-button"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
           </div>
         </div>
-      </div>
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm px-4">
-          <div
-            ref={modalRef}
-            className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-700"
-            onClick={(e) => e.stopPropagation()}
-            data-testid="delete-modal-content"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white flex items-center">
-                <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-                Delete Chat History
-              </h2>
-              <button
-                onClick={handleCloseDeleteModal}
-                className="p-1 rounded-full hover:bg-gray-700 transition-colors"
-                aria-label="Close modal"
+        {/* Input area - only shown when there are messages */}
+        {messages.length > 1 && (
+          <div className="border-t border-gray-100 bg-white p-6">
+            <div className="relative max-w-3xl mx-auto">
+              <div
+                role="textbox"
+                tabIndex={0}
+                aria-label="Chat input container"
+                className={`relative flex flex-col rounded-xl transition-all duration-200 w-full text-left cursor-text
+                    ${
+                      isFocused
+                        ? "ring-2 ring-purple-500"
+                        : "ring-1 ring-black/10"
+                    }`}
+                onClick={() => inputRef.current?.focus()}
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                <div className="overflow-y-auto max-h-[200px]">
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      autoResizeTextarea(e);
+                    }}
+                    onKeyDown={handleKeyPress}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    placeholder={`Ask me anything about ${currentUserData.user.name} ...`}
+                    className="w-full rounded-xl rounded-b-none px-4 py-3 bg-black/5 border-none text-gray-800 placeholder-gray-500 resize-none focus:outline-none leading-[1.2] min-h-[52px]"
+                    disabled={isVoiceInput}
+                    style={{ height: input ? "auto" : "52px" }}
+                  />
+                </div>
 
-            <p className="text-gray-300 mb-6">
-              Are you sure you want to delete your entire chat history? This
-              action cannot be undone.
-            </p>
+                <div className="h-12 bg-black/5 rounded-b-xl">
+                  <div className="absolute left-3 bottom-3 flex items-center gap-2">
+                    <button
+                      className="p-2 rounded-lg bg-white/80 text-gray-600 hover:bg-white transition-colors shadow-sm"
+                      onClick={() => setShowSettings(true)}
+                      aria-label="Open settings"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
 
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={handleCloseDeleteModal}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                data-testid="delete-modal-cancel"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteHistory}
-                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors flex items-center"
-                data-testid="delete-modal-confirm"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </button>
+                    {!isVoiceInput && (
+                      <button
+                        className="p-2 rounded-lg bg-white/80 text-gray-600 hover:bg-white transition-colors shadow-sm"
+                        onClick={handleMicClick}
+                        disabled={
+                          isLoading || !browserSupportsSpeechRecognition
+                        }
+                        aria-label={
+                          listening ? "Stop voice input" : "Start voice input"
+                        }
+                      >
+                        <Mic className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {voiceEnabled ? (
+                      <button
+                        className="p-2 rounded-lg bg-white/80 text-gray-600 hover:bg-white transition-colors shadow-sm"
+                        onClick={() => setVoiceEnabled(false)}
+                        aria-label="Disable voice output"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        className="p-2 rounded-lg bg-white/80 text-gray-600 hover:bg-white transition-colors shadow-sm"
+                        onClick={() => setVoiceEnabled(true)}
+                        aria-label="Enable voice output"
+                      >
+                        <VolumeX className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="absolute right-3 bottom-3">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleSendMessage}
+                      disabled={
+                        isLoading || input.trim() === "" || isVoiceInput
+                      }
+                      className={`rounded-lg p-2 transition-colors ${
+                        input.trim()
+                          ? "bg-purple-600 text-white shadow-sm"
+                          : "bg-white/80 text-gray-400"
+                      }`}
+                    >
+                      {isLoading ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{
+                            duration: 1,
+                            repeat: Infinity,
+                            ease: "linear",
+                          }}
+                        >
+                          <Loader2 className="w-4 h-4" />
+                        </motion.div>
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+
+              {!browserSupportsSpeechRecognition && (
+                <span className="text-red-500 text-xs absolute -top-6 left-2">
+                  Browser doesn't support voice input.
+                </span>
+              )}
+
+              {showMicPermissionPrompt && (
+                <div className="absolute -top-16 left-2 right-2 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-center justify-between">
+                  <span>Please allow microphone access to use voice input</span>
+                  <button
+                    onClick={() => setShowMicPermissionPrompt(false)}
+                    className="ml-2 p-1 rounded-full hover:bg-yellow-100"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Voice input UI */}
+              <div className="relative">
+                <AnimatePresence>
+                  {isVoiceInput && (
+                    <AIVoice
+                      isListening={listening}
+                      onMicClick={handleMicClick}
+                      transcript={transcript}
+                      onSend={handleVoiceSend}
+                      onCancel={handleVoiceCancel}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 backdrop-blur-sm px-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", duration: 0.5 }}
+            className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full"
+            ref={modalRef}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <div className="bg-red-100 p-2 rounded-full mr-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Clear chat history?
+                </h3>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleCloseDeleteModal}
+                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </motion.button>
+            </div>
+            <p className="text-gray-600 mb-8 pl-12">
+              This will permanently delete your entire conversation history with{" "}
+              <span className="font-medium">
+                {currentUserData.user.name}'s AI assistant
+              </span>
+              . This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleCloseDeleteModal}
+                className="px-5 py-2.5 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 font-medium"
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleDeleteHistory}
+                className="px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium shadow-sm"
+              >
+                {isDeleting ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="flex justify-center"
+                  >
+                    <Loader2 className="w-5 h-5" />
+                  </motion.div>
+                ) : (
+                  "Clear History"
+                )}
+              </motion.button>
+            </div>
+          </motion.div>
         </div>
       )}
 
@@ -966,11 +1349,15 @@ const ChatBot = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"
+            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50"
           >
-            <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center">
-              <CheckCircle className="w-5 h-5 mr-2" />
-              Chat history deleted successfully
+            <div className="bg-white border border-green-200 text-green-700 px-5 py-3 rounded-xl shadow-lg flex items-center gap-2">
+              <div className="bg-green-100 p-1 rounded-full">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+              </div>
+              <span className="font-medium">
+                Chat history cleared successfully
+              </span>
             </div>
           </motion.div>
         )}
@@ -989,6 +1376,10 @@ const ChatBot = () => {
         lastQuestion={lastQuestion}
         onContriUpdated={handleContriUpdated}
       />
+
+      {showAdminPanel && (
+        <AdminPanel onClose={() => setShowAdminPanel(false)} />
+      )}
     </div>
   );
 };

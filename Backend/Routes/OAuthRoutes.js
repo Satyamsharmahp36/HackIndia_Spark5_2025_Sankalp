@@ -3,6 +3,7 @@ const router=express.Router();
 const axios = require('axios');
 const crypto = require('crypto');
 const dotenv = require('dotenv');
+const User = require('../Schema/UserSchema');
 
 const verificationSessions = new Map();
 
@@ -99,6 +100,54 @@ router.get('/user/verify-email', (req, res) => {
           window.close();
         </script>
       `);
+    }
+  });
+
+  // Route to update Google tokens for existing users
+  router.post('/user/update-google-tokens', async (req, res) => {
+    try {
+      const { username, googleData } = req.body;
+      
+      if (!username || !googleData || !googleData.accessToken || !googleData.refreshToken) {
+        return res.status(400).json({ 
+          error: 'Username and Google token data are required' 
+        });
+      }
+      
+      // Find and update the user's Google tokens
+      const updatedUser = await User.findOneAndUpdate(
+        { username },
+        { 
+          $set: { 
+            'google.accessToken': googleData.accessToken,
+            'google.refreshToken': googleData.refreshToken,
+            'google.tokenExpiryDate': googleData.tokenExpiryDate ? new Date(googleData.tokenExpiryDate) : null
+          }
+        },
+        { new: true }
+      );
+      
+      if (!updatedUser) {
+        return res.status(404).json({ 
+          error: 'User not found' 
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Google tokens updated successfully',
+        user: {
+          username: updatedUser.username,
+          email: updatedUser.email
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error updating Google tokens:', error);
+      res.status(500).json({ 
+        error: 'Failed to update Google tokens',
+        details: error.message 
+      });
     }
   });
 
